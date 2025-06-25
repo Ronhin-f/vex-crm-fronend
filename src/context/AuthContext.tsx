@@ -1,6 +1,5 @@
 // src/context/AuthContext.tsx
 import { createContext, useContext, useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
 
 type AuthContextType = {
@@ -19,7 +18,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [rol, setRol] = useState<string | null>(null);
   const [usuario_email, setUsuarioEmail] = useState<string | null>(null);
   const [organizacion_id, setOrganizacionId] = useState<number | null>(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const t = localStorage.getItem("token");
@@ -50,11 +48,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUsuarioEmail(null);
     setOrganizacionId(null);
     localStorage.clear();
-    navigate("/login");
+    // Ya no usamos navigate acá. La redirección se hace desde el componente que llame logout().
   };
 
   return (
-    <AuthContext.Provider value={{ token, rol, usuario_email, organizacion_id, login, logout }}>
+    <AuthContext.Provider
+      value={{ token, rol, usuario_email, organizacion_id, login, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

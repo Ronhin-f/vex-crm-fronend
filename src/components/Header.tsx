@@ -1,9 +1,14 @@
-// src/components/Header.tsx
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const Header = () => {
   const { usuario_email, rol, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
     <header className="flex justify-between items-center p-4 bg-base-100 shadow mb-6">
@@ -19,7 +24,7 @@ const Header = () => {
 
       <div className="flex flex-col items-end gap-1">
         <span className="text-sm text-neutral">Sesión: {usuario_email} ({rol})</span>
-        <button onClick={logout} className="btn btn-xs btn-error">Cerrar sesión</button>
+        <button onClick={handleLogout} className="btn btn-xs btn-error">Cerrar sesión</button>
       </div>
     </header>
   );
