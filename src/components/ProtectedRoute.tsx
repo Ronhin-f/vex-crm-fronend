@@ -1,12 +1,7 @@
-// src/components/RutaProtegida.tsx
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 
-interface Props {
-  children: React.ReactNode;
-}
-
-export default function RutaProtegida({ children }: Props) {
+export default function ProtectedRoute() {
   const [autorizado, setAutorizado] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -24,8 +19,8 @@ export default function RutaProtegida({ children }: Props) {
       .catch(() => setAutorizado(false));
   }, []);
 
-  if (autorizado === null) return <div className="p-6">🔐 Verificando acceso...</div>;
-  if (!autorizado) return <Navigate to="/login" />;
+  if (autorizado === null) return <div className="p-6">🔒 Verificando acceso...</div>;
+  if (!autorizado) return <Navigate to="/" />;
 
-  return children;
+  return <Outlet />;
 }

@@ -12,14 +12,18 @@ const Header = () => {
 
   return (
     <header className="flex justify-between items-center p-4 bg-base-100 shadow mb-6">
-      <div>
-        <h1 className="text-3xl font-bold text-primary">VEX CRM</h1>
-        <nav className="flex flex-wrap gap-2 mt-2">
-          <Link to="/dashboard" className="btn btn-sm btn-outline">Dashboard</Link>
-          <Link to="/clientes" className="btn btn-sm btn-outline">Clientes</Link>
-          <Link to="/tareas" className="btn btn-sm btn-outline">Tareas</Link>
-          <Link to="/compras" className="btn btn-sm btn-outline">Compras</Link>
-        </nav>
+      <div className="flex items-start gap-4">
+        <img src="/assets/logo-vex-crm.png" alt="Vex CRM" className="h-12" />
+
+        <div>
+          <h1 className="text-2xl font-bold text-primary">Vex CRM</h1>
+          <nav className="flex flex-wrap gap-2 mt-1">
+            <Link to="/dashboard" className="btn btn-sm btn-outline">Dashboard</Link>
+            <Link to="/clientes" className="btn btn-sm btn-outline">Clientes</Link>
+            <Link to="/tareas" className="btn btn-sm btn-outline">Tareas</Link>
+            <Link to="/compras" className="btn btn-sm btn-outline">Compras</Link>
+          </nav>
+        </div>
       </div>
 
       <div className="flex flex-col items-end gap-1">

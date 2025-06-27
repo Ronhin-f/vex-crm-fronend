@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../utils/api";
+import { useAuth } from "../context/AuthContext";
+import { obtenerSaludoPersonalizado } from "../utils/saludo";
 
 export default function DashboardCRM() {
   const [datos, setDatos] = useState({
@@ -8,6 +10,9 @@ export default function DashboardCRM() {
     tareasCompletadas: 0,
     totalCompras: 0,
   });
+
+  const { usuario_email } = useAuth();
+  const saludo = obtenerSaludoPersonalizado(usuario_email?.split("@")[0] || "usuario");
 
   const cargarDatos = async () => {
     try {
@@ -23,12 +28,15 @@ export default function DashboardCRM() {
   }, []);
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">Resumen General</h2>
+    <div className="space-y-4">
+      <h2 className="text-lg font-medium text-secondary">{saludo}</h2>
+
+      <h3 className="text-xl font-semibold mb-2">📊 Resumen General</h3>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat bg-base-100 shadow rounded">
           <div className="stat-title">Clientes</div>
-          <div className="stat-value">{datos.totalClientes}</div>
+          <div className="stat-value text-primary">{datos.totalClientes}</div>
         </div>
         <div className="stat bg-base-100 shadow rounded">
           <div className="stat-title">Tareas Pendientes</div>
@@ -40,7 +48,7 @@ export default function DashboardCRM() {
         </div>
         <div className="stat bg-base-100 shadow rounded">
           <div className="stat-title">Compras registradas</div>
-          <div className="stat-value">{datos.totalCompras}</div>
+          <div className="stat-value text-info">{datos.totalCompras}</div>
         </div>
       </div>
     </div>
