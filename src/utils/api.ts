@@ -4,37 +4,26 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
 });
 
-// Función utilitaria para extraer datos del localStorage
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
-  const usuario_email = localStorage.getItem("usuario_email");
-  const organizacion_id = localStorage.getItem("organizacion_id");
-  const headers: any = {};
-
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (usuario_email) headers["usuario_email"] = usuario_email;
-  if (organizacion_id) headers["organizacion_id"] = organizacion_id;
-
-  return headers;
-};
-
-// 🔗 Interceptor de request
+// 🧠 Agrega solo el token JWT en cada request
 api.interceptors.request.use((config) => {
-  config.headers = {
-    ...config.headers,
-    ...getAuthHeaders(),
-  };
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers = {
+      ...config.headers,
+      Authorization: `Bearer ${token}`,
+    };
+  }
   return config;
 });
 
-// 🔒 Interceptor de respuesta
+// 🔐 Manejo de errores de sesión
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && window.location.pathname !== "/login") {
-      console.warn("⚠️ Sesión expirada");
-      localStorage.clear();
-      window.location.href = "/login";
+    if (error.response?.status === 401) {
+      console.warn("⚠️ Token expirado o inválido. Cerrando sesión.");
+      localStorage.removeItem("token");
+      window.location.href = "https://vex-core.vercel.app/login"; // o la URL real de Core
     }
     return Promise.reject(error);
   }
