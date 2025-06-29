@@ -1,31 +1,21 @@
-// src/components/RutaProtegida.tsx
-import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+// src/routes/AppRouter.tsx
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import RutaProtegida from "../components/RutaProtegida";
+import DashboardCRM from "./DashboardCRM";
 
-interface Props {
-  children: React.ReactNode;
-}
-
-export default function RutaProtegida({ children }: Props) {
-  const [autorizado, setAutorizado] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setAutorizado(false);
-      return;
-    }
-
-    fetch("https://vex-core-backend-production.up.railway.app/modulos/crm", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((data) => setAutorizado(data?.habilitado === true))
-      .catch(() => setAutorizado(false));
-  }, []);
-
-  if (autorizado === null) return <div className="p-6">🔐 Verificando acceso...</div>;
-  if (!autorizado) return <Navigate to="/login" />;
-
-  return children;
+export default function AppRouter() {
+  return (
+    <Router>
+      <Routes>
+        <Route
+          path="/*"
+          element={
+            <RutaProtegida>
+              <DashboardCRM />
+            </RutaProtegida>
+          }
+        />
+      </Routes>
+    </Router>
+  );
 }
