@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../utils/api";
 import { useAuth } from "../context/AuthContext";
+import toast from "react-hot-toast";
 
 type ItemCompra = {
   id: number;
@@ -10,7 +11,7 @@ type ItemCompra = {
 };
 
 export default function ListaDeCompras() {
-  const { usuario_email } = useAuth();
+  const { token } = useAuth();
   const [lista, setLista] = useState<ItemCompra[]>([]);
   const [producto, setProducto] = useState("");
   const [cantidad, setCantidad] = useState(1);
@@ -20,46 +21,52 @@ export default function ListaDeCompras() {
 
   const cargarLista = async () => {
     try {
-      const res = await api.get("/compras", {
-        params: { usuario_email },
-      });
+      const res = await api.get("/compras");
       setLista(res.data);
     } catch (err) {
       console.error("❌ Error al cargar lista:", err);
+      toast.error("Error al cargar la lista");
     }
   };
 
   useEffect(() => {
-    if (usuario_email) cargarLista();
-  }, [usuario_email]);
+    if (token) cargarLista();
+  }, [token]);
 
   const agregarItem = async () => {
-    if (!producto.trim() || cantidad <= 0) return;
+    if (!producto.trim() || cantidad <= 0) {
+      toast.error("Producto y cantidad válida son requeridos");
+      return;
+    }
+
     try {
       await api.post("/compras", {
         producto,
         cantidad,
         observacion,
-        usuario_email,
-        fecha: new Date().toISOString().split("T")[0],
+        fecha: new Date().toISOString().split("T")[0]
       });
+      toast.success("Producto agregado");
       setProducto("");
       setCantidad(1);
       setObservacion("");
       cargarLista();
     } catch (err) {
       console.error("❌ Error al agregar item:", err);
+      toast.error("No se pudo agregar el producto");
     }
   };
 
   const eliminarItem = async (id: number) => {
+    if (!confirm("¿Eliminar este producto?")) return;
+
     try {
-      await api.delete(`/compras/${id}`, {
-        data: { usuario_email },
-      });
+      await api.delete(`/compras/${id}`);
+      toast.success("Producto eliminado");
       cargarLista();
     } catch (err) {
       console.error("❌ Error al eliminar item:", err);
+      toast.error("No se pudo eliminar");
     }
   };
 
@@ -68,40 +75,51 @@ export default function ListaDeCompras() {
     const nuevaCantidad = Number(prompt("Cantidad:", item.cantidad.toString()));
     const nuevaObs = prompt("Observación:", item.observacion || "");
 
-    if (!nuevoProducto?.trim() || isNaN(nuevaCantidad) || nuevaCantidad <= 0) return;
+    if (!nuevoProducto?.trim() || isNaN(nuevaCantidad) || nuevaCantidad <= 0) {
+      toast.error("Datos inválidos");
+      return;
+    }
 
     try {
       await api.put(`/compras/${item.id}`, {
         producto: nuevoProducto,
         cantidad: nuevaCantidad,
-        observacion: nuevaObs,
-        usuario_email,
+        observacion: nuevaObs
       });
+      toast.success("Producto actualizado");
       cargarLista();
     } catch (err) {
       console.error("❌ Error al editar item:", err);
+      toast.error("No se pudo editar");
     }
   };
 
-  const interpretarMensaje = () => {
+  const interpretarMensaje = async () => {
     const partes = mensaje.split(/,|y/);
-    partes.forEach(async (p) => {
-      const match = p.trim().match(/(\d+)\s+(.*)/);
-      if (match) {
-        const cantidad = Number(match[1]);
-        const producto = match[2];
-        if (producto && cantidad) {
-          await api.post("/compras", {
-            producto,
-            cantidad,
-            usuario_email,
-            fecha: new Date().toISOString().split("T")[0],
-          });
+    const hoy = new Date().toISOString().split("T")[0];
+
+    try {
+      for (const p of partes) {
+        const match = p.trim().match(/(\d+)\s+(.*)/);
+        if (match) {
+          const cantidad = Number(match[1]);
+          const producto = match[2];
+          if (producto && cantidad > 0) {
+            await api.post("/compras", {
+              producto,
+              cantidad,
+              fecha: hoy
+            });
+          }
         }
       }
-    });
-    setMensaje("");
-    setTimeout(() => cargarLista(), 500);
+      toast.success("Mensaje interpretado");
+      setMensaje("");
+      setTimeout(() => cargarLista(), 500);
+    } catch (err) {
+      console.error("❌ Error al interpretar:", err);
+      toast.error("No se pudo interpretar el mensaje");
+    }
   };
 
   const listaFiltrada = lista.filter((item) => {
@@ -115,7 +133,7 @@ export default function ListaDeCompras() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-4">Lista de Compras</h2>
+      <h2 className="text-xl font-semibold mb-4">🛒 Lista de Compras</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4">
         <input
@@ -171,7 +189,10 @@ export default function ListaDeCompras() {
             key={item.id}
             className="p-2 bg-white rounded shadow text-sm flex justify-between items-center"
           >
-            <span onDoubleClick={() => editarItem(item)} title="Doble clic para editar">
+            <span
+              onDoubleClick={() => editarItem(item)}
+              title="Doble clic para editar"
+            >
               <strong>{item.cantidad}x</strong> {item.producto}
               {item.observacion && (
                 <span className="ml-2 text-gray-500 italic">({item.observacion})</span>
@@ -183,7 +204,9 @@ export default function ListaDeCompras() {
           </li>
         ))}
         {listaFiltrada.length === 0 && (
-          <li className="text-center text-sm text-gray-400">No hay ítems para mostrar</li>
+          <li className="text-center text-sm text-gray-400">
+            No hay ítems para mostrar
+          </li>
         )}
       </ul>
     </div>

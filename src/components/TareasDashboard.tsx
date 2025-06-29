@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import api from "../utils/api";
 import { useAuth } from "../context/AuthContext";
+import toast from "react-hot-toast";
 
 type Tarea = {
   id: number;
   titulo: string;
-  estado: "pendiente" | "completada";
+  completada: boolean;
 };
- 
+
 export default function TareasDashboard() {
   const { token } = useAuth();
   const [tareas, setTareas] = useState<Tarea[]>([]);
@@ -21,6 +22,7 @@ export default function TareasDashboard() {
       setTareas(res.data);
     } catch (err) {
       console.error("❌ Error al cargar tareas:", err);
+      toast.error("Error al cargar tareas");
     }
   };
 
@@ -29,56 +31,70 @@ export default function TareasDashboard() {
   }, [token]);
 
   const agregarTarea = async () => {
-    if (!nuevaTarea.trim()) return;
+    if (!nuevaTarea.trim()) {
+      toast.error("El título es obligatorio");
+      return;
+    }
     try {
       await api.post("/tareas", { titulo: nuevaTarea });
+      toast.success("Tarea agregada");
       setNuevaTarea("");
       cargarTareas();
     } catch (err) {
       console.error("❌ Error al agregar tarea:", err);
+      toast.error("No se pudo agregar la tarea");
     }
   };
 
   const completarTarea = async (id: number) => {
     try {
-      await api.patch(`/tareas/${id}`, { estado: "completada" });
+      await api.patch(`/tareas/${id}`, { completada: true });
+      toast.success("Tarea completada");
       cargarTareas();
     } catch (err) {
       console.error("❌ Error al completar tarea:", err);
+      toast.error("No se pudo completar");
     }
   };
 
   const eliminarTarea = async (id: number) => {
+    if (!confirm("¿Eliminar tarea?")) return;
     try {
       await api.delete(`/tareas/${id}`);
+      toast.success("Tarea eliminada");
       cargarTareas();
     } catch (err) {
       console.error("❌ Error al eliminar tarea:", err);
+      toast.error("No se pudo eliminar");
     }
   };
 
   const editarTarea = async (tarea: Tarea) => {
     const nuevoTitulo = prompt("Editar título de la tarea:", tarea.titulo);
     if (!nuevoTitulo?.trim()) return;
+
     try {
-      await api.patch(`/tareas/${tarea.id}`, {
-        titulo: nuevoTitulo,
-      });
+      await api.patch(`/tareas/${tarea.id}`, { titulo: nuevoTitulo });
+      toast.success("Tarea actualizada");
       cargarTareas();
     } catch (err) {
       console.error("❌ Error al editar tarea:", err);
+      toast.error("No se pudo editar");
     }
   };
 
   const tareasFiltradas = tareas.filter((t) => {
     const coincideTexto = t.titulo.toLowerCase().includes(filtroTexto.toLowerCase());
-    const coincideEstado = filtroEstado === "todas" || t.estado === filtroEstado;
+    const coincideEstado =
+      filtroEstado === "todas" ||
+      (filtroEstado === "pendiente" && !t.completada) ||
+      (filtroEstado === "completada" && t.completada);
     return coincideTexto && coincideEstado;
   });
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-4">Tareas Pendientes</h2>
+      <h2 className="text-xl font-semibold mb-4">📝 Tareas</h2>
 
       <div className="flex gap-2 mb-4">
         <input
@@ -112,40 +128,44 @@ export default function TareasDashboard() {
         </select>
       </div>
 
-      <ul className="space-y-2">
-        {tareasFiltradas.map((tarea) => (
-          <li
-            key={tarea.id}
-            className={`p-2 rounded shadow flex justify-between items-center text-sm ${
-              tarea.estado === "completada" ? "bg-green-100" : "bg-white"
-            }`}
-          >
-            <span
-              className={tarea.estado === "completada" ? "line-through" : ""}
-              onDoubleClick={() => editarTarea(tarea)}
-              title="Doble clic para editar"
+      {tareasFiltradas.length === 0 ? (
+        <p className="text-sm text-gray-500">No hay tareas que coincidan con el filtro.</p>
+      ) : (
+        <ul className="space-y-2">
+          {tareasFiltradas.map((tarea) => (
+            <li
+              key={tarea.id}
+              className={`p-2 rounded shadow flex justify-between items-center text-sm ${
+                tarea.completada ? "bg-green-100" : "bg-white"
+              }`}
             >
-              {tarea.titulo}
-            </span>
-            <div className="flex gap-1">
-              {tarea.estado === "pendiente" && (
-                <button
-                  onClick={() => completarTarea(tarea.id)}
-                  className="btn btn-xs btn-success"
-                >
-                  ✓
-                </button>
-              )}
-              <button
-                onClick={() => eliminarTarea(tarea.id)}
-                className="btn btn-xs btn-error"
+              <span
+                className={tarea.completada ? "line-through" : ""}
+                onDoubleClick={() => editarTarea(tarea)}
+                title="Doble clic para editar"
               >
-                ✕
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+                {tarea.titulo}
+              </span>
+              <div className="flex gap-1">
+                {!tarea.completada && (
+                  <button
+                    onClick={() => completarTarea(tarea.id)}
+                    className="btn btn-xs btn-success"
+                  >
+                    ✓
+                  </button>
+                )}
+                <button
+                  onClick={() => eliminarTarea(tarea.id)}
+                  className="btn btn-xs btn-error"
+                >
+                  ✕
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../utils/api";
 import { useAuth } from "../context/AuthContext";
+import toast from "react-hot-toast";
 
 type Cliente = {
   id: number;
@@ -10,7 +11,7 @@ type Cliente = {
 };
 
 export default function ClientesDashboard() {
-  const { token, usuario_email } = useAuth();
+  const { token } = useAuth();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [nombre, setNombre] = useState("");
   const [contacto, setContacto] = useState("");
@@ -23,6 +24,7 @@ export default function ClientesDashboard() {
       setClientes(res.data);
     } catch (err) {
       console.error("❌ Error al cargar clientes:", err);
+      toast.error("Error al cargar clientes");
     }
   };
 
@@ -31,24 +33,34 @@ export default function ClientesDashboard() {
   }, [token]);
 
   const agregarCliente = async () => {
-    if (!nombre.trim()) return;
+    if (!nombre.trim()) {
+      toast.error("El nombre es obligatorio");
+      return;
+    }
+
     try {
-      await api.post("/clientes", { nombre, contacto, categoria, usuario_email });
+      await api.post("/clientes", { nombre, contacto, categoria });
+      toast.success("Cliente agregado");
       setNombre("");
       setContacto("");
       setCategoria("");
       cargarClientes();
     } catch (err) {
       console.error("❌ Error al agregar cliente:", err);
+      toast.error("No se pudo agregar el cliente");
     }
   };
 
   const eliminarCliente = async (id: number) => {
+    if (!confirm("¿Eliminar cliente?")) return;
+
     try {
       await api.delete(`/clientes/${id}`);
+      toast.success("Cliente eliminado");
       cargarClientes();
     } catch (err) {
       console.error("❌ Error al eliminar cliente:", err);
+      toast.error("No se pudo eliminar");
     }
   };
 
@@ -62,12 +74,13 @@ export default function ClientesDashboard() {
       await api.put(`/clientes/${cliente.id}`, {
         nombre: nuevoNombre,
         contacto: nuevoContacto,
-        categoria: nuevaCategoria,
-        usuario_email
+        categoria: nuevaCategoria
       });
+      toast.success("Cliente actualizado");
       cargarClientes();
     } catch (err) {
       console.error("❌ Error al editar cliente:", err);
+      toast.error("No se pudo editar");
     }
   };
 
@@ -82,7 +95,7 @@ export default function ClientesDashboard() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-4">Clientes</h2>
+      <h2 className="text-xl font-semibold mb-4">📇 Clientes</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4">
         <input
@@ -119,36 +132,40 @@ export default function ClientesDashboard() {
         className="input input-bordered input-sm mb-4 w-full"
       />
 
-      <ul className="space-y-2">
-        {clientesFiltrados.map((cliente) => (
-          <li
-            key={cliente.id}
-            className="p-2 rounded shadow bg-white flex justify-between items-center text-sm"
-          >
-            <span>
-              <strong>{cliente.nombre}</strong>{" "}
-              {cliente.contacto && <span className="text-gray-500">({cliente.contacto})</span>}
-              {cliente.categoria && (
-                <span className="ml-2 badge badge-outline badge-sm">{cliente.categoria}</span>
-              )}
-            </span>
-            <div className="flex gap-1">
-              <button
-                onClick={() => editarCliente(cliente)}
-                className="btn btn-xs btn-warning"
-              >
-                ✎
-              </button>
-              <button
-                onClick={() => eliminarCliente(cliente.id)}
-                className="btn btn-xs btn-error"
-              >
-                ✕
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {clientesFiltrados.length === 0 ? (
+        <p className="text-sm text-gray-500">No hay clientes registrados o no coinciden con el filtro.</p>
+      ) : (
+        <ul className="space-y-2">
+          {clientesFiltrados.map((cliente) => (
+            <li
+              key={cliente.id}
+              className="p-2 rounded shadow bg-white flex justify-between items-center text-sm"
+            >
+              <span>
+                <strong>{cliente.nombre}</strong>{" "}
+                {cliente.contacto && <span className="text-gray-500">({cliente.contacto})</span>}
+                {cliente.categoria && (
+                  <span className="ml-2 badge badge-outline badge-sm">{cliente.categoria}</span>
+                )}
+              </span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => editarCliente(cliente)}
+                  className="btn btn-xs btn-warning"
+                >
+                  ✎
+                </button>
+                <button
+                  onClick={() => eliminarCliente(cliente.id)}
+                  className="btn btn-xs btn-error"
+                >
+                  ✕
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

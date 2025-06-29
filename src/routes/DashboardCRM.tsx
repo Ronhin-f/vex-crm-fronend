@@ -1,56 +1,59 @@
 import { useEffect, useState } from "react";
-import api from "../utils/api";
+import { Users, ClipboardList, FileText, ShoppingCart } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { obtenerSaludoPersonalizado } from "../utils/saludo";
 
-export default function DashboardCRM() {
+const DashboardCRM = () => {
+  const { usuario, token } = useAuth();
   const [datos, setDatos] = useState({
-    totalClientes: 0,
-    tareasPendientes: 0,
-    tareasCompletadas: 0,
-    totalCompras: 0,
+    total_clientes: 0,
+    total_tareas: 0,
+    total_compras: 0,
   });
 
-  const { usuario_email } = useAuth();
-  const saludo = obtenerSaludoPersonalizado(usuario_email?.split("@")[0] || "usuario");
-
-  const cargarDatos = async () => {
-    try {
-      const res = await api.get("/dashboard-crm");
-      setDatos(res.data);
-    } catch (err) {
-      console.error("❌ Error al cargar dashboard CRM:", err);
-    }
-  };
-
   useEffect(() => {
-    cargarDatos();
-  }, []);
+    if (!token) return;
+
+    fetch("https://vex-crm-production.up.railway.app/dashboard", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then(setDatos)
+      .catch((err) => {
+        console.error("Error al cargar dashboard:", err);
+      });
+  }, [token]);
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-medium text-secondary">{saludo}</h2>
+    <div className="min-h-screen bg-gray-100 p-6 text-gray-800">
+      <div className="max-w-5xl mx-auto">
+        <h1 className="text-3xl font-bold mb-2">📊 Vex CRM Dashboard</h1>
+        <p className="mb-6 text-sm text-gray-600">
+          Hola, <strong>{usuario?.email}</strong>. Gestión conectada, equipo alineado.
+        </p>
 
-      <h3 className="text-xl font-semibold mb-2">📊 Resumen General</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <Card icon={<Users size={24} />} label="Clientes" value={datos.total_clientes} />
+          <Card icon={<ClipboardList size={24} />} label="Tareas pendientes" value={datos.total_tareas} />
+          <Card icon={<FileText size={24} />} label="Tareas completadas" value="🚧" />
+          <Card icon={<ShoppingCart size={24} />} label="Compras registradas" value={datos.total_compras} />
+        </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="stat bg-base-100 shadow rounded">
-          <div className="stat-title">Clientes</div>
-          <div className="stat-value text-primary">{datos.totalClientes}</div>
-        </div>
-        <div className="stat bg-base-100 shadow rounded">
-          <div className="stat-title">Tareas Pendientes</div>
-          <div className="stat-value text-warning">{datos.tareasPendientes}</div>
-        </div>
-        <div className="stat bg-base-100 shadow rounded">
-          <div className="stat-title">Tareas Completadas</div>
-          <div className="stat-value text-success">{datos.tareasCompletadas}</div>
-        </div>
-        <div className="stat bg-base-100 shadow rounded">
-          <div className="stat-title">Compras registradas</div>
-          <div className="stat-value text-info">{datos.totalCompras}</div>
-        </div>
+        <p className="text-gray-500 text-sm">
+          ✨ Pronto vas a poder ver reportes automáticos y sugerencias inteligentes.
+        </p>
       </div>
     </div>
   );
-}
+};
+
+const Card = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number | string }) => (
+  <div className="bg-white shadow rounded-xl p-4 flex items-center gap-4">
+    <div className="text-primary">{icon}</div>
+    <div>
+      <p className="text-sm text-gray-500">{label}</p>
+      <p className="text-xl font-semibold">{value}</p>
+    </div>
+  </div>
+);
+
+export default DashboardCRM;
