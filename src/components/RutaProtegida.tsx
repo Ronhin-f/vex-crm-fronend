@@ -43,12 +43,15 @@ export default function RutaProtegida({ children }: Props) {
   }, [token]);
 
   if (autorizado === null) return <div className="p-6">🔐 Verificando acceso...</div>;
+
   if (!autorizado) {
     return (
       <div className="p-6 text-red-600">
         🚫 Acceso denegado al módulo CRM.
         <br />
-        <a className="underline" href="https://core.vex.com/login">Volver al inicio</a>
+        <a className="underline text-blue-600" href="https://vex-core-frontend.vercel.app/login">
+          Volver al inicio
+        </a>
       </div>
     );
   }
