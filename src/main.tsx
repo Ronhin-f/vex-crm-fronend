@@ -17,6 +17,7 @@ const tokenFromURL = urlParams.get("token");
 
 if (tokenFromURL) {
   localStorage.setItem("token", tokenFromURL);
+
   // Limpia la URL visualmente para mayor seguridad
   const cleanURL = window.location.origin + window.location.pathname;
   window.history.replaceState({}, document.title, cleanURL);

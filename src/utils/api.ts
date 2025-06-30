@@ -1,31 +1,28 @@
 import axios from "axios";
+import type { InternalAxiosRequestConfig } from "axios";
+import { logout } from "./logout";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
 });
 
-// ✅ Interceptor: agrega token si existe, con headers bien tipeados
-api.interceptors.request.use((config) => {
+api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = localStorage.getItem("token");
 
-  if (token) {
-    config.headers = {
-      ...(config.headers ?? {}),
-      Authorization: `Bearer ${token}`,
-    } as typeof config.headers; // ⬅️ esto es lo que resuelve el error
+  // Evitá pisar tipos especiales de AxiosHeaders con objetos comunes
+  if (token && config.headers) {
+    config.headers.set?.("Authorization", `Bearer ${token}`);
   }
 
   return config;
 });
 
-// 🔐 Manejo de errores 401
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       console.warn("⚠️ Token expirado o inválido. Cerrando sesión.");
-      localStorage.removeItem("token");
-      window.location.href = "https://vex-core.vercel.app/login"; // o tu URL real
+      logout();
     }
     return Promise.reject(error);
   }
