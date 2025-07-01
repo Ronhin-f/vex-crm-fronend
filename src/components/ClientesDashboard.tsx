@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import api from "../utils/api";
+import { Users, Phone, Tag, Edit, Trash2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import api from "../utils/api";
 import toast from "react-hot-toast";
 
-type Cliente = {
+interface Cliente {
   id: number;
   nombre: string;
   contacto?: string;
   categoria?: string;
-};
+}
 
 export default function ClientesDashboard() {
   const { token } = useAuth();
@@ -22,9 +23,8 @@ export default function ClientesDashboard() {
     try {
       const res = await api.get("/clientes");
       setClientes(res.data);
-    } catch (err) {
-      console.error("❌ Error al cargar clientes:", err);
-      toast.error("Error al cargar clientes");
+    } catch {
+      toast.error("No se pudo cargar clientes");
     }
   };
 
@@ -33,34 +33,25 @@ export default function ClientesDashboard() {
   }, [token]);
 
   const agregarCliente = async () => {
-    if (!nombre.trim()) {
-      toast.error("El nombre es obligatorio");
-      return;
-    }
-
+    if (!nombre.trim()) return toast.error("Falta el nombre");
     try {
       await api.post("/clientes", { nombre, contacto, categoria });
       toast.success("Cliente agregado");
-      setNombre("");
-      setContacto("");
-      setCategoria("");
+      setNombre(""); setContacto(""); setCategoria("");
       cargarClientes();
-    } catch (err) {
-      console.error("❌ Error al agregar cliente:", err);
-      toast.error("No se pudo agregar el cliente");
+    } catch {
+      toast.error("Error al agregar cliente");
     }
   };
 
   const eliminarCliente = async (id: number) => {
     if (!confirm("¿Eliminar cliente?")) return;
-
     try {
       await api.delete(`/clientes/${id}`);
       toast.success("Cliente eliminado");
       cargarClientes();
-    } catch (err) {
-      console.error("❌ Error al eliminar cliente:", err);
-      toast.error("No se pudo eliminar");
+    } catch {
+      toast.error("Error al eliminar cliente");
     }
   };
 
@@ -78,93 +69,59 @@ export default function ClientesDashboard() {
       });
       toast.success("Cliente actualizado");
       cargarClientes();
-    } catch (err) {
-      console.error("❌ Error al editar cliente:", err);
-      toast.error("No se pudo editar");
+    } catch {
+      toast.error("No se pudo editar cliente");
     }
   };
 
-  const clientesFiltrados = clientes.filter((cliente) => {
-    const texto = filtro.toLowerCase();
+  const clientesFiltrados = clientes.filter((c) => {
+    const txt = filtro.toLowerCase();
     return (
-      cliente.nombre.toLowerCase().includes(texto) ||
-      cliente.contacto?.toLowerCase().includes(texto) ||
-      cliente.categoria?.toLowerCase().includes(texto)
+      c.nombre.toLowerCase().includes(txt) ||
+      c.contacto?.toLowerCase().includes(txt) ||
+      c.categoria?.toLowerCase().includes(txt)
     );
   });
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">📇 Clientes</h2>
+    <div className="max-w-5xl mx-auto p-6">
+      <h2 className="text-2xl font-bold mb-4 text-orange-700">📇 Clientes registrados</h2>
 
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4">
-        <input
-          type="text"
-          placeholder="Nombre"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          className="input input-bordered input-sm"
-        />
-        <input
-          type="text"
-          placeholder="Contacto"
-          value={contacto}
-          onChange={(e) => setContacto(e.target.value)}
-          className="input input-bordered input-sm"
-        />
-        <input
-          type="text"
-          placeholder="Categoría"
-          value={categoria}
-          onChange={(e) => setCategoria(e.target.value)}
-          className="input input-bordered input-sm"
-        />
-        <button onClick={agregarCliente} className="btn btn-sm btn-primary">
-          Agregar
-        </button>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-6">
+        <input type="text" placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} className="input input-bordered input-sm" />
+        <input type="text" placeholder="Contacto" value={contacto} onChange={(e) => setContacto(e.target.value)} className="input input-bordered input-sm" />
+        <input type="text" placeholder="Categoría" value={categoria} onChange={(e) => setCategoria(e.target.value)} className="input input-bordered input-sm" />
+        <button onClick={agregarCliente} className="btn btn-sm bg-orange-600 hover:bg-orange-700 text-white">Agregar</button>
       </div>
 
-      <input
-        type="text"
-        placeholder="Buscar cliente..."
-        value={filtro}
-        onChange={(e) => setFiltro(e.target.value)}
-        className="input input-bordered input-sm mb-4 w-full"
-      />
+      <input type="text" placeholder="Buscar..." value={filtro} onChange={(e) => setFiltro(e.target.value)} className="input input-bordered input-sm mb-6 w-full" />
 
       {clientesFiltrados.length === 0 ? (
-        <p className="text-sm text-gray-500">No hay clientes registrados o no coinciden con el filtro.</p>
+        <p className="text-sm text-gray-400">No hay clientes o no coinciden con el filtro.</p>
       ) : (
-        <ul className="space-y-2">
+        <div className="grid gap-4">
           {clientesFiltrados.map((cliente) => (
-            <li
-              key={cliente.id}
-              className="p-2 rounded shadow bg-white flex justify-between items-center text-sm"
-            >
-              <span>
-                <strong>{cliente.nombre}</strong>{" "}
-                {cliente.contacto && <span className="text-gray-500">({cliente.contacto})</span>}
-                {cliente.categoria && (
-                  <span className="ml-2 badge badge-outline badge-sm">{cliente.categoria}</span>
-                )}
-              </span>
-              <div className="flex gap-1">
-                <button
-                  onClick={() => editarCliente(cliente)}
-                  className="btn btn-xs btn-warning"
-                >
-                  ✎
+            <div key={cliente.id} className="bg-orange-50 p-4 rounded-xl shadow flex items-center justify-between">
+              <div>
+                <p className="text-lg font-semibold text-orange-800 flex items-center gap-2">
+                  <Users size={18} /> {cliente.nombre}
+                </p>
+                <p className="text-sm text-gray-600 flex gap-2 mt-1">
+                  {cliente.contacto && <span className="flex items-center gap-1"><Phone size={14} /> {cliente.contacto}</span>}
+                  {cliente.categoria && <span className="flex items-center gap-1"><Tag size={14} /> {cliente.categoria}</span>}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => editarCliente(cliente)} className="btn btn-xs bg-yellow-500 hover:bg-yellow-600 text-white">
+                  <Edit size={14} />
                 </button>
-                <button
-                  onClick={() => eliminarCliente(cliente.id)}
-                  className="btn btn-xs btn-error"
-                >
-                  ✕
+                <button onClick={() => eliminarCliente(cliente.id)} className="btn btn-xs bg-red-500 hover:bg-red-600 text-white">
+                  <Trash2 size={14} />
                 </button>
               </div>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

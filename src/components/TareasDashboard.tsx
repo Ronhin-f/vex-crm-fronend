@@ -93,16 +93,16 @@ export default function TareasDashboard() {
   });
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">📝 Tareas</h2>
+    <div className="p-4">
+      <h2 className="text-2xl font-bold mb-4 text-orange-600">📝 Tareas</h2>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <input
           type="text"
           placeholder="Nueva tarea"
           value={nuevaTarea}
           onChange={(e) => setNuevaTarea(e.target.value)}
-          className="input input-bordered input-sm w-full"
+          className="input input-bordered input-sm w-full sm:w-auto"
         />
         <button onClick={agregarTarea} className="btn btn-sm btn-primary">
           Agregar
@@ -135,12 +135,12 @@ export default function TareasDashboard() {
           {tareasFiltradas.map((tarea) => (
             <li
               key={tarea.id}
-              className={`p-2 rounded shadow flex justify-between items-center text-sm ${
-                tarea.completada ? "bg-green-100" : "bg-white"
+              className={`p-3 rounded-xl shadow-md flex justify-between items-center text-sm transition-all ${
+                tarea.completada ? "bg-amber-100" : "bg-white"
               }`}
             >
               <span
-                className={tarea.completada ? "line-through" : ""}
+                className={`cursor-pointer ${tarea.completada ? "line-through text-gray-500" : ""}`}
                 onDoubleClick={() => editarTarea(tarea)}
                 title="Doble clic para editar"
               >
