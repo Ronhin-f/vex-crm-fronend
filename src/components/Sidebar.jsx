@@ -1,7 +1,8 @@
+// src/components/Sidebar.jsx
 import { NavLink, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext"; // si migrás a hook JS, cambiá a ../hooks/useAuthFromLocalStorage
+import { useAuth } from "../context/AuthContext";
 import { Home, Users, ClipboardList, FileText, LogOut } from "lucide-react";
-import ThemeToggle from "/ThemeToggle";
+import ThemeToggle from "./ThemeToggle.jsx"; // ✅ relativo + extensión + casing
 
 export default function Sidebar() {
   const { usuario, logout } = useAuth();
@@ -27,7 +28,6 @@ export default function Sidebar() {
         >
           <Home size={18} /> Dashboard
         </NavLink>
-
         <NavLink
           to="/clientes"
           className={({ isActive }) =>
@@ -38,7 +38,6 @@ export default function Sidebar() {
         >
           <Users size={18} /> Clientes
         </NavLink>
-
         <NavLink
           to="/pedidos"
           className={({ isActive }) =>
@@ -49,7 +48,6 @@ export default function Sidebar() {
         >
           <ClipboardList size={18} /> Pedidos
         </NavLink>
-
         <NavLink
           to="/tareas"
           className={({ isActive }) =>
@@ -62,7 +60,6 @@ export default function Sidebar() {
         </NavLink>
       </nav>
 
-      {/* Footer: toggle de tema + salir */}
       <div className="m-4 flex items-center gap-2">
         <ThemeToggle />
         <button
