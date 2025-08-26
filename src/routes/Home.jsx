@@ -1,3 +1,4 @@
+// src/routes/Home.jsx
 import { useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -5,12 +6,13 @@ import { useNavigate } from "react-router-dom";
 export default function Home() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
-  const usuario_email = usuario?.email;
+  const usuario_email = usuario?.email || "usuario";
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      navigate("/");
-    }, 3000); // ⏱️ 3 segundos de espera
+      // redirige al dashboard raíz (ajustá si tu landing es otra)
+      navigate("/", { replace: true });
+    }, 3000); // ⏱️ 3 segundos
 
     return () => clearTimeout(timer);
   }, [navigate]);

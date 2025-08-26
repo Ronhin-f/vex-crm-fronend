@@ -1,4 +1,4 @@
-// Frontend/src/routes/SettingsCRM.tsx
+// Frontend/src/routes/SettingsCRM.jsx
 import { useEffect, useState } from "react";
 import api from "../utils/api";
 import toast from "react-hot-toast";
@@ -49,8 +49,12 @@ export default function SettingsCRM() {
           onChange={(e) => setWebhook(e.target.value)}
         />
         <div className="flex gap-2">
-          <button className="bg-black text-white px-4 py-2 rounded" onClick={guardar}>Guardar</button>
-          <button className="bg-gray-800 text-white px-4 py-2 rounded" onClick={probar}>Probar dispatch</button>
+          <button className="bg-black text-white px-4 py-2 rounded" onClick={guardar}>
+            Guardar
+          </button>
+          <button className="bg-gray-800 text-white px-4 py-2 rounded" onClick={probar}>
+            Probar dispatch
+          </button>
         </div>
         <p className="text-xs text-gray-500">
           Tip: el dispatch manda los recordatorios cuyo <code>enviar_en</code> sea ≤ ahora.

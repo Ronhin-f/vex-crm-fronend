@@ -1,18 +1,11 @@
 import { useState, useEffect } from "react";
 import api from "../utils/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext"; // si migrás a hook JS, cambiá a ../hooks/useAuthFromLocalStorage
 import toast from "react-hot-toast";
-
-type ItemCompra = {
-  id: number;
-  producto: string;
-  cantidad: number;
-  observacion?: string;
-};
 
 export default function ListaDeCompras() {
   const { token } = useAuth();
-  const [lista, setLista] = useState<ItemCompra[]>([]);
+  const [lista, setLista] = useState([]);
   const [producto, setProducto] = useState("");
   const [cantidad, setCantidad] = useState(1);
   const [observacion, setObservacion] = useState("");
@@ -22,7 +15,8 @@ export default function ListaDeCompras() {
   const cargarLista = async () => {
     try {
       const res = await api.get("/compras");
-      setLista(res.data);
+      const data = Array.isArray(res?.data) ? res.data : [];
+      setLista(data);
     } catch (err) {
       console.error("❌ Error al cargar lista:", err);
       toast.error("Error al cargar la lista");
@@ -34,17 +28,18 @@ export default function ListaDeCompras() {
   }, [token]);
 
   const agregarItem = async () => {
-    if (!producto.trim() || cantidad <= 0) {
+    const cant = Number(cantidad);
+    if (!producto.trim() || Number.isNaN(cant) || cant <= 0) {
       toast.error("Producto y cantidad válida son requeridos");
       return;
     }
 
     try {
       await api.post("/compras", {
-        producto,
-        cantidad,
-        observacion,
-        fecha: new Date().toISOString().split("T")[0]
+        producto: producto.trim(),
+        cantidad: cant,
+        observacion: observacion?.trim() || null,
+        fecha: new Date().toISOString().split("T")[0],
       });
       toast.success("Producto agregado");
       setProducto("");
@@ -57,8 +52,8 @@ export default function ListaDeCompras() {
     }
   };
 
-  const eliminarItem = async (id: number) => {
-    if (!confirm("¿Eliminar este producto?")) return;
+  const eliminarItem = async (id) => {
+    if (!window.confirm("¿Eliminar este producto?")) return;
 
     try {
       await api.delete(`/compras/${id}`);
@@ -70,21 +65,22 @@ export default function ListaDeCompras() {
     }
   };
 
-  const editarItem = async (item: ItemCompra) => {
-    const nuevoProducto = prompt("Producto:", item.producto);
-    const nuevaCantidad = Number(prompt("Cantidad:", item.cantidad.toString()));
-    const nuevaObs = prompt("Observación:", item.observacion || "");
+  const editarItem = async (item) => {
+    const nuevoProducto = window.prompt("Producto:", item.producto);
+    const cantStr = window.prompt("Cantidad:", String(item.cantidad));
+    const nuevaCantidad = Number(cantStr);
+    const nuevaObs = window.prompt("Observación:", item.observacion || "");
 
-    if (!nuevoProducto?.trim() || isNaN(nuevaCantidad) || nuevaCantidad <= 0) {
+    if (!nuevoProducto || !nuevoProducto.trim() || Number.isNaN(nuevaCantidad) || nuevaCantidad <= 0) {
       toast.error("Datos inválidos");
       return;
     }
 
     try {
       await api.put(`/compras/${item.id}`, {
-        producto: nuevoProducto,
+        producto: nuevoProducto.trim(),
         cantidad: nuevaCantidad,
-        observacion: nuevaObs
+        observacion: (nuevaObs ?? "").trim(),
       });
       toast.success("Producto actualizado");
       cargarLista();
@@ -95,27 +91,35 @@ export default function ListaDeCompras() {
   };
 
   const interpretarMensaje = async () => {
-    const partes = mensaje.split(/,|y/);
+    const texto = (mensaje || "").trim();
+    if (!texto) {
+      toast.error("Escribí un mensaje para interpretar");
+      return;
+    }
+
+    // Mejor separación: coma o " y " con espacios (evita cortar palabras con 'y' adentro)
+    const partes = texto.split(/\s*(?:,| y )\s*/i).filter(Boolean);
     const hoy = new Date().toISOString().split("T")[0];
 
     try {
       for (const p of partes) {
-        const match = p.trim().match(/(\d+)\s+(.*)/);
+        // Formato: "<numero> <producto...>"
+        const match = p.match(/^(\d+)\s+(.+)$/);
         if (match) {
-          const cantidad = Number(match[1]);
-          const producto = match[2];
-          if (producto && cantidad > 0) {
+          const cant = Number(match[1]);
+          const prod = match[2]?.trim();
+          if (prod && cant > 0) {
             await api.post("/compras", {
-              producto,
-              cantidad,
-              fecha: hoy
+              producto: prod,
+              cantidad: cant,
+              fecha: hoy,
             });
           }
         }
       }
       toast.success("Mensaje interpretado");
       setMensaje("");
-      setTimeout(() => cargarLista(), 500);
+      setTimeout(() => cargarLista(), 300);
     } catch (err) {
       console.error("❌ Error al interpretar:", err);
       toast.error("No se pudo interpretar el mensaje");
@@ -123,12 +127,11 @@ export default function ListaDeCompras() {
   };
 
   const listaFiltrada = lista.filter((item) => {
-    const texto = filtroTexto.toLowerCase();
-    return (
-      item.producto.toLowerCase().includes(texto) ||
-      item.observacion?.toLowerCase().includes(texto) ||
-      item.cantidad.toString().includes(texto)
-    );
+    const texto = (filtroTexto || "").toLowerCase();
+    const prod = (item?.producto || "").toLowerCase();
+    const obs = (item?.observacion || "").toLowerCase();
+    const cant = String(item?.cantidad ?? "");
+    return !texto || prod.includes(texto) || obs.includes(texto) || cant.includes(texto);
   });
 
   return (
@@ -147,7 +150,7 @@ export default function ListaDeCompras() {
           type="number"
           min={1}
           value={cantidad}
-          onChange={(e) => setCantidad(Number(e.target.value))}
+          onChange={(e) => setCantidad(Number(e.target.value || 0))}
           className="input input-bordered input-sm"
         />
         <input
@@ -189,10 +192,7 @@ export default function ListaDeCompras() {
             key={item.id}
             className="p-2 bg-white rounded shadow text-sm flex justify-between items-center"
           >
-            <span
-              onDoubleClick={() => editarItem(item)}
-              title="Doble clic para editar"
-            >
+            <span onDoubleClick={() => editarItem(item)} title="Doble clic para editar">
               <strong>{item.cantidad}x</strong> {item.producto}
               {item.observacion && (
                 <span className="ml-2 text-gray-500 italic">({item.observacion})</span>
@@ -204,9 +204,7 @@ export default function ListaDeCompras() {
           </li>
         ))}
         {listaFiltrada.length === 0 && (
-          <li className="text-center text-sm text-gray-400">
-            No hay ítems para mostrar
-          </li>
+          <li className="text-center text-sm text-gray-400">No hay ítems para mostrar</li>
         )}
       </ul>
     </div>

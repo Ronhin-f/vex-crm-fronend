@@ -4,6 +4,7 @@ import { Toaster } from "react-hot-toast";
 import { useCrossTabLogout } from "./hooks/useCrossTabLogout";
 
 export default function App() {
+  // Mantiene la sesión sincronizada entre pestañas (login/logout)
   useCrossTabLogout();
 
   return (

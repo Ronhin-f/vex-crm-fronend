@@ -1,37 +1,20 @@
-import { useEffect, useState, type ReactNode } from "react";
+// src/routes/DashboardCRM.jsx
+import { useEffect, useState } from "react";
 import { Users, ClipboardList, BellRing } from "lucide-react";
 import api from "../utils/api";
 import { useAuth } from "../context/AuthContext";
 
-type Cliente = {
-  id: number;
-  nombre: string;
-  email?: string | null;
-  telefono?: string | null;
-  created_at?: string | null;
-};
-
-type Seguimiento = {
-  id: number;
-  titulo: string;
-  vence_en: string;
-  cliente_id?: number | null;
-  cliente_nombre?: string | null;
-};
-
 export default function DashboardCRM() {
   const { usuario } = useAuth();
 
-  // 👇 antes tenías un "const { loading }: boolean" huérfano. Lo removimos.
   const [isLoading, setIsLoading] = useState(true);
-
   const [metrics, setMetrics] = useState({
     total_clientes: 0,
     total_tareas: 0,
     proximos_7d: 0,
   });
-  const [top, setTop] = useState<Cliente[]>([]);
-  const [seg, setSeg] = useState<Seguimiento[]>([]);
+  const [top, setTop] = useState([]);
+  const [seg, setSeg] = useState([]);
 
   useEffect(() => {
     let mounted = true;
@@ -46,8 +29,8 @@ export default function DashboardCRM() {
             proximos_7d: 0,
           }
         );
-        setTop(data?.topClientes ?? []);
-        setSeg(data?.proximosSeguimientos ?? []);
+        setTop(Array.isArray(data?.topClientes) ? data.topClientes : []);
+        setSeg(Array.isArray(data?.proximosSeguimientos) ? data.proximosSeguimientos : []);
       } catch (e) {
         console.error("Dashboard error", e);
       } finally {
@@ -77,21 +60,9 @@ export default function DashboardCRM() {
 
         {/* métricas */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <Metric
-            icon={<Users size={18} />}
-            label="Clientes"
-            value={metrics.total_clientes}
-          />
-          <Metric
-            icon={<ClipboardList size={18} />}
-            label="Tareas"
-            value={metrics.total_tareas}
-          />
-          <Metric
-            icon={<BellRing size={18} />}
-            label="Seguimientos (7 días)"
-            value={metrics.proximos_7d}
-          />
+          <Metric icon={<Users size={18} />} label="Clientes" value={metrics.total_clientes} />
+          <Metric icon={<ClipboardList size={18} />} label="Tareas" value={metrics.total_tareas} />
+          <Metric icon={<BellRing size={18} />} label="Seguimientos (7 días)" value={metrics.proximos_7d} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -107,9 +78,7 @@ export default function DashboardCRM() {
                 </li>
               ))}
               {top.length === 0 && (
-                <li className="py-3 text-sm text-gray-500">
-                  No hay clientes recientes.
-                </li>
+                <li className="py-3 text-sm text-gray-500">No hay clientes recientes.</li>
               )}
             </ul>
           </Card>
@@ -121,15 +90,12 @@ export default function DashboardCRM() {
                 <li key={s.id} className="py-3">
                   <div className="font-medium">{s.titulo}</div>
                   <div className="text-xs text-gray-500">
-                    {s.cliente_nombre || "—"} • Vence:{" "}
-                    {new Date(s.vence_en).toLocaleString()}
+                    {s.cliente_nombre || "—"} • Vence: {new Date(s.vence_en).toLocaleString()}
                   </div>
                 </li>
               ))}
               {seg.length === 0 && (
-                <li className="py-3 text-sm text-gray-500">
-                  Sin seguimientos próximos.
-                </li>
+                <li className="py-3 text-sm text-gray-500">Sin seguimientos próximos.</li>
               )}
             </ul>
           </Card>
@@ -139,15 +105,7 @@ export default function DashboardCRM() {
   );
 }
 
-function Metric({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: number;
-}) {
+function Metric({ icon, label, value }) {
   return (
     <div className="bg-white rounded-xl shadow p-4">
       <div className="text-gray-600 text-sm mb-1 flex items-center gap-2">
@@ -159,7 +117,7 @@ function Metric({
   );
 }
 
-function Card({ title, children }: { title: string; children: ReactNode }) {
+function Card({ title, children }) {
   return (
     <div className="bg-white rounded-xl shadow p-4">
       <div className="font-semibold mb-3">{title}</div>

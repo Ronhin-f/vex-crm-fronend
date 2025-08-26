@@ -1,45 +1,44 @@
-// Frontend/src/components/TareasDashboard.tsx
+// Frontend/src/components/TareasDashboard.jsx
 import { useEffect, useState } from "react";
 import api from "../utils/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext"; // si migrás a hook JS, cambiá a ../hooks/useAuthFromLocalStorage
 import toast from "react-hot-toast";
-
-type Cliente = { id: number; nombre: string; };
-type Tarea = {
-  id: number;
-  titulo: string;
-  descripcion?: string | null;
-  completada: boolean;
-  cliente_id?: number | null;
-  cliente_nombre?: string | null;
-  vence_en?: string | null;
-};
 
 export default function TareasDashboard() {
   const { token } = useAuth();
-  const [tareas, setTareas] = useState<Tarea[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [nueva, setNueva] = useState<{ titulo: string; descripcion?: string; cliente_id?: number | ""; vence_en?: string; }>({ titulo: "" });
+  const [tareas, setTareas] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [nueva, setNueva] = useState({ titulo: "", descripcion: "", cliente_id: "", vence_en: "" });
   const [filtroTexto, setFiltroTexto] = useState("");
 
   const cargar = async () => {
-    const [t, c] = await Promise.all([api.get("/tareas"), api.get("/clientes")]);
-    setTareas(t.data || []);
-    setClientes(c.data || []);
+    try {
+      const [t, c] = await Promise.all([api.get("/tareas"), api.get("/clientes")]);
+      setTareas(Array.isArray(t?.data) ? t.data : []);
+      setClientes(Array.isArray(c?.data) ? c.data : []);
+    } catch (e) {
+      console.error("load", e);
+      toast.error("No se pudieron cargar tareas/clientes");
+    }
   };
 
-  useEffect(() => { if (token) cargar().catch(console.error); }, [token]);
+  useEffect(() => {
+    if (token) cargar().catch(console.error);
+  }, [token]);
 
   const agregar = async () => {
-    if (!nueva.titulo.trim()) { toast.error("Título requerido"); return; }
+    if (!nueva.titulo.trim()) {
+      toast.error("Título requerido");
+      return;
+    }
     try {
       await api.post("/tareas", {
-        titulo: nueva.titulo,
-        descripcion: nueva.descripcion || null,
-        cliente_id: nueva.cliente_id === "" ? null : nueva.cliente_id,
+        titulo: nueva.titulo.trim(),
+        descripcion: (nueva.descripcion || "").trim() || null,
+        cliente_id: nueva.cliente_id === "" ? null : Number(nueva.cliente_id),
         vence_en: nueva.vence_en || null,
       });
-      setNueva({ titulo: "" });
+      setNueva({ titulo: "", descripcion: "", cliente_id: "", vence_en: "" });
       toast.success("Tarea creada");
       await cargar();
     } catch (e) {
@@ -48,7 +47,7 @@ export default function TareasDashboard() {
     }
   };
 
-  const completar = async (id: number) => {
+  const completar = async (id) => {
     try {
       await api.patch(`/tareas/${id}`, {});
       toast.success("Tarea completada");
@@ -59,7 +58,7 @@ export default function TareasDashboard() {
     }
   };
 
-  const eliminar = async (id: number) => {
+  const eliminar = async (id) => {
     try {
       await api.delete(`/tareas/${id}`);
       toast.success("Tarea eliminada");
@@ -70,9 +69,11 @@ export default function TareasDashboard() {
     }
   };
 
-  const lista = tareas.filter(t => {
-    const q = filtroTexto.toLowerCase();
-    return !q || t.titulo.toLowerCase().includes(q) || (t.cliente_nombre || "").toLowerCase().includes(q);
+  const lista = tareas.filter((t) => {
+    const q = (filtroTexto || "").toLowerCase();
+    const titulo = (t?.titulo || "").toLowerCase();
+    const cliente = (t?.cliente_nombre || "").toLowerCase();
+    return !q || titulo.includes(q) || cliente.includes(q);
   });
 
   return (
@@ -96,10 +97,16 @@ export default function TareasDashboard() {
         <select
           className="border rounded px-3 py-2"
           value={nueva.cliente_id ?? ""}
-          onChange={(e) => setNueva((s) => ({ ...s, cliente_id: e.target.value ? Number(e.target.value) : "" }))}
+          onChange={(e) =>
+            setNueva((s) => ({ ...s, cliente_id: e.target.value ? Number(e.target.value) : "" }))
+          }
         >
           <option value="">Sin cliente</option>
-          {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+          {clientes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre}
+            </option>
+          ))}
         </select>
         <input
           type="datetime-local"
@@ -108,7 +115,9 @@ export default function TareasDashboard() {
           onChange={(e) => setNueva((s) => ({ ...s, vence_en: e.target.value }))}
         />
         <div className="sm:col-span-4 text-right">
-          <button className="bg-black text-white px-4 py-2 rounded" onClick={agregar}>Agregar</button>
+          <button className="bg-black text-white px-4 py-2 rounded" onClick={agregar}>
+            Agregar
+          </button>
         </div>
       </div>
 
@@ -129,7 +138,8 @@ export default function TareasDashboard() {
             <div>
               <div className="font-medium">{t.titulo}</div>
               <div className="text-xs text-gray-500">
-                {t.cliente_nombre || "—"} • {t.vence_en ? `Vence: ${new Date(t.vence_en).toLocaleString()}` : "Sin vencimiento"}
+                {t.cliente_nombre || "—"} •{" "}
+                {t.vence_en ? `Vence: ${new Date(t.vence_en).toLocaleString()}` : "Sin vencimiento"}
               </div>
             </div>
             <div className="flex gap-2">
