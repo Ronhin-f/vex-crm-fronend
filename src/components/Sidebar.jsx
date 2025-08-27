@@ -20,7 +20,7 @@ export default function Sidebar({ onNavigate = () => {} }) {
       {/* Brand */}
       <div className="p-4 border-b border-base-200 flex items-center gap-3">
         {/* Usa /public/logo-vex.svg o import desde assets */}
-        <img src="/logo-vex.svg" alt="Vex" className="w-10 h-10" />
+        <img src="/logo-vex-crm.png" alt="Vex" className="w-10 h-10" />
         <div className="flex-1">
           <div className="font-semibold leading-5">{t("app.brand")}</div>
           <div className="text-xs text-base-content/60 truncate">{usuario?.email}</div>
