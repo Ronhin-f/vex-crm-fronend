@@ -3,7 +3,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import "./index.css";
-
+import "./i18n";
 import App from "./App";
 import Clientes from "./routes/Clientes";
 import Tareas from "./routes/Tareas";

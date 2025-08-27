@@ -1,10 +1,14 @@
+// src/routes/DashboardCRM.jsx
 import { useEffect, useState } from "react";
 import { Users, ClipboardList, BellRing, Clock, User2 } from "lucide-react";
 import api from "../utils/api";
 import { useAuth } from "../context/AuthContext";
+import { useTranslation } from "react-i18next";
 
 export default function DashboardCRM() {
   const { usuario } = useAuth();
+  const { t, i18n } = useTranslation();
+
   const [isLoading, setIsLoading] = useState(true);
   const [metrics, setMetrics] = useState({
     total_clientes: 0,
@@ -50,41 +54,37 @@ export default function DashboardCRM() {
   return (
     <div className="min-h-screen bg-base-200">
       <div className="max-w-6xl mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-2">Vex CRM — Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-2">{t("dashboard.title")}</h1>
         <p className="text-sm text-base-content/70 mb-6">
-          Hola, <b>{usuario?.email}</b>
+          {t("dashboard.hello", { email: usuario?.email || "" })}
         </p>
 
         {/* Stats */}
         <div className="stats shadow bg-base-100 mb-8 w-full">
           <div className="stat">
             <div className="stat-figure text-primary"><Users size={20} /></div>
-            <div className="stat-title">Clientes</div>
+            <div className="stat-title">{t("metrics.clients")}</div>
             <div className="stat-value">{metrics.total_clientes}</div>
           </div>
-
           <div className="stat">
             <div className="stat-figure text-secondary"><ClipboardList size={20} /></div>
-            <div className="stat-title">Tareas</div>
+            <div className="stat-title">{t("metrics.tasks")}</div>
             <div className="stat-value">{metrics.total_tareas}</div>
           </div>
-
           <div className="stat">
             <div className="stat-figure text-accent"><BellRing size={20} /></div>
-            <div className="stat-title">Seguimientos (7 días)</div>
+            <div className="stat-title">{t("metrics.followups7d")}</div>
             <div className="stat-value">{metrics.proximos_7d}</div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Top clientes */}
+          {/* Top clients */}
           <section className="card bg-base-100 shadow">
             <div className="card-body">
-              <h2 className="card-title">
-                🆕 Top clientes recientes
-              </h2>
+              <h2 className="card-title">🆕 {t("cards.topRecentClients")}</h2>
               {top.length === 0 ? (
-                <p className="text-sm text-base-content/60">No hay clientes recientes.</p>
+                <p className="text-sm text-base-content/60">{t("cards.noRecentClients")}</p>
               ) : (
                 <ul className="menu bg-base-100 rounded-box w-full">
                   {top.map((c) => (
@@ -105,12 +105,12 @@ export default function DashboardCRM() {
             </div>
           </section>
 
-          {/* Próximos 7 días */}
+          {/* Upcoming 7d */}
           <section className="card bg-base-100 shadow">
             <div className="card-body">
-              <h2 className="card-title">⏰ Próximos 7 días</h2>
+              <h2 className="card-title">⏰ {t("cards.upcoming7d")}</h2>
               {seg.length === 0 ? (
-                <p className="text-sm text-base-content/60">Sin seguimientos próximos.</p>
+                <p className="text-sm text-base-content/60">{t("cards.noUpcoming")}</p>
               ) : (
                 <ul className="divide-y divide-base-200">
                   {seg.map((s) => {
@@ -128,8 +128,8 @@ export default function DashboardCRM() {
                           </div>
                         </div>
                         <span className={`badge ${tone} badge-outline flex items-center gap-1`}>
-                          <Clock size={14} />
-                          {due.toLocaleString()}
+                          {t("cards.dueAt")}{" "}
+                          {due.toLocaleString(i18n.language || undefined)}
                         </span>
                       </li>
                     );
