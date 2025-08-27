@@ -1,7 +1,7 @@
 import { Outlet } from "react-router-dom";
 import Sidebar from "./components/Sidebar.jsx";
 import { Toaster } from "react-hot-toast";
-import { useCrossTabLogout } from "./hooks/useAuthFromLocalStorage";
+import { useCrossTabLogout } from "./hooks/useCrossTabLogout.js"; // ✅ ruta correcta
 import { Menu } from "lucide-react";
 
 export default function App() {
@@ -38,7 +38,6 @@ export default function App() {
 
       {/* SIDEBAR */}
       <div className="drawer-side">
-        {/* overlay para cerrar al tocar fuera */}
         <label htmlFor="vex-drawer" className="drawer-overlay" aria-label="Cerrar menú"></label>
         <Sidebar onNavigate={closeDrawer} />
       </div>
