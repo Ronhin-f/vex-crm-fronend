@@ -1,4 +1,3 @@
-// src/main.jsx
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
@@ -16,23 +15,18 @@ import { AuthProvider } from "./context/AuthContext";
 import ClientesKanban from "./routes/ClientesKanban";
 import TareasKanban from "./routes/TareasKanban";
 
-/* ──────────────────────────────────────────────────────────────
-   Login bridge (Core → CRM): soporta ?vex_token=&user= y legado ?token=
-   Guarda en localStorage y limpia la URL.
-   ────────────────────────────────────────────────────────────── */
+// --- bridge de login (igual que el tuyo) ---
 (() => {
   const params = new URLSearchParams(window.location.search);
-  const vexToken = params.get("vex_token") || params.get("token"); // compat
-  const userParam = params.get("user"); // JSON URI-encoded (opcional)
-
+  const vexToken = params.get("vex_token") || params.get("token");
+  const userParam = params.get("user");
   let didChange = false;
 
   if (vexToken) {
     localStorage.setItem("vex_token", vexToken);
-    localStorage.setItem("token", vexToken); // compat con código viejo
+    localStorage.setItem("token", vexToken);
     didChange = true;
   }
-
   if (userParam) {
     try {
       const u = JSON.parse(decodeURIComponent(userParam));
@@ -40,24 +34,17 @@ import TareasKanban from "./routes/TareasKanban";
       if (u?.email) localStorage.setItem("usuario_email", u.email);
       const orgId = u?.organization_id ?? u?.organizacion_id;
       if (orgId != null) localStorage.setItem("organizacion_id", String(orgId));
-      // notificar a otras pestañas
       localStorage.setItem("login-event", String(Date.now()));
       didChange = true;
-    } catch {
-      // ignorar si viene malformado
-    }
+    } catch {}
   }
-
-  // limpiar querystring si vino algo
   if (didChange) {
     const clean = window.location.origin + window.location.pathname + window.location.hash;
     window.history.replaceState({}, document.title, clean);
   }
 })();
 
-/* ──────────────────────────────────────────────────────────────
-   Rutas protegidas
-   ────────────────────────────────────────────────────────────── */
+// --- Router protegido con layout App ---
 const router = createBrowserRouter([
   {
     path: "/",
@@ -72,7 +59,7 @@ const router = createBrowserRouter([
       { path: "tareas", element: <Tareas /> },
       { path: "compras", element: <Compras /> },
 
-      // NUEVAS rutas
+      // Kanban (NUEVO)
       { path: "pipeline", element: <ClientesKanban /> },
       { path: "kanban-tareas", element: <TareasKanban /> },
     ],
@@ -89,6 +76,5 @@ if (rootEl) {
     </React.StrictMode>
   );
 } else {
-  // fallback por si el div#root no existe (evita el "!")
   console.error("No se encontró el elemento #root");
 }
