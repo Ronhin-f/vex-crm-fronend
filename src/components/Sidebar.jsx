@@ -1,6 +1,15 @@
+// src/components/Sidebar.jsx
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Home, Users, ClipboardList, FileText, LogOut } from "lucide-react";
+import {
+  Home,
+  Users,
+  ClipboardList,
+  FileText,
+  LogOut,
+  KanbanSquare,
+  ListTodo,
+} from "lucide-react";
 import ThemeToggle from "./ThemeToggle.jsx";
 import LanguageToggle from "./LanguageToggle.jsx";
 import { useTranslation } from "react-i18next";
@@ -23,7 +32,9 @@ export default function Sidebar({ onNavigate = () => {} }) {
         <img src="/logo-vex-crm.png" alt="Vex" className="w-10 h-10" />
         <div className="flex-1">
           <div className="font-semibold leading-5">{t("app.brand")}</div>
-          <div className="text-xs text-base-content/60 truncate">{usuario?.email}</div>
+          <div className="text-xs text-base-content/60 truncate">
+            {usuario?.email}
+          </div>
         </div>
       </div>
 
@@ -35,36 +46,73 @@ export default function Sidebar({ onNavigate = () => {} }) {
               to="/"
               end
               onClick={onNavigate}
-              className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkHover}`}
+              className={({ isActive }) =>
+                `${linkBase} ${isActive ? linkActive : linkHover}`
+              }
             >
               <Home size={18} /> {t("nav.dashboard")}
             </NavLink>
           </li>
+
           <li>
             <NavLink
               to="/clientes"
               onClick={onNavigate}
-              className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkHover}`}
+              className={({ isActive }) =>
+                `${linkBase} ${isActive ? linkActive : linkHover}`
+              }
             >
               <Users size={18} /> {t("nav.clients")}
             </NavLink>
           </li>
+
+          {/* NUEVO: Pipeline (Kanban de clientes) */}
+          <li>
+            <NavLink
+              to="/pipeline"
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                `${linkBase} ${isActive ? linkActive : linkHover}`
+              }
+            >
+              <KanbanSquare size={18} /> {t("nav.pipeline", "Pipeline")}
+            </NavLink>
+          </li>
+
           <li>
             <NavLink
               to="/compras"
               onClick={onNavigate}
-              className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkHover}`}
+              className={({ isActive }) =>
+                `${linkBase} ${isActive ? linkActive : linkHover}`
+              }
             >
               <ClipboardList size={18} /> {t("nav.orders")}
             </NavLink>
           </li>
+
           <li>
             <NavLink
               to="/tareas"
               onClick={onNavigate}
-              className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkHover}`}
+              className={({ isActive }) =>
+                `${linkBase} ${isActive ? linkActive : linkHover}`
+              }
             >
               <FileText size={18} /> {t("nav.tasks")}
+            </NavLink>
+          </li>
+
+          {/* NUEVO: Kanban de tareas */}
+          <li>
+            <NavLink
+              to="/kanban-tareas"
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                `${linkBase} ${isActive ? linkActive : linkHover}`
+              }
+            >
+              <ListTodo size={18} /> {t("nav.kanbanTasks", "Kanban tareas")}
             </NavLink>
           </li>
         </ul>

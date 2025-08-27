@@ -1,23 +1,34 @@
-// src/routes/AppRouter.jsx
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import RutaProtegida from "../components/RutaPrivada";
-import DashboardCRM from "./DashboardCRM";
-import Clientes from "./Clientes";
-import Tareas from "./Tareas";
-import Compras from "./Compras";
+// routes/AppRouter.jsx
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Home from "./Home.jsx";
+import DashboardCRM from "./DashboardCRM.jsx";
+import Clientes from "./Clientes.jsx";
+import Tareas from "./Tareas.jsx";
+import Compras from "./Compras.jsx";
+import SettingsCRM from "./SettingsCRM.jsx";
+import RutaPrivada from "../components/RutaPrivada.jsx";
+import ClientesKanban from "./ClientesKanban.jsx";
+import TareasKanban from "./TareasKanban.jsx";
 
 export default function AppRouter() {
   return (
-    <Router>
-      <RutaProtegida>
-          <Routes>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<RutaPrivada />}>
           <Route path="/" element={<DashboardCRM />} />
           <Route path="/clientes" element={<Clientes />} />
           <Route path="/tareas" element={<Tareas />} />
           <Route path="/compras" element={<Compras />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </RutaProtegida>
-    </Router>
+          <Route path="/settings" element={<SettingsCRM />} />
+
+          {/* NUEVO: Kanban */}
+          <Route path="/pipeline" element={<ClientesKanban />} />
+          <Route path="/kanban-tareas" element={<TareasKanban />} />
+        </Route>
+
+        <Route path="/home" element={<Home />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
