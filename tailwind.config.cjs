@@ -19,8 +19,8 @@ module.exports = {
           info: "#0ea5e9",
           success: "#22c55e",
           warning: "#facc15",
-          error: "#ef4444",
-        },
+          error: "#ef4444"
+        }
       },
       {
         "vexcrm-dark": {
@@ -34,9 +34,9 @@ module.exports = {
           info: "#38bdf8",
           success: "#34d399",
           warning: "#fbbf24",
-          error: "#f87171",
-        },
-      },
-    ],
-  },
+          error: "#f87171"
+        }
+      }
+    ]
+  }
 };
