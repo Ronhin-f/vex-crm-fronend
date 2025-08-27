@@ -9,7 +9,6 @@ import {
   ThumbsDown,
   Percent,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import api from "../utils/api";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
@@ -108,14 +107,7 @@ export default function DashboardCRM() {
               {t("dashboard.hello", { email: usuario?.email || "" })}
             </p>
           </div>
-          <div className="flex gap-2">
-            <Link to="/pipeline" className="btn btn-primary btn-sm">
-              Pipeline
-            </Link>
-            <Link to="/kanban-tareas" className="btn btn-ghost btn-sm">
-              Kanban Tareas
-            </Link>
-          </div>
+          {/* Botones de acceso directo removidos para evitar duplicación con el sidebar */}
         </div>
 
         {/* KPIs de Pipeline */}

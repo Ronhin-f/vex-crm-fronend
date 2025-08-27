@@ -1,4 +1,4 @@
-// routes/TareasKanban.jsx
+// src/routes/TareasKanban.jsx
 import { useEffect, useMemo, useState } from "react";
 import { fetchTareasKanban, moveTarea } from "../utils/vexKanbanApi";
 import { toast } from "react-hot-toast";
@@ -15,9 +15,14 @@ export default function TareasKanban() {
   const colMap = useMemo(() => new Map(cols.map(c => [c.key, c])), [cols]);
 
   useEffect(() => {
-    fetchTareasKanban()
-      .then(({ columns }) => setCols(columns))
-      .catch(() => toast.error("No pude cargar el Kanban de tareas"));
+    (async () => {
+      try {
+        const { columns } = await fetchTareasKanban();
+        setCols(columns);
+      } catch {
+        toast.error("No pude cargar el Kanban de tareas");
+      }
+    })();
   }, []);
 
   function onDragStart(e, item, fromKey) {
@@ -26,22 +31,20 @@ export default function TareasKanban() {
   }
   async function onDrop(e, toKey) {
     e.preventDefault();
-    const payload = JSON.parse(e.dataTransfer.getData("text/plain") || "{}");
-    if (!payload.id) return;
-    if (payload.fromKey === toKey) return;
-
+    const data = JSON.parse(e.dataTransfer.getData("text/plain") || "{}");
+    if (!data.id || data.fromKey === toKey) return;
     try {
-      await moveTarea(payload.id, toKey);
+      await moveTarea(data.id, toKey);
       setCols(prev => {
         const copy = prev.map(c => ({ ...c, items: [...c.items] }));
-        const from = copy.find(c => c.key === payload.fromKey);
+        const from = copy.find(c => c.key === data.fromKey);
         const to = copy.find(c => c.key === toKey);
-        const idx = from.items.findIndex(x => x.id === payload.id);
-        if (idx >= 0) {
-          const [itm] = from.items.splice(idx, 1);
-          itm.estado = toKey;
-          itm.completada = toKey === "done";
-          to.items.unshift(itm);
+        const i = from.items.findIndex(x => x.id === data.id);
+        if (i >= 0) {
+          const [it] = from.items.splice(i, 1);
+          it.estado = toKey;
+          it.completada = toKey === "done";
+          to.items.unshift(it);
         }
         from.count = from.items.length;
         to.count = to.items.length;
@@ -96,7 +99,9 @@ function TaskCard({ item, onDragStart }) {
     >
       <div className="font-medium">{item.titulo}</div>
       <div className="text-sm opacity-70">{item.cliente_nombre || "—"}</div>
-      <div className="text-xs opacity-60">{item.vence_en ? new Date(item.vence_en).toLocaleString() : "sin vencimiento"}</div>
+      <div className="text-xs opacity-60">
+        {item.vence_en ? new Date(item.vence_en).toLocaleString() : "sin vencimiento"}
+      </div>
     </div>
   );
 }
