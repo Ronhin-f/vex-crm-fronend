@@ -12,6 +12,10 @@ import DashboardCRM from "./routes/DashboardCRM";
 import RutaProtegida from "./components/RutaPrivada";
 import { AuthProvider } from "./context/AuthContext";
 
+// NUEVO: Kanban
+import ClientesKanban from "./routes/ClientesKanban";
+import TareasKanban from "./routes/TareasKanban";
+
 /* ──────────────────────────────────────────────────────────────
    Login bridge (Core → CRM): soporta ?vex_token=&user= y legado ?token=
    Guarda en localStorage y limpia la URL.
@@ -67,6 +71,10 @@ const router = createBrowserRouter([
       { path: "clientes", element: <Clientes /> },
       { path: "tareas", element: <Tareas /> },
       { path: "compras", element: <Compras /> },
+
+      // NUEVAS rutas
+      { path: "pipeline", element: <ClientesKanban /> },
+      { path: "kanban-tareas", element: <TareasKanban /> },
     ],
   },
 ]);
