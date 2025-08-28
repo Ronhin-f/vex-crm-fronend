@@ -24,14 +24,24 @@ export default function Sidebar({ onNavigate = () => {} }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
+  const linkClass = ({ isActive }) =>
+    `${linkBase} ${isActive ? linkActive : linkHover}`;
+
   return (
     <aside className="w-64 bg-base-100 border-r border-base-200 h-screen flex flex-col">
       {/* Brand */}
-      <div className="p-4 border-b border-base-200 flex items-center gap-3">
-        {/* Usa /public/logo-vex.svg o import desde assets */}
-        <img src="/logo-vex-crm.png" alt="Vex" className="w-10 h-10" />
+      <div
+        className="p-4 border-b border-base-200 flex items-center gap-3 cursor-pointer select-none"
+        onClick={() => {
+          onNavigate();
+          navigate("/");
+        }}
+        title={t("app.brand", "Vex CRM")}
+      >
+        {/* Usa /public/logo-vex-crm.png o import desde assets */}
+        <img src="/logo-vex-crm.png" alt="Vex CRM" className="w-10 h-10" />
         <div className="flex-1">
-          <div className="font-semibold leading-5">{t("app.brand")}</div>
+          <div className="font-semibold leading-5">{t("app.brand", "Vex CRM")}</div>
           <div className="text-xs text-base-content/60 truncate">
             {usuario?.email}
           </div>
@@ -42,98 +52,61 @@ export default function Sidebar({ onNavigate = () => {} }) {
       <div className="p-3 flex-1 overflow-y-auto">
         <ul className="menu gap-1">
           <li>
-            <NavLink
-              to="/"
-              end
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                `${linkBase} ${isActive ? linkActive : linkHover}`
-              }
-            >
-              <Home size={18} /> {t("nav.dashboard")}
+            <NavLink to="/" end onClick={onNavigate} className={linkClass}>
+              <Home size={18} /> {t("nav.dashboard", "Dashboard")}
             </NavLink>
           </li>
 
           <li>
-            <NavLink
-              to="/clientes"
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                `${linkBase} ${isActive ? linkActive : linkHover}`
-              }
-            >
-              <Users size={18} /> {t("nav.clients")}
+            <NavLink to="/clientes" onClick={onNavigate} className={linkClass}>
+              <Users size={18} /> {t("nav.clients", "Clientes")}
             </NavLink>
           </li>
 
-          {/* NUEVO: Pipeline (Kanban de clientes) */}
+          {/* Pipeline (Kanban de clientes) */}
           <li>
-            <NavLink
-              to="/pipeline"
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                `${linkBase} ${isActive ? linkActive : linkHover}`
-              }
-            >
+            <NavLink to="/pipeline" onClick={onNavigate} className={linkClass}>
               <KanbanSquare size={18} /> {t("nav.pipeline", "Pipeline")}
             </NavLink>
           </li>
 
           <li>
-            <NavLink
-              to="/compras"
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                `${linkBase} ${isActive ? linkActive : linkHover}`
-              }
-            >
-              <ClipboardList size={18} /> {t("nav.orders")}
+            <NavLink to="/compras" onClick={onNavigate} className={linkClass}>
+              <ClipboardList size={18} /> {t("nav.orders", "Compras")}
             </NavLink>
           </li>
 
           <li>
-            <NavLink
-              to="/tareas"
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                `${linkBase} ${isActive ? linkActive : linkHover}`
-              }
-            >
-              <FileText size={18} /> {t("nav.tasks")}
+            <NavLink to="/tareas" onClick={onNavigate} className={linkClass}>
+              <FileText size={18} /> {t("nav.tasks", "Tareas")}
             </NavLink>
           </li>
 
-          {/* NUEVO: Kanban de tareas */}
+          {/* Kanban de tareas */}
           <li>
-            <NavLink
-              to="/kanban-tareas"
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                `${linkBase} ${isActive ? linkActive : linkHover}`
-              }
-            >
+            <NavLink to="/kanban-tareas" onClick={onNavigate} className={linkClass}>
               <ListTodo size={18} /> {t("nav.kanbanTasks", "Kanban tareas")}
             </NavLink>
           </li>
         </ul>
       </div>
 
-      {/* Footer fijo adentro del sidebar */}
+      {/* Footer del sidebar */}
       <div className="mt-auto bg-base-100 border-t border-base-200 p-3">
         <div className="grid grid-cols-3 gap-2">
           <LanguageToggle />
           <ThemeToggle />
           <button
             onClick={() => {
-              logout();
-              onNavigate();
-              navigate("/login");
+              logout();       // limpia token/estado
+              onNavigate();   // cierra drawer en mobile
+              navigate("/");  // ruta protegida → RutaPrivada decide (redirige / bloquea)
             }}
             className="btn btn-ghost btn-sm text-error w-full justify-center"
-            title={t("actions.logout")}
+            title={t("actions.logout", "Salir")}
           >
             <LogOut size={16} />
-            <span className="hidden sm:inline">{t("actions.logout")}</span>
+            <span className="hidden sm:inline">{t("actions.logout", "Salir")}</span>
           </button>
         </div>
       </div>

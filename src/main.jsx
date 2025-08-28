@@ -1,21 +1,39 @@
-import React from "react";
+// src/main.jsx
+import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate, Link } from "react-router-dom";
 import "./index.css";
 import "./i18n";
 import App from "./App";
-import Clientes from "./routes/Clientes";
-import Tareas from "./routes/Tareas";
-import Compras from "./routes/Compras";
-import DashboardCRM from "./routes/DashboardCRM";
 import RutaProtegida from "./components/RutaPrivada";
 import { AuthProvider } from "./context/AuthContext";
 
-// NUEVO: Kanban
-import ClientesKanban from "./routes/ClientesKanban";
-import TareasKanban from "./routes/TareasKanban";
+// ─── Lazy routes (code split) ────────────────────────────────────────────────
+const DashboardCRM   = lazy(() => import("./routes/DashboardCRM"));
+const Clientes       = lazy(() => import("./routes/Clientes"));
+const Tareas         = lazy(() => import("./routes/Tareas"));
+const Compras        = lazy(() => import("./routes/Compras"));
+const ClientesKanban = lazy(() => import("./routes/ClientesKanban"));
+const TareasKanban   = lazy(() => import("./routes/TareasKanban"));
 
-// --- bridge de login (igual que el tuyo) ---
+const PageLoader = () => (
+  <div className="p-6">
+    <div className="skeleton h-8 w-48 mb-4" />
+    <div className="skeleton h-24 w-full" />
+  </div>
+);
+
+const ErrorFallback = () => (
+  <div className="p-6">
+    <h1 className="text-2xl font-bold mb-2">Página no encontrada</h1>
+    <Link className="btn btn-primary" to="/">Volver al dashboard</Link>
+  </div>
+);
+
+/* ──────────────────────────────────────────────────────────────
+   Login bridge (Core → CRM): soporta ?vex_token=&user= y legado ?token=
+   Guarda en localStorage y limpia la URL.
+   ────────────────────────────────────────────────────────────── */
 (() => {
   const params = new URLSearchParams(window.location.search);
   const vexToken = params.get("vex_token") || params.get("token");
@@ -24,7 +42,7 @@ import TareasKanban from "./routes/TareasKanban";
 
   if (vexToken) {
     localStorage.setItem("vex_token", vexToken);
-    localStorage.setItem("token", vexToken);
+    localStorage.setItem("token", vexToken); // compat
     didChange = true;
   }
   if (userParam) {
@@ -36,15 +54,19 @@ import TareasKanban from "./routes/TareasKanban";
       if (orgId != null) localStorage.setItem("organizacion_id", String(orgId));
       localStorage.setItem("login-event", String(Date.now()));
       didChange = true;
-    } catch {}
+    } catch {
+      // ignore parse errors
+    }
   }
   if (didChange) {
-    const clean = window.location.origin + window.location.pathname + window.location.hash;
+    const clean = window.location.origin + window.location.pathname; // limpiamos query y hash
     window.history.replaceState({}, document.title, clean);
   }
 })();
 
-// --- Router protegido con layout App ---
+// ─── Router protegido ────────────────────────────────────────────────────────
+const withSuspense = (el) => <Suspense fallback={<PageLoader />}>{el}</Suspense>;
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -53,15 +75,24 @@ const router = createBrowserRouter([
         <App />
       </RutaProtegida>
     ),
+    errorElement: <ErrorFallback />,
     children: [
-      { index: true, element: <DashboardCRM /> },
-      { path: "clientes", element: <Clientes /> },
-      { path: "tareas", element: <Tareas /> },
-      { path: "compras", element: <Compras /> },
+      { index: true, element: withSuspense(<DashboardCRM />) },
+      { path: "dashboard", element: <Navigate to="/" replace /> }, // alias legacy
+      { path: "clientes", element: withSuspense(<Clientes />) },
+      { path: "tareas", element: withSuspense(<Tareas />) },
+      { path: "compras", element: withSuspense(<Compras />) },
 
-      // Kanban (NUEVO)
-      { path: "pipeline", element: <ClientesKanban /> },
-      { path: "kanban-tareas", element: <TareasKanban /> },
+      // Kanban
+      { path: "pipeline", element: withSuspense(<ClientesKanban />) },
+      { path: "kanban-tareas", element: withSuspense(<TareasKanban />) },
+
+      // Aliases/retrocompat
+      { path: "kanban", element: <Navigate to="/kanban-tareas" replace /> },
+      { path: "pipeline-clientes", element: <Navigate to="/pipeline" replace /> },
+
+      // Catch-all
+      { path: "*", element: <ErrorFallback /> },
     ],
   },
 ]);

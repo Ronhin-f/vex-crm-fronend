@@ -1,11 +1,16 @@
 // src/utils/logout.js
+// Manejo centralizado de logout + sincronización entre pestañas.
 import api from "./api";
 
-const CORE_URL = import.meta.env?.VITE_CORE_URL || "https://vex-core-frontend.vercel.app/";
+const CORE_LOGIN_BASE = (import.meta.env?.VITE_CORE_LOGIN_URL || "https://vex-core-frontend.vercel.app").replace(/\/+$/, "");
 
 let alreadyLoggingOut = false;
 
-export function logout({ redirect = true } = {}) {
+/**
+ * Cierra sesión local y redirige al Login de Core con ?next=<url>.
+ * @param {{ redirect?: boolean, nextUrl?: string }} opts
+ */
+export function logout({ redirect = true, nextUrl } = {}) {
   if (alreadyLoggingOut) return;
   alreadyLoggingOut = true;
 
@@ -17,26 +22,39 @@ export function logout({ redirect = true } = {}) {
     localStorage.removeItem("usuario_email");
     localStorage.removeItem("organizacion_id");
 
-    // 🧽 limpiar header Authorization en axios si quedó cacheado
-    if (api?.defaults?.headers) {
-      delete api.defaults.headers.Authorization;
-    }
+    // 🧽 limpiar Authorization en axios (por si alguien lo seteó manual)
+    try {
+      if (api?.defaults?.headers?.common) delete api.defaults.headers.common.Authorization;
+      if (api?.defaults?.headers) delete api.defaults.headers.Authorization;
+    } catch {}
 
     // 📢 notificar a otras pestañas
-    localStorage.setItem("logout-event", String(Date.now()));
+    try { localStorage.setItem("logout-event", String(Date.now())); } catch {}
   } finally {
-    // ↩️ redirigir a Core
-    if (redirect) window.location.replace(CORE_URL);
+    if (redirect && typeof window !== "undefined") {
+      const next = encodeURIComponent(nextUrl || window.location.origin);
+      const url = `${CORE_LOGIN_BASE}/?next=${next}`;
+      window.location.replace(url);
+    }
   }
 }
 
-/** Reacciona a login/logout realizados en otras pestañas */
+/**
+ * Instala listeners cross-tab para reflejar login/logout hechos en otra pestaña.
+ * Nota: si ya usás el hook `useAuthFromLocalStorage`, esto es opcional.
+ */
+let isBound = false;
 export function installSessionSyncHandlers() {
+  if (isBound) return;
+  isBound = true;
+
   window.addEventListener("storage", (e) => {
     if (e.key === "logout-event") {
+      // Repite el proceso localmente (sin bucle por alreadyLoggingOut)
       logout();
     }
     if (e.key === "login-event") {
+      // Rehidratar UI tras login en otra pestaña
       window.location.reload();
     }
   });
