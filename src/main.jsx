@@ -1,7 +1,7 @@
 // src/main.jsx
 import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider, Navigate, Link } from "react-router-dom";
+import { createHashRouter, RouterProvider, Navigate, Link } from "react-router-dom";
 import "./index.css";
 import "./i18n";
 import App from "./App";
@@ -31,43 +31,69 @@ const ErrorFallback = () => (
 );
 
 /* ──────────────────────────────────────────────────────────────
-   Login bridge (Core → CRM): soporta ?vex_token=&user= y legado ?token=
-   Guarda en localStorage y limpia la URL.
+   Login bridge (Core → CRM): soporta ?vex_token=&user= y hash #/?...
+   Guarda en localStorage ANTES de montar React y normaliza a /#/
    ────────────────────────────────────────────────────────────── */
 (() => {
-  const params = new URLSearchParams(window.location.search);
-  const vexToken = params.get("vex_token") || params.get("token");
-  const userParam = params.get("user");
-  let didChange = false;
+  // Extrae params de un string que puede tener "#/ruta?..." o "?..."
+  const paramsFrom = (str) => {
+    if (!str) return new URLSearchParams();
+    const i = str.indexOf("?");
+    return new URLSearchParams(i >= 0 ? str.slice(i + 1) : "");
+  };
+
+  const qs = new URLSearchParams(window.location.search); // ?...
+  const hs = paramsFrom(window.location.hash);            // #/?...
+
+  const vexToken =
+    qs.get("vex_token") || qs.get("token") ||
+    hs.get("vex_token") || hs.get("token");
+
+  const userParam = qs.get("user") || hs.get("user");
+
+  let changed = false;
 
   if (vexToken) {
-    localStorage.setItem("vex_token", vexToken);
-    localStorage.setItem("token", vexToken); // compat
-    didChange = true;
+    localStorage.setItem("token", vexToken);
+    localStorage.setItem("vex_token", vexToken); // compat
+    changed = true;
   }
+
   if (userParam) {
     try {
-      const u = JSON.parse(decodeURIComponent(userParam));
+      // URLSearchParams ya decodifica; parse directo
+      const u = JSON.parse(userParam);
       localStorage.setItem("user", JSON.stringify(u));
       if (u?.email) localStorage.setItem("usuario_email", u.email);
-      const orgId = u?.organization_id ?? u?.organizacion_id;
+      const orgId = u?.organizacion_id ?? u?.organization_id;
       if (orgId != null) localStorage.setItem("organizacion_id", String(orgId));
       localStorage.setItem("login-event", String(Date.now()));
-      didChange = true;
+      changed = true;
     } catch {
-      // ignore parse errors
+      // intento de respaldo si viniera doble-encodificado
+      try {
+        const u = JSON.parse(decodeURIComponent(userParam));
+        localStorage.setItem("user", JSON.stringify(u));
+        if (u?.email) localStorage.setItem("usuario_email", u.email);
+        const orgId = u?.organizacion_id ?? u?.organization_id;
+        if (orgId != null) localStorage.setItem("organizacion_id", String(orgId));
+        localStorage.setItem("login-event", String(Date.now()));
+        changed = true;
+      } catch { /* ignore */ }
     }
   }
-  if (didChange) {
-    const clean = window.location.origin + window.location.pathname; // limpiamos query y hash
-    window.history.replaceState({}, document.title, clean);
+
+  if (changed) {
+    // HashRouter: aseguramos quedarnos en una ruta válida
+    const target = (location.hash && location.hash.startsWith("#/")) ? location.hash : "#/";
+    history.replaceState({}, document.title, "/" + target); // limpia query y deja hash bueno
   }
 })();
 
 // ─── Router protegido ────────────────────────────────────────────────────────
 const withSuspense = (el) => <Suspense fallback={<PageLoader />}>{el}</Suspense>;
 
-const router = createBrowserRouter([
+const router = createHashRouter([
   {
     path: "/",
     element: (
