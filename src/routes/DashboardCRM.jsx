@@ -67,14 +67,26 @@ export default function DashboardCRM() {
         setSeg(Array.isArray(dash.proximosSeguimientos) ? dash.proximosSeguimientos : []);
       }
 
-      // KPIs de pipeline
+      // KPIs de pipeline (acepta clientesPorCat o clientesPorStage)
       if (kpiRes.status === "fulfilled") {
         const k = kpiRes.value?.data ?? {};
-        const won = k.clientesPorCat?.find((x) => x.categoria === "Won")?.total ?? 0;
-        const lost = k.clientesPorCat?.find((x) => x.categoria === "Lost")?.total ?? 0;
+        const pick = (arr, key, val) =>
+          Array.isArray(arr) ? (arr.find((x) => x?.[key] === val)?.total ?? 0) : 0;
+
+        const won =
+          pick(k.clientesPorCat, "categoria", "Won") ||
+          pick(k.clientesPorStage, "stage", "Won");
+        const lost =
+          pick(k.clientesPorCat, "categoria", "Lost") ||
+          pick(k.clientesPorStage, "stage", "Lost");
+
         const total = won + lost;
         const winRate = total ? Math.round((won / total) * 100) : 0;
-        setKpis({ won, lost, winRate, proximos7d: k.proximos7d ?? 0 });
+
+        // Fallback de nombre de campo por si viene con snake_case
+        const proximos7d = k.proximos7d ?? k.proximos_7d ?? 0;
+
+        setKpis({ won, lost, winRate, proximos7d });
       }
 
       // Insights (IA o heurísticas)
@@ -192,7 +204,7 @@ export default function DashboardCRM() {
             </p>
           </div>
 
-          {/* Acciones rápidas */}
+        {/* Acciones rápidas */}
           <div className="flex items-center gap-2">
             <button
               className="btn btn-outline btn-sm"
