@@ -47,6 +47,18 @@ const resources = {
         close: "Cerrar",
         ok: "OK",
         cancel: "Cancelar",
+        // ➕ nuevas
+        refreshInsights: "Actualizar insights",
+        dispatchNow: "Enviar follow-ups",
+        loading: "Cargando...",
+        sending: "Enviando...",
+        sentSummary: "{{ok}} enviados, {{err}} con error",
+      },
+
+      errors: {
+        permission: "No tenés permisos para ejecutar el dispatcher.",
+        genericSend: "No se pudo despachar follow-ups.",
+        generic: "Ocurrió un error.",
       },
 
       common: {
@@ -85,6 +97,8 @@ const resources = {
         clients: "Clientes",
         tasks: "Tareas",
         followups7d: "Seguimientos (7 días)",
+        // ➕ nueva
+        overdue: "Vencidas",
       },
 
       cards: {
@@ -93,6 +107,14 @@ const resources = {
         upcoming7d: "Próximos 7 días",
         noUpcoming: "Sin seguimientos próximos.",
         dueAt: "Vence:",
+        // ➕ nueva
+        insights: "Insights del negocio",
+      },
+
+      insights: {
+        // ➕ nuevas
+        baseline: "Baseline",
+        empty: "Aún no hay recomendaciones. Cargá clientes/tareas y volvé a intentar.",
       },
 
       pipeline: {
@@ -211,6 +233,22 @@ const resources = {
           test: "Probar dispatch",
         },
       },
+
+      // ➕ bloque nuevo para analytics avanzados
+      analytics: {
+        contactability: "Contactabilidad",
+        firstTouchP50: "Primer contacto (p50)",
+        firstTouchAvg: "Primer contacto (prom)",
+        leadsRange: "Leads (período)",
+        qualified: "Calificados",
+        qualRate: "Tasa",
+        uncontactable: "No contactables",
+        noFirstTouch: "Sin primer contacto",
+        uncategorized: "Sin stage/pipeline",
+        stalledIncoming: "Estancados en Incoming ≥ {{d}} días",
+        bySource: "Win rate por Source",
+        byOwner: "Win rate por Owner",
+      },
     },
   },
 
@@ -243,6 +281,18 @@ const resources = {
         close: "Close",
         ok: "OK",
         cancel: "Cancel",
+        // ➕ new
+        refreshInsights: "Refresh insights",
+        dispatchNow: "Send follow-ups",
+        loading: "Loading...",
+        sending: "Sending...",
+        sentSummary: "{{ok}} sent, {{err}} failed",
+      },
+
+      errors: {
+        permission: "You don't have permission to run the dispatcher.",
+        genericSend: "Could not dispatch follow-ups.",
+        generic: "Something went wrong.",
       },
 
       common: {
@@ -281,6 +331,8 @@ const resources = {
         clients: "Clients",
         tasks: "Tasks",
         followups7d: "Follow-ups (7 days)",
+        // ➕ new
+        overdue: "Overdue",
       },
 
       cards: {
@@ -289,6 +341,14 @@ const resources = {
         upcoming7d: "Next 7 days",
         noUpcoming: "No upcoming follow-ups.",
         dueAt: "Due:",
+        // ➕ new
+        insights: "Business insights",
+      },
+
+      insights: {
+        // ➕ new
+        baseline: "Baseline",
+        empty: "No recommendations yet. Add clients/tasks and try again.",
       },
 
       pipeline: {
@@ -406,6 +466,22 @@ const resources = {
           save: "Save",
           test: "Test dispatch",
         },
+      },
+
+      // ➕ new block for advanced analytics
+      analytics: {
+        contactability: "Contactability",
+        firstTouchP50: "First touch (p50)",
+        firstTouchAvg: "First touch (avg)",
+        leadsRange: "Leads (period)",
+        qualified: "Qualified",
+        qualRate: "Rate",
+        uncontactable: "Uncontactable",
+        noFirstTouch: "No first touch",
+        uncategorized: "No stage/pipeline",
+        stalledIncoming: "Stalled in Incoming ≥ {{d}} days",
+        bySource: "Win rate by Source",
+        byOwner: "Win rate by Owner",
       },
     },
   },
