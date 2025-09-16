@@ -29,7 +29,7 @@ function sortByDueCreated(items = []) {
     if (da !== db) return da - db;
     const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
     const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
-    return cb - ca; // más nuevo primero
+    return cb - ca;
   });
   return arr;
 }
@@ -43,6 +43,36 @@ function qs(params = {}) {
   });
   const s = p.toString();
   return s ? `?${s}` : "";
+}
+
+/** Filtro FE cuando el BE no banca filtros */
+function applyFiltersFE(list = [], f = {}) {
+  const q = (f.q || "").toLowerCase().trim();
+  return (list || []).filter((c) => {
+    if (q) {
+      const hay =
+        [c.nombre, c.empresa, c.email, c.telefono]
+          .map((v) => (v || "").toLowerCase())
+          .some((v) => v.includes(q));
+      if (!hay) return false;
+    }
+    if (f.source) {
+      if ((c.source || "") !== f.source) return false;
+    }
+    if (f.assignee) {
+      const asg = (c.assignee_email || c.assignee || "").trim();
+      if (f.assignee === "Sin asignar") {
+        if (asg) return false;
+      } else if (asg.toLowerCase() !== f.assignee.toLowerCase()) {
+        return false;
+      }
+    }
+    if (f.only_due) {
+      const duev = c.due_date || c.next_follow_up;
+      if (!duev) return false;
+    }
+    return true;
+  });
 }
 
 /* ─────────────── Badges ─────────────── */
@@ -102,7 +132,6 @@ function useQueryState() {
       if (!v || (k === "only_due" && !v)) next.searchParams.delete(k);
       else next.searchParams.set(k, k === "only_due" ? "1" : String(v));
     });
-    // Evitamos escribir si el search es el mismo (previene remounts/reflows)
     if (next.search !== current.search) {
       window.history.replaceState({}, "", `${next.pathname}${next.search}`);
     }
@@ -259,12 +288,10 @@ export default function ClientesKanban() {
 
   async function reload() {
     const myReq = ++inflightRef.current;
-    // Skeleton sólo en primer render o si no hay columnas aún
     const showSkeleton = firstLoadRef.current || cols.length === 0;
     if (showSkeleton) setLoading(true);
 
     try {
-      // params para BE
       const beParams = {
         q: filters.q || undefined,
         source: filters.source || undefined,
@@ -276,15 +303,23 @@ export default function ClientesKanban() {
       const data = await fetchClientesKanban(beParams);
       if (myReq !== inflightRef.current) return;
 
-      // 2) enriquecemos con detalles de /clientes
-      const { data: fullList = [] } = await api.get(`/clientes${qs(beParams)}`);
+      // 2) enriquecemos con detalles de /clientes (con fallback FE si el BE devuelve 500)
+      let fullList = [];
+      try {
+        const res = await api.get(`/clientes${qs(beParams)}`);
+        fullList = Array.isArray(res.data) ? res.data : [];
+      } catch (err) {
+        // Fallback: traigo todos y filtro en FE
+        const res = await api.get(`/clientes`);
+        const all = Array.isArray(res.data) ? res.data : [];
+        fullList = applyFiltersFE(all, beParams);
+      }
       if (myReq !== inflightRef.current) return;
-      const byId = new Map(Array.isArray(fullList) ? fullList.map((c) => [c.id, c]) : []);
+
+      const byId = new Map(fullList.map((c) => [c.id, c]));
 
       let ordered = [];
-
       if (Array.isArray(data?.columns)) {
-        // SHAPE A: [{ key, title, items }]
         const byKey = new Map(
           (data.columns || []).map((c) => {
             const key = c.key || c.title;
@@ -294,18 +329,14 @@ export default function ClientesKanban() {
             return [key, { ...c, key, items, count: items.length }];
           })
         );
-
         const order = data.order?.length
           ? data.order
           : (data.columns || []).map((c) => c.key || c.title);
-
         ordered = (order.length ? order : PIPELINE).map(
           (k) => byKey.get(k) || { key: k, title: k, count: 0, items: [] }
         );
       } else {
-        // SHAPE B: { columns: { [stage]: Item[] }, order?: string[] }
         const order = data?.order?.length ? data.order : PIPELINE;
-
         ordered = order.map((k) => {
           const base = Array.isArray(data?.columns?.[k]) ? data.columns[k] : [];
           const items = sortByDueCreated(
@@ -351,7 +382,6 @@ export default function ClientesKanban() {
   async function doMove(id, fromKey, toKey) {
     try {
       await moveCliente(id, toKey);
-      // actualizamos local sin re-fetch
       setCols((prev) => {
         const copy = prev.map((c) => ({ ...c, items: [...c.items] }));
         const from = copy.find((c) => c.key === fromKey);
