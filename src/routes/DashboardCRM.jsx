@@ -39,11 +39,14 @@ export default function DashboardCRM() {
     proximos_7d: 0,
   });
 
+  // Añadimos unqualified y followup_missed
   const [kpis, setKpis] = useState({
     won: 0,
     lost: 0,
     winRate: 0,
     proximos7d: 0,
+    unqualified: 0,
+    followup_missed: 0,
   });
 
   const [top, setTop] = useState([]);
@@ -90,7 +93,7 @@ export default function DashboardCRM() {
         api.get("/kanban/kpis"),
         api.get("/ai/insights"),
         api.get("/integraciones"),
-        api.get("/analytics/kpis"), // KPIs avanzados
+        api.get("/analytics/kpis"),
       ]);
 
       // Dashboard base
@@ -101,7 +104,7 @@ export default function DashboardCRM() {
         setSeg(Array.isArray(dash.proximosSeguimientos) ? dash.proximosSeguimientos : []);
       }
 
-      // KPIs pipeline (won/lost/winRate + proximos7d)
+      // KPIs pipeline
       if (kpiRes.status === "fulfilled") {
         const k = kpiRes.value?.data ?? {};
         const arr =
@@ -111,16 +114,22 @@ export default function DashboardCRM() {
             ? k.clientesPorStage.map((x) => ({ categoria: x.stage, total: Number(x.total) || 0 }))
             : [];
 
-        const won = arr.find((x) => x.categoria === "Won")?.total ?? 0;
-        const lost = arr.find((x) => x.categoria === "Lost")?.total ?? 0;
-        const total = won + lost;
-        const winRate = total ? Math.round((won / total) * 100) : 0;
+        const get = (name) => arr.find((x) => x.categoria === name)?.total ?? 0;
+
+        const won = get("Won");
+        const lost = get("Lost");
+        const unqualified = get("Unqualified");
+        const followup_missed = get("Follow-up Missed");
+        const totalWL = won + lost;
+        const winRate = totalWL ? Math.round((won / totalWL) * 100) : 0;
 
         setKpis({
           won,
           lost,
           winRate,
           proximos7d: Number(k.proximos7d ?? k.proximos_7d ?? 0),
+          unqualified,
+          followup_missed,
         });
       }
 
@@ -255,11 +264,16 @@ export default function DashboardCRM() {
         </p>
       );
     }
-    const lines = txt.split(/\r?\n/).map((s) => s.replace(/^[\-\*\u2022]\s*/, "").trim()).filter(Boolean);
+    const lines = txt
+      .split(/\r?\n/)
+      .map((s) => s.replace(/^[\-\*\u2022]\s*/, "").trim())
+      .filter(Boolean);
     return (
       <ul className="list-disc pl-5 space-y-1">
         {lines.map((l, i) => (
-          <li key={i} className="text-sm">{l}</li>
+          <li key={i} className="text-sm">
+            {l}
+          </li>
         ))}
       </ul>
     );
@@ -284,9 +298,7 @@ export default function DashboardCRM() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-3xl font-bold mb-1">{t("dashboard.title", "Vex CRM — Dashboard")}</h1>
-            <p className="text-sm text-base-content/70 mb-4">
-              {t("dashboard.hello", { email: usuario?.email || "" })}
-            </p>
+            <p className="text-sm text-base-content/70 mb-4">{t("dashboard.hello", { email: usuario?.email || "" })}</p>
           </div>
 
           {/* Acciones rápidas */}
@@ -315,41 +327,73 @@ export default function DashboardCRM() {
         {/* KPIs de Pipeline (cierre) */}
         <div className="stats shadow bg-base-100 mb-4 w-full">
           <div className="stat">
-            <div className="stat-figure text-success"><Trophy size={20} /></div>
+            <div className="stat-figure text-success">
+              <Trophy size={20} />
+            </div>
             <div className="stat-title">Won</div>
             <div className="stat-value">{kpis.won}</div>
           </div>
           <div className="stat">
-            <div className="stat-figure text-error"><ThumbsDown size={20} /></div>
+            <div className="stat-figure text-error">
+              <ThumbsDown size={20} />
+            </div>
             <div className="stat-title">Lost</div>
             <div className="stat-value">{kpis.lost}</div>
           </div>
           <div className="stat">
-            <div className="stat-figure text-info"><Percent size={20} /></div>
+            <div className="stat-figure text-info">
+              <Percent size={20} />
+            </div>
             <div className="stat-title">Win rate</div>
             <div className="stat-value">{kpis.winRate}%</div>
           </div>
           <div className="stat">
-            <div className="stat-figure text-accent"><BellRing size={20} /></div>
+            <div className="stat-figure text-accent">
+              <BellRing size={20} />
+            </div>
             <div className="stat-title">{t("metrics.followups7d", "Follow-ups 7d")}</div>
             <div className="stat-value">{kpis.proximos7d}</div>
+          </div>
+        </div>
+
+        {/* NUEVO: estados intermedios del pipeline */}
+        <div className="stats shadow bg-base-100 mb-8 w-full">
+          <div className="stat">
+            <div className="stat-figure text-neutral">
+              <Ban size={20} />
+            </div>
+            <div className="stat-title">Unqualified</div>
+            <div className="stat-value">{kpis.unqualified}</div>
+          </div>
+          <div className="stat">
+            <div className="stat-figure text-warning">
+              <AlertTriangle size={20} />
+            </div>
+            <div className="stat-title">Follow-up Missed</div>
+            <div className="stat-value">{kpis.followup_missed}</div>
           </div>
         </div>
 
         {/* Métricas base (reemplazamos el 3er tile por Overdue) */}
         <div className="stats shadow bg-base-100 mb-8 w-full">
           <div className="stat">
-            <div className="stat-figure text-primary"><Users size={20} /></div>
+            <div className="stat-figure text-primary">
+              <Users size={20} />
+            </div>
             <div className="stat-title">{t("metrics.clients", "Clientes")}</div>
             <div className="stat-value">{metrics.total_clientes}</div>
           </div>
           <div className="stat">
-            <div className="stat-figure text-secondary"><ClipboardList size={20} /></div>
+            <div className="stat-figure text-secondary">
+              <ClipboardList size={20} />
+            </div>
             <div className="stat-title">{t("metrics.tasks", "Tareas")}</div>
             <div className="stat-value">{metrics.total_tareas}</div>
           </div>
           <div className="stat">
-            <div className="stat-figure text-warning"><AlertTriangle size={20} /></div>
+            <div className="stat-figure text-warning">
+              <AlertTriangle size={20} />
+            </div>
             <div className="stat-title">{t("metrics.overdue", "Overdue")}</div>
             <div className="stat-value">{analytics.tasks.overdue}</div>
           </div>
@@ -358,45 +402,61 @@ export default function DashboardCRM() {
         {/* KPIs avanzados (contactabilidad + SLA primer contacto) */}
         <div className="stats shadow bg-base-100 mb-8 w-full">
           <div className="stat">
-            <div className="stat-figure text-info"><BarChart2 size={20} /></div>
+            <div className="stat-figure text-info">
+              <BarChart2 size={20} />
+            </div>
             <div className="stat-title">{t("analytics.contactability", "Contactabilidad")}</div>
             <div className="stat-value">{analytics.contacts.contactability_pct}%</div>
           </div>
           <div className="stat">
-            <div className="stat-figure text-success"><Timer size={20} /></div>
+            <div className="stat-figure text-success">
+              <Timer size={20} />
+            </div>
             <div className="stat-title">{t("analytics.firstTouchP50", "Primer contacto (p50)")}</div>
             <div className="stat-value">
-              {analytics.contacts.first_touch.p50_min}<span className="text-sm ml-1">min</span>
+              {analytics.contacts.first_touch.p50_min}
+              <span className="text-sm ml-1">min</span>
             </div>
           </div>
           <div className="stat">
-            <div className="stat-figure text-accent"><Timer size={20} /></div>
+            <div className="stat-figure text-accent">
+              <Timer size={20} />
+            </div>
             <div className="stat-title">{t("analytics.firstTouchAvg", "Primer contacto (avg)")}</div>
             <div className="stat-value">
-              {analytics.contacts.first_touch.avg_min}<span className="text-sm ml-1">min</span>
+              {analytics.contacts.first_touch.avg_min}
+              <span className="text-sm ml-1">min</span>
             </div>
           </div>
         </div>
 
-        {/* NUEVO: KPIs de Calificabilidad */}
+        {/* KPIs de Calificabilidad */}
         <div className="stats shadow bg-base-100 mb-8 w-full">
           <div className="stat">
-            <div className="stat-figure text-primary"><BarChart2 size={20} /></div>
+            <div className="stat-figure text-primary">
+              <BarChart2 size={20} />
+            </div>
             <div className="stat-title">{t("analytics.leadsRange", "Leads (rango)")}</div>
             <div className="stat-value">{analytics.qualification.total}</div>
           </div>
           <div className="stat">
-            <div className="stat-figure text-success"><Trophy size={20} /></div>
+            <div className="stat-figure text-success">
+              <Trophy size={20} />
+            </div>
             <div className="stat-title">{t("analytics.qualified", "Qualified")}</div>
             <div className="stat-value">{analytics.qualification.qualified}</div>
           </div>
           <div className="stat">
-            <div className="stat-figure text-info"><Percent size={20} /></div>
+            <div className="stat-figure text-info">
+              <Percent size={20} />
+            </div>
             <div className="stat-title">{t("analytics.qualRate", "Rate")}</div>
             <div className="stat-value">{analytics.qualification.rate_pct}%</div>
           </div>
           <div className="stat">
-            <div className="stat-figure text-error"><UserX size={20} /></div>
+            <div className="stat-figure text-error">
+              <UserX size={20} />
+            </div>
             <div className="stat-title">
               {t("analytics.uncontactable", "No contactables")}
               <span className="text-xs block opacity-60">({analytics.qualification.uncontactable.pct}%)</span>
@@ -404,7 +464,9 @@ export default function DashboardCRM() {
             <div className="stat-value">{analytics.qualification.uncontactable.total}</div>
           </div>
           <div className="stat">
-            <div className="stat-figure text-warning"><Timer size={20} /></div>
+            <div className="stat-figure text-warning">
+              <Timer size={20} />
+            </div>
             <div className="stat-title">
               {t("analytics.noFirstTouch", "Sin primer contacto")}
               <span className="text-xs block opacity-60">({analytics.qualification.no_first_touch.pct}%)</span>
@@ -412,7 +474,9 @@ export default function DashboardCRM() {
             <div className="stat-value">{analytics.qualification.no_first_touch.total}</div>
           </div>
           <div className="stat">
-            <div className="stat-figure text-accent"><Tag size={20} /></div>
+            <div className="stat-figure text-accent">
+              <Tag size={20} />
+            </div>
             <div className="stat-title">
               {t("analytics.uncategorized", "Sin stage/pipeline")}
               <span className="text-xs block opacity-60">({analytics.qualification.uncategorized.pct}%)</span>
@@ -421,10 +485,12 @@ export default function DashboardCRM() {
           </div>
         </div>
 
-        {/* Estancados en Incoming — lo separamos para remarcar el umbral */}
+        {/* Estancados en Incoming */}
         <div className="stats shadow bg-base-100 mb-8 w-full">
           <div className="stat">
-            <div className="stat-figure text-neutral"><PauseCircle size={20} /></div>
+            <div className="stat-figure text-neutral">
+              <PauseCircle size={20} />
+            </div>
             <div className="stat-title">
               {t("analytics.stalledIncoming", "Estancados en Incoming ≥ {{d}} días", {
                 d: analytics.qualification.stalled_in_incoming.days,
@@ -440,7 +506,9 @@ export default function DashboardCRM() {
             <div className="card-body">
               <h2 className="card-title">🆕 {t("cards.topRecentClients", "Clientes recientes")}</h2>
               {top.length === 0 ? (
-                <p className="text-sm text-base-content/60">{t("cards.noRecentClients", "No hay clientes recientes.")}</p>
+                <p className="text-sm text-base-content/60">
+                  {t("cards.noRecentClients", "No hay clientes recientes.")}
+                </p>
               ) : (
                 <ul className="menu bg-base-100 rounded-box w-full">
                   {top.map((c) => (
@@ -480,7 +548,8 @@ export default function DashboardCRM() {
                           <div className="text-xs text-base-content/60">{s.cliente_nombre || "—"}</div>
                         </div>
                         <span className={`badge ${tone} badge-outline flex items-center gap-1`}>
-                          {t("cards.dueAt", "Vence")} {due.toLocaleString(i18n.language || undefined)}
+                          {t("cards.dueAt", "Vence")}{" "}
+                          {due.toLocaleString(i18n.language || undefined)}
                         </span>
                       </li>
                     );

@@ -28,6 +28,16 @@ function sortByDue(items = [], dueKey = "due_date") {
 }
 
 // ─────────────────── Clientes: Kanban ───────────────────
+const DEFAULT_CLIENTES_ORDER = [
+  "Incoming Leads",
+  "Unqualified",
+  "Qualified",
+  "Follow-up Missed",
+  "Bid/Estimate Sent",
+  "Won",
+  "Lost",
+];
+
 // Soportamos filtros: q, source, assignee, only_due (boolean)
 export async function fetchClientesKanban(filters = {}) {
   // Endpoint kanban dedicado, si existe; si no, re-construimos desde /clientes
@@ -38,25 +48,22 @@ export async function fetchClientesKanban(filters = {}) {
   } catch {
     // Fallback: traemos todos y agrupamos en FE
     const { data: lista } = await api.get(`/clientes${qs(filters)}`);
-    const order = ["Incoming Leads", "Qualified", "Bid/Estimate Sent", "Won", "Lost"];
+    const order = [...DEFAULT_CLIENTES_ORDER];
     const columns = {};
     order.forEach((k) => (columns[k] = []));
     (lista || []).forEach((c) => {
       const stage = c.stage || "Incoming Leads";
-      if (!columns[stage]) columns[stage] = [];
+      if (!columns[stage]) columns[stage] = []; // soporta stages extra que vengan del BE
       columns[stage].push(c);
     });
     return normalizeKanban({ columns, order });
   }
 }
 
-// Normaliza + ordena por follow-up, luego created_at/id
+// Normaliza + ordena por follow-up (si existe), luego created_at e id
 function normalizeKanban(raw) {
-  // Acepta shape {columns: object} o {columns: array}
-  let order =
-    raw?.order?.length
-      ? raw.order
-      : ["Incoming Leads", "Qualified", "Bid/Estimate Sent", "Won", "Lost"];
+  // Preferimos el order del BE; si no hay, usamos el default y agregamos extras al final
+  let order = raw?.order?.length ? raw.order : [...DEFAULT_CLIENTES_ORDER];
 
   const columns = {};
 
@@ -76,9 +83,17 @@ function normalizeKanban(raw) {
       });
       columns[key] = arr;
     }
-    if (!raw?.order?.length) order = Object.keys(columns);
+    if (!raw?.order?.length) {
+      const extras = Object.keys(columns).filter((k) => !order.includes(k));
+      order = [...order, ...extras];
+    }
   } else {
-    // Ej: { "Qualified": [...], ... }
+    // Ej: { columns: { "Qualified": [...], ... } }
+    // Respetamos el order dado; si no hay, usamos default y luego agregamos extras al final
+    const incomingKeys = raw?.columns ? Object.keys(raw.columns) : [];
+    const extras = incomingKeys.filter((k) => !order.includes(k));
+    order = raw?.order?.length ? raw.order : [...order, ...extras];
+
     for (const col of order) {
       const arr = [...(raw?.columns?.[col] || [])];
       arr.sort((a, b) => {

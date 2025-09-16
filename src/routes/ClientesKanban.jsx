@@ -18,7 +18,27 @@ import {
   Tag,
 } from "lucide-react";
 
-const PIPELINE = ["Incoming Leads", "Qualified", "Bid/Estimate Sent", "Won", "Lost"];
+// NUEVO orden con 2 columnas extra
+const PIPELINE = [
+  "Incoming Leads",
+  "Unqualified",
+  "Qualified",
+  "Follow-up Missed",
+  "Bid/Estimate Sent",
+  "Won",
+  "Lost",
+];
+
+// (Opcional/UI) etiquetas amigables
+const LABELS = {
+  "Incoming Leads": "Incoming Leads",
+  Unqualified: "No calificados",
+  Qualified: "Qualified",
+  "Follow-up Missed": "Follow-up perdido",
+  "Bid/Estimate Sent": "Estimate enviado",
+  Won: "Won",
+  Lost: "Lost",
+};
 
 /* ─────────────── Utils ─────────────── */
 function sortByDueCreated(items = []) {
@@ -145,7 +165,7 @@ function FiltersBar({ value, onChange, onClear }) {
   useEffect(() => {
     const t = setTimeout(() => onChange({ ...value, q: typing }), 350);
     return () => clearTimeout(t);
-  }, [typing]);
+  }, [typing]); // eslint-disable-line
 
   return (
     <div className="mb-4 rounded-2xl bg-base-200 border border-base-300 p-3 flex flex-wrap items-center gap-2">
@@ -308,8 +328,7 @@ export default function ClientesKanban() {
       try {
         const res = await api.get(`/clientes${qs(beParams)}`);
         fullList = Array.isArray(res.data) ? res.data : [];
-      } catch (err) {
-        // Fallback: traigo todos y filtro en FE
+      } catch {
         const res = await api.get(`/clientes`);
         const all = Array.isArray(res.data) ? res.data : [];
         fullList = applyFiltersFE(all, beParams);
@@ -390,7 +409,8 @@ export default function ClientesKanban() {
         const idx = from.items.findIndex((x) => x.id === id);
         if (idx >= 0) {
           const [itm] = from.items.splice(idx, 1);
-          itm.categoria = toKey;
+          itm.categoria = toKey; // espejo por compat
+          itm.stage = toKey;     // asegura que el detalle muestre la etapa nueva
           to.items.unshift(itm);
           to.items = sortByDueCreated(to.items);
         }
@@ -404,12 +424,16 @@ export default function ClientesKanban() {
     }
   }
 
+  // Layout de columnas dinámico (según cols o fallback PIPELINE)
+  const colCount = cols?.length || PIPELINE.length;
+  const gridStyle = { gridTemplateColumns: `repeat(${colCount}, minmax(240px,1fr))` };
+
   if (loading)
     return (
       <div className="p-4">
         <div className="skeleton h-9 w-56 mb-4" />
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-          {Array.from({ length: 5 }).map((_, i) => (
+        <div className="grid gap-3" style={gridStyle}>
+          {Array.from({ length: colCount }).map((_, i) => (
             <div key={i} className="rounded-2xl bg-base-200 border border-base-300 min-h-[280px] p-3">
               <div className="skeleton h-6 w-32 mb-2" />
               <div className="skeleton h-16 w-full mb-2" />
@@ -431,14 +455,21 @@ export default function ClientesKanban() {
         onClear={() => setFilters({ q: "", source: "", assignee: "", only_due: false })}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+      <div className="grid gap-3" style={gridStyle}>
         {cols.map((col) => (
-          <Column key={col.key} title={`${col.title} ${col.count ? `(${col.count})` : ""}`} onDrop={(e) => onDrop(e, col.key)}>
+          <Column
+            key={col.key}
+            title={`${LABELS[col.key] ?? col.title} ${col.count ? `(${col.count})` : ""}`}
+            onDrop={(e) => onDrop(e, col.key)}
+          >
             {col.items.map((item) => (
               <Card
                 key={item.id}
                 item={item}
-                onClick={() => { setDetailItem(item); setDetailOpen(true); }}
+                onClick={() => {
+                  setDetailItem(item);
+                  setDetailOpen(true);
+                }}
                 onDragStart={(e) => onDragStart(e, item, col.key)}
                 onNext={() => {
                   const next = nextStageOf(col.key);

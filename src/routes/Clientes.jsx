@@ -14,7 +14,16 @@ import {
   Info,
 } from "lucide-react";
 
-const STAGES = ["Incoming Leads", "Qualified", "Bid/Estimate Sent", "Won", "Lost"];
+// Actualizado: incluye Unqualified y Follow-up Missed
+const STAGES = [
+  "Incoming Leads",
+  "Unqualified",
+  "Qualified",
+  "Follow-up Missed",
+  "Bid/Estimate Sent",
+  "Won",
+  "Lost",
+];
 
 function StageSelect({ value, onChange }) {
   return (
@@ -63,7 +72,7 @@ export default function Clientes() {
     nombre: "",
     email: "",
     telefono: "",
-    categoria: "Incoming Leads",
+    categoria: "Incoming Leads", // compat FE
     source: "Outreach",
     contact_info: "",
     assignee_email: "",
@@ -103,6 +112,8 @@ export default function Clientes() {
     try {
       const payload = {
         ...form,
+        // compat: algunos BE usan stage; reflejamos ambos
+        stage: form.categoria || "Incoming Leads",
         due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
       };
       const { data } = await api.post("/clientes", payload);
@@ -124,10 +135,15 @@ export default function Clientes() {
     toast.success("Estimate subido");
   }
 
-  async function moveStage(id, from, stage) {
+  async function moveStage(id, _from, stage) {
     try {
       await moveCliente(id, stage);
-      setItems((prev) => prev.map((c) => (c.id === id ? { ...c, categoria: stage } : c)));
+      // compat FE: actualizamos ambas props
+      setItems((prev) =>
+        prev.map((c) =>
+          c.id === id ? { ...c, categoria: stage, stage } : c
+        )
+      );
       toast.success(`Movido a ${stage}`);
     } catch {
       toast.error("No pude mover el cliente");
@@ -291,8 +307,9 @@ export default function Clientes() {
           </div>
         ) : (
           items.map((c) => {
-            const next = nextStageOf(c.categoria || "Incoming Leads");
-            const canAdvance = (c.categoria || "Incoming Leads") !== next; // false si ya está al final
+            const curr = c.categoria || c.stage || "Incoming Leads";
+            const next = nextStageOf(curr);
+            const canAdvance = curr !== next; // false si ya está al final
             return (
               <article key={c.id} className="card bg-base-100 shadow">
                 <div className="card-body">
@@ -300,14 +317,14 @@ export default function Clientes() {
                     <div className="font-semibold text-lg">{c.nombre}</div>
                     <div className="flex items-center gap-2">
                       <StageSelect
-                        value={c.categoria || "Incoming Leads"}
-                        onChange={(stage) => moveStage(c.id, c.categoria, stage)}
+                        value={curr}
+                        onChange={(stage) => moveStage(c.id, curr, stage)}
                       />
                       <button
                         className="btn btn-ghost btn-sm"
                         onClick={() => {
                           if (!canAdvance) return;
-                          moveStage(c.id, c.categoria, next);
+                          moveStage(c.id, curr, next);
                         }}
                         disabled={!canAdvance}
                         title="Mover al siguiente stage"
