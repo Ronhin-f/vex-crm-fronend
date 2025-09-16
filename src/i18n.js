@@ -1,4 +1,3 @@
-// src/i18n.js
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
@@ -47,6 +46,7 @@ const resources = {
         close: "Cerrar",
         ok: "OK",
         cancel: "Cancelar",
+        clear: "Limpiar",
         // ➕ nuevas
         refreshInsights: "Actualizar insights",
         dispatchNow: "Enviar follow-ups",
@@ -66,11 +66,18 @@ const resources = {
         phone: "Teléfono",
         source: "Origen",
         assignee: "Responsable",
+        unassigned: "Sin asignar",
         noData: "Sin datos",
         loading: "Cargando…",
+        contact: "Contacto",
+        followup: "Seguimiento",
+        notes: "Notas",
+        createdAt: "Creado",
         stages: {
           "Incoming Leads": "Leads entrantes",
+          "Unqualified": "No calificados",
           "Qualified": "Calificado",
+          "Follow-up Missed": "Follow-up perdido",
           "Bid/Estimate Sent": "Presupuesto enviado",
           "Won": "Ganado",
           "Lost": "Perdido",
@@ -83,8 +90,13 @@ const resources = {
         },
         badges: {
           estimate: "Estimate",
+          noEstimate: "Sin estimate",
           noDue: "Sin vencimiento",
+          noDueShort: "Sin due",
           dueAt: "Vence:",
+          due: "Vence",
+          overdue: "Vencido",
+          dueToday: "Vence hoy",
         },
       },
 
@@ -97,7 +109,6 @@ const resources = {
         clients: "Clientes",
         tasks: "Tareas",
         followups7d: "Seguimientos (7 días)",
-        // ➕ nueva
         overdue: "Vencidas",
       },
 
@@ -107,12 +118,10 @@ const resources = {
         upcoming7d: "Próximos 7 días",
         noUpcoming: "Sin seguimientos próximos.",
         dueAt: "Vence:",
-        // ➕ nueva
         insights: "Insights del negocio",
       },
 
       insights: {
-        // ➕ nuevas
         baseline: "Baseline",
         empty: "Aún no hay recomendaciones. Cargá clientes/tareas y volvé a intentar.",
       },
@@ -121,10 +130,41 @@ const resources = {
         title: "Pipeline — Clientes",
         empty: "Sin tarjetas",
         movedTo: "Movido a {{stage}}",
+        filters: {
+          searchPlaceholder: "Buscar (nombre, email, teléfono, empresa)",
+          sourceAll: "Source: todos",
+          assigneeAll: "Assignee: todos",
+          onlyDue: "Solo con follow-up",
+          title: "Filtros",
+        },
+        help: {
+          cardHint: "Click para ver detalle. Arrastrá para mover de etapa.",
+          lastStage: "Última etapa",
+          moveNext: "Mover a la siguiente etapa",
+        },
+        modals: {
+          contact: "Contacto",
+          tracking: "Seguimiento",
+        },
+        toasts: {
+          loadError: "No pude cargar el Kanban de clientes",
+          moved: "Movido a {{stage}}",
+          moveError: "No pude mover el cliente",
+        },
       },
 
       kanbanTasks: {
         title: "Kanban — Tareas",
+        toasts: {
+          loadError: "No pude cargar el Kanban de tareas",
+          moved: "Tarea movida",
+          moveError: "No pude mover la tarea",
+        },
+        help: {
+          drag: "Arrastrá para mover de columna",
+          nextCol: "Mover a la siguiente columna",
+          markDone: "Marcar como hecho",
+        },
       },
 
       clients: {
@@ -216,25 +256,17 @@ const resources = {
       settings: {
         title: "⚙️ Integraciones",
         slackWebhook: "Slack Incoming Webhook",
-        placeholders: {
-          webhook: "https://hooks.slack.com/services/…",
-        },
-        tips: {
-          dispatchNote: "Tip: el dispatch manda los recordatorios cuyo enviar_en sea ≤ ahora.",
-        },
+        placeholders: { webhook: "https://hooks.slack.com/services/…" },
+        tips: { dispatchNote: "Tip: el dispatch manda los recordatorios cuyo enviar_en sea ≤ ahora." },
         toasts: {
           saved: "Webhook guardado",
           cannotSave: "No se pudo guardar",
           dispatchOk: "Dispatch OK: {{n}} enviados",
           dispatchError: "No se pudo probar",
         },
-        buttons: {
-          save: "Guardar",
-          test: "Probar dispatch",
-        },
+        buttons: { save: "Guardar", test: "Probar dispatch" },
       },
 
-      // ➕ bloque nuevo para analytics avanzados
       analytics: {
         contactability: "Contactabilidad",
         firstTouchP50: "Primer contacto (p50)",
@@ -281,6 +313,7 @@ const resources = {
         close: "Close",
         ok: "OK",
         cancel: "Cancel",
+        clear: "Clear",
         // ➕ new
         refreshInsights: "Refresh insights",
         dispatchNow: "Send follow-ups",
@@ -300,11 +333,18 @@ const resources = {
         phone: "Phone",
         source: "Source",
         assignee: "Assignee",
+        unassigned: "Unassigned",
         noData: "No data",
         loading: "Loading…",
+        contact: "Contact",
+        followup: "Follow-up",
+        notes: "Notes",
+        createdAt: "Created",
         stages: {
           "Incoming Leads": "Incoming Leads",
+          "Unqualified": "Unqualified",
           "Qualified": "Qualified",
+          "Follow-up Missed": "Follow-up Missed",
           "Bid/Estimate Sent": "Bid/Estimate Sent",
           "Won": "Won",
           "Lost": "Lost",
@@ -317,8 +357,13 @@ const resources = {
         },
         badges: {
           estimate: "Estimate",
+          noEstimate: "No estimate",
           noDue: "No due date",
+          noDueShort: "No due",
           dueAt: "Due:",
+          due: "Due",
+          overdue: "Overdue",
+          dueToday: "Due today",
         },
       },
 
@@ -331,7 +376,6 @@ const resources = {
         clients: "Clients",
         tasks: "Tasks",
         followups7d: "Follow-ups (7 days)",
-        // ➕ new
         overdue: "Overdue",
       },
 
@@ -341,12 +385,10 @@ const resources = {
         upcoming7d: "Next 7 days",
         noUpcoming: "No upcoming follow-ups.",
         dueAt: "Due:",
-        // ➕ new
         insights: "Business insights",
       },
 
       insights: {
-        // ➕ new
         baseline: "Baseline",
         empty: "No recommendations yet. Add clients/tasks and try again.",
       },
@@ -355,10 +397,41 @@ const resources = {
         title: "Pipeline — Clients",
         empty: "No cards",
         movedTo: "Moved to {{stage}}",
+        filters: {
+          searchPlaceholder: "Search (name, email, phone, company)",
+          sourceAll: "Source: all",
+          assigneeAll: "Assignee: all",
+          onlyDue: "Only with follow-up",
+          title: "Filters",
+        },
+        help: {
+          cardHint: "Click to view details. Drag to move to the next stage.",
+          lastStage: "Last stage",
+          moveNext: "Move to next stage",
+        },
+        modals: {
+          contact: "Contact",
+          tracking: "Follow-up",
+        },
+        toasts: {
+          loadError: "Couldn't load clients Kanban",
+          moved: "Moved to {{stage}}",
+          moveError: "Couldn't move client",
+        },
       },
 
       kanbanTasks: {
         title: "Kanban — Tasks",
+        toasts: {
+          loadError: "Couldn't load tasks Kanban",
+          moved: "Task moved",
+          moveError: "Couldn't move task",
+        },
+        help: {
+          drag: "Drag to move between columns",
+          nextCol: "Move to the next column",
+          markDone: "Mark as done",
+        },
       },
 
       clients: {
@@ -450,25 +523,17 @@ const resources = {
       settings: {
         title: "⚙️ Integrations",
         slackWebhook: "Slack Incoming Webhook",
-        placeholders: {
-          webhook: "https://hooks.slack.com/services/…",
-        },
-        tips: {
-          dispatchNote: "Tip: dispatch sends reminders with enviar_en ≤ now.",
-        },
+        placeholders: { webhook: "https://hooks.slack.com/services/…" },
+        tips: { dispatchNote: "Tip: dispatch sends reminders with enviar_en ≤ now." },
         toasts: {
           saved: "Webhook saved",
           cannotSave: "Could not save",
           dispatchOk: "Dispatch OK: {{n}} sent",
           dispatchError: "Could not test",
         },
-        buttons: {
-          save: "Save",
-          test: "Test dispatch",
-        },
+        buttons: { save: "Save", test: "Test dispatch" },
       },
 
-      // ➕ new block for advanced analytics
       analytics: {
         contactability: "Contactability",
         firstTouchP50: "First touch (p50)",
