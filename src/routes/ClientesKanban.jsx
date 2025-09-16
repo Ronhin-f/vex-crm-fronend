@@ -1,5 +1,5 @@
 // src/routes/ClientesKanban.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchClientesKanban, moveCliente } from "../utils/vexKanbanApi";
 import api from "../utils/api";
 import { toast } from "react-hot-toast";
@@ -96,12 +96,16 @@ function useQueryState() {
   });
 
   useEffect(() => {
-    const u = new URL(window.location.href);
+    const current = new URL(window.location.href);
+    const next = new URL(window.location.href);
     Object.entries(state).forEach(([k, v]) => {
-      if (!v || (k === "only_due" && !v)) u.searchParams.delete(k);
-      else u.searchParams.set(k, k === "only_due" ? "1" : String(v));
+      if (!v || (k === "only_due" && !v)) next.searchParams.delete(k);
+      else next.searchParams.set(k, k === "only_due" ? "1" : String(v));
     });
-    window.history.replaceState({}, "", `${u.pathname}?${u.searchParams.toString()}`);
+    // Evitamos escribir si el search es el mismo (previene remounts/reflows)
+    if (next.search !== current.search) {
+      window.history.replaceState({}, "", `${next.pathname}${next.search}`);
+    }
   }, [state]);
 
   return [state, setState];
@@ -244,15 +248,22 @@ export default function ClientesKanban() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailItem, setDetailItem] = useState(null);
 
+  // Anti-flicker & cancelación de requests en vuelo
+  const firstLoadRef = useRef(true);
+  const inflightRef = useRef(0);
+
   useEffect(() => {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   async function reload() {
-    try {
-      setLoading(true);
+    const myReq = ++inflightRef.current;
+    // Skeleton sólo en primer render o si no hay columnas aún
+    const showSkeleton = firstLoadRef.current || cols.length === 0;
+    if (showSkeleton) setLoading(true);
 
+    try {
       // params para BE
       const beParams = {
         q: filters.q || undefined,
@@ -263,9 +274,11 @@ export default function ClientesKanban() {
 
       // 1) columnas del kanban
       const data = await fetchClientesKanban(beParams);
+      if (myReq !== inflightRef.current) return;
 
       // 2) enriquecemos con detalles de /clientes
       const { data: fullList = [] } = await api.get(`/clientes${qs(beParams)}`);
+      if (myReq !== inflightRef.current) return;
       const byId = new Map(Array.isArray(fullList) ? fullList.map((c) => [c.id, c]) : []);
 
       let ordered = [];
@@ -302,14 +315,16 @@ export default function ClientesKanban() {
         });
       }
 
-      // asegurar counts
       ordered.forEach((c) => (c.count = c.items.length));
-      setCols(ordered);
+      if (myReq === inflightRef.current) setCols(ordered);
     } catch (e) {
       console.error(e);
       toast.error("No pude cargar el Kanban de clientes");
     } finally {
-      setLoading(false);
+      if (myReq === inflightRef.current && (firstLoadRef.current || cols.length === 0)) {
+        setLoading(false);
+        firstLoadRef.current = false;
+      }
     }
   }
 
