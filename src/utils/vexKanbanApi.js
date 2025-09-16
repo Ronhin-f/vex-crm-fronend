@@ -13,13 +13,27 @@ function qs(params = {}) {
   return s ? `?${s}` : "";
 }
 
+/** Orden genérico por due_date (o la key que pases) y fallback created_at */
+function sortByDue(items = [], dueKey = "due_date") {
+  const arr = [...items];
+  arr.sort((a, b) => {
+    const da = a[dueKey] ? new Date(a[dueKey]).getTime() : Infinity;
+    const db = b[dueKey] ? new Date(b[dueKey]).getTime() : Infinity;
+    if (da !== db) return da - db;
+    const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return cb - ca; // más nuevo primero
+  });
+  return arr;
+}
+
 // ─────────────────── Clientes: Kanban ───────────────────
 // Soportamos filtros: q, source, assignee, only_due (boolean)
 export async function fetchClientesKanban(filters = {}) {
   // Endpoint kanban dedicado, si existe; si no, re-construimos desde /clientes
   try {
     const { data } = await api.get(`/kanban/clientes${qs(filters)}`);
-    // data esperado: { columns: { [stage]: Cliente[] }, order: string[] }
+    // data esperado: { columns: { [stage]: Cliente[] } | [{key,items}], order?: string[] }
     return normalizeKanban(data);
   } catch {
     // Fallback: traemos todos y agrupamos en FE
@@ -38,23 +52,48 @@ export async function fetchClientesKanban(filters = {}) {
 
 // Normaliza + ordena por follow-up, luego created_at/id
 function normalizeKanban(raw) {
-  const order = raw?.order?.length
-    ? raw.order
-    : ["Incoming Leads", "Qualified", "Bid/Estimate Sent", "Won", "Lost"];
+  // Acepta shape {columns: object} o {columns: array}
+  let order =
+    raw?.order?.length
+      ? raw.order
+      : ["Incoming Leads", "Qualified", "Bid/Estimate Sent", "Won", "Lost"];
+
   const columns = {};
-  for (const col of order) {
-    const arr = [...(raw?.columns?.[col] || [])];
-    arr.sort((a, b) => {
-      const da = a.next_follow_up ? new Date(a.next_follow_up).getTime() : Infinity;
-      const db = b.next_follow_up ? new Date(b.next_follow_up).getTime() : Infinity;
-      if (da !== db) return da - db;
-      const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
-      if (cb !== ca) return cb - ca; // más nuevo primero
-      return (a.id || 0) - (b.id || 0);
-    });
-    columns[col] = arr;
+
+  if (Array.isArray(raw?.columns)) {
+    // Ej: [{key,title,items}]
+    for (const col of raw.columns) {
+      const key = col.key || col.title || "Incoming Leads";
+      const arr = [...(col.items || [])];
+      arr.sort((a, b) => {
+        const da = a.next_follow_up ? new Date(a.next_follow_up).getTime() : Infinity;
+        const db = b.next_follow_up ? new Date(b.next_follow_up).getTime() : Infinity;
+        if (da !== db) return da - db;
+        const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
+        if (cb !== ca) return cb - ca;
+        return (a.id || 0) - (b.id || 0);
+      });
+      columns[key] = arr;
+    }
+    if (!raw?.order?.length) order = Object.keys(columns);
+  } else {
+    // Ej: { "Qualified": [...], ... }
+    for (const col of order) {
+      const arr = [...(raw?.columns?.[col] || [])];
+      arr.sort((a, b) => {
+        const da = a.next_follow_up ? new Date(a.next_follow_up).getTime() : Infinity;
+        const db = b.next_follow_up ? new Date(b.next_follow_up).getTime() : Infinity;
+        if (da !== db) return da - db;
+        const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
+        if (cb !== ca) return cb - ca; // más nuevo primero
+        return (a.id || 0) - (b.id || 0);
+      });
+      columns[col] = arr;
+    }
   }
+
   return { order, columns };
 }
 
@@ -65,7 +104,54 @@ export async function moveCliente(id, stage, orden) {
   return data;
 }
 
-// ─────────────────── Tareas (existente) ───────────────────
+// ─────────────────── Tareas: Kanban ───────────────────
+// Soporta filtros: q, assignee, only_due, etc.
+export async function fetchTareasKanban(filters = {}) {
+  // 1) Intento con endpoint dedicado si existe
+  try {
+    const { data } = await api.get(`/kanban/tareas${qs(filters)}`);
+    if (Array.isArray(data?.columns)) {
+      const columns = data.columns.map((c) => ({
+        ...c,
+        items: sortByDue(c.items || [], "due_date"),
+        count: (c.items || []).length,
+      }));
+      const order = data.order?.length ? data.order : columns.map((c) => c.key || c.title);
+      return { columns, order };
+    }
+    if (data?.columns && typeof data.columns === "object") {
+      const order = data.order?.length ? data.order : Object.keys(data.columns);
+      const columns = order.map((k) => {
+        const items = sortByDue(data.columns[k] || [], "due_date");
+        return { key: k, title: k, items, count: items.length };
+      });
+      return { columns, order };
+    }
+  } catch {
+    // seguimos al fallback
+  }
+
+  // 2) Fallback: construimos desde /tareas
+  const { data: lista = [] } = await api.get(`/tareas${qs(filters)}`);
+  const byEstado = new Map();
+  (Array.isArray(lista) ? lista : []).forEach((t) => {
+    const key = t.estado || "To Do";
+    if (!byEstado.has(key)) byEstado.set(key, []);
+    byEstado.get(key).push(t);
+  });
+
+  const defaultOrder = ["To Do", "Doing", "Done"];
+  const order = byEstado.size ? Array.from(byEstado.keys()) : defaultOrder;
+
+  const columns = order.map((k) => {
+    const items = sortByDue(byEstado.get(k) || [], "due_date");
+    return { key: k, title: k, items, count: items.length };
+  });
+
+  return { columns, order };
+}
+
+// (existente) mover tarea dentro del kanban
 export async function moveTarea(id, estado, orden) {
   const payload = { estado };
   if (typeof orden === "number") payload.orden = orden;
