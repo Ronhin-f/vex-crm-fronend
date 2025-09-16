@@ -10,10 +10,42 @@ import {
   Paperclip,
   UserCircle2,
   ChevronRight,
+  Filter,
+  X,
+  Search,
+  Clock3,
+  Building2,
+  Tag,
 } from "lucide-react";
 
 const PIPELINE = ["Incoming Leads", "Qualified", "Bid/Estimate Sent", "Won", "Lost"];
 
+/* ─────────────── Utils ─────────────── */
+function sortByDueCreated(items = []) {
+  const arr = [...items];
+  arr.sort((a, b) => {
+    const da = a.due_date ? new Date(a.due_date).getTime() : Infinity;
+    const db = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+    if (da !== db) return da - db;
+    const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return cb - ca; // más nuevo primero
+  });
+  return arr;
+}
+
+function qs(params = {}) {
+  const p = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null) return;
+    if (String(v).trim() === "") return;
+    p.set(k, v);
+  });
+  const s = p.toString();
+  return s ? `?${s}` : "";
+}
+
+/* ─────────────── Badges ─────────────── */
 function DueBadge({ date }) {
   if (!date) return <span className="badge badge-ghost">Sin due</span>;
   const due = new Date(date);
@@ -51,37 +83,208 @@ function EstimateChip({ url }) {
   );
 }
 
+/* ─────────────── Filtros con persistencia en URL ─────────────── */
+function useQueryState() {
+  const [state, setState] = useState(() => {
+    const u = new URL(window.location.href);
+    return {
+      q: u.searchParams.get("q") || "",
+      source: u.searchParams.get("source") || "",
+      assignee: u.searchParams.get("assignee") || "",
+      only_due: u.searchParams.get("only_due") === "1",
+    };
+  });
+
+  useEffect(() => {
+    const u = new URL(window.location.href);
+    Object.entries(state).forEach(([k, v]) => {
+      if (!v || (k === "only_due" && !v)) u.searchParams.delete(k);
+      else u.searchParams.set(k, k === "only_due" ? "1" : String(v));
+    });
+    window.history.replaceState({}, "", `${u.pathname}?${u.searchParams.toString()}`);
+  }, [state]);
+
+  return [state, setState];
+}
+
+function FiltersBar({ value, onChange, onClear }) {
+  const [typing, setTyping] = useState(value.q);
+  useEffect(() => {
+    const t = setTimeout(() => onChange({ ...value, q: typing }), 350);
+    return () => clearTimeout(t);
+  }, [typing]);
+
+  return (
+    <div className="mb-4 rounded-2xl bg-base-200 border border-base-300 p-3 flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-2 flex-1 min-w-[220px]">
+        <Search size={16} className="opacity-70" />
+        <input
+          className="input input-sm input-bordered w-full"
+          placeholder="Buscar (nombre, email, teléfono, empresa)"
+          value={typing}
+          onChange={(e) => setTyping(e.target.value)}
+        />
+      </div>
+
+      <div className="flex gap-2">
+        <select
+          className="select select-sm select-bordered"
+          value={value.source}
+          onChange={(e) => onChange({ ...value, source: e.target.value })}
+        >
+          <option value="">Source: todos</option>
+          <option>Outreach</option>
+          <option>Blue Book ITB</option>
+          <option>Inbound</option>
+          <option>Referral</option>
+        </select>
+
+        <select
+          className="select select-sm select-bordered"
+          value={value.assignee}
+          onChange={(e) => onChange({ ...value, assignee: e.target.value })}
+        >
+          <option value="">Assignee: todos</option>
+          <option>Sin asignar</option>
+          <option>Mauricio</option>
+          <option>Melisa</option>
+          {/* agrega tus usuarios reales si corresponde */}
+        </select>
+
+        <label className="label cursor-pointer gap-2">
+          <span className="label-text">Solo con follow-up</span>
+          <input
+            type="checkbox"
+            className="toggle toggle-sm"
+            checked={value.only_due}
+            onChange={(e) => onChange({ ...value, only_due: e.target.checked })}
+          />
+        </label>
+
+        {(value.q || value.source || value.assignee || value.only_due) ? (
+          <button className="btn btn-sm" onClick={onClear}>
+            <X size={16} /> Limpiar
+          </button>
+        ) : (
+          <div className="btn btn-sm btn-ghost no-animation">
+            <Filter size={16} /> Filtros
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────── Detalle (panel modal) ─────────────── */
+function DetailModal({ open, onClose, item }) {
+  if (!open || !item) return null;
+  const assignee = item.assignee_email || item.assignee || "Sin asignar";
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-2xl rounded-2xl bg-base-100 shadow-xl border border-base-300 p-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="text-lg font-semibold truncate">
+              {item.nombre || item.empresa || item.email || "Sin nombre"}
+            </h3>
+            {item.empresa && <div className="text-sm opacity-70 truncate flex items-center gap-1">
+              <Building2 size={14} /> {item.empresa}
+            </div>}
+          </div>
+          <button className="btn btn-sm" onClick={onClose}><X size={16} /> Cerrar</button>
+        </div>
+
+        <div className="mt-3 grid md:grid-cols-2 gap-3">
+          <div className="rounded-xl bg-base-200 p-3">
+            <div className="text-sm font-medium mb-2">Contacto</div>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2"><Mail size={14}/> {item.email || "—"}</div>
+              <div className="flex items-center gap-2"><Phone size={14}/> {item.telefono || "—"}</div>
+              <div className="flex items-center gap-2"><UserCircle2 size={14}/> {assignee}</div>
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-base-200 p-3">
+            <div className="text-sm font-medium mb-2">Seguimiento</div>
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="badge badge-outline"><Tag size={12} className="mr-1"/>Source: {item.source || "—"}</span>
+              <DueBadge date={item.due_date} />
+              <EstimateChip url={item.estimate_url} />
+              {item.stage && <span className="badge badge-outline">{item.stage}</span>}
+            </div>
+            {item.notas && (
+              <div className="mt-3">
+                <div className="text-xs opacity-60 mb-1">Notas</div>
+                <div className="rounded-lg bg-base-100 p-2 border border-base-300 text-sm whitespace-pre-wrap">
+                  {item.notas}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-3 text-xs opacity-60 flex items-center gap-3">
+          <Clock3 size={12}/> Creado: {item.created_at ? new Date(item.created_at).toLocaleString() : "—"}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────── Página principal ─────────────── */
 export default function ClientesKanban() {
+  const [filters, setFilters] = useQueryState();
   const [cols, setCols] = useState([]);
   const [loading, setLoading] = useState(true);
   const colMap = useMemo(() => new Map(cols.map((c) => [c.key, c])), [cols]);
 
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState(null);
+
   useEffect(() => {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [filters]);
 
   async function reload() {
     try {
       setLoading(true);
-      // 1) columnas del kanban
-      const data = await fetchClientesKanban();
-      // 2) enriquecemos con detalles de /clientes (source, assignee, due, estimate, contacto)
-      const { data: fullList = [] } = await api.get("/clientes");
+
+      // params para BE
+      const beParams = {
+        q: filters.q || undefined,
+        source: filters.source || undefined,
+        assignee: filters.assignee || undefined,
+        only_due: filters.only_due ? 1 : undefined,
+      };
+
+      // 1) columnas del kanban (con soporte de filtros si tu endpoint ya los acepta)
+      const data = await fetchClientesKanban(beParams);
+
+      // 2) enriquecemos con detalles de /clientes aplicando filtros en server (si existen) o en FE
+      const { data: fullList = [] } = await api.get(`/clientes${qs(beParams)}`);
       const byId = new Map(Array.isArray(fullList) ? fullList.map((c) => [c.id, c]) : []);
+
       const byKey = new Map(
         (data.columns || []).map((c) => [
           c.key,
           {
             ...c,
-            items: (c.items || []).map((i) => ({ ...i, ...(byId.get(i.id) || {}) })),
+            items: sortByDueCreated(
+              (c.items || []).map((i) => ({ ...i, ...(byId.get(i.id) || {}) }))
+            ),
           },
         ])
       );
+
       const ordered = PIPELINE.map(
         (k) => byKey.get(k) || { key: k, title: k, count: 0, items: [] }
       );
-      // aseguramos count correcto
+
+      // count correcto
       ordered.forEach((c) => (c.count = c.items.length));
       setCols(ordered);
     } catch (e) {
@@ -126,6 +329,7 @@ export default function ClientesKanban() {
           const [itm] = from.items.splice(idx, 1);
           itm.categoria = toKey;
           to.items.unshift(itm);
+          to.items = sortByDueCreated(to.items);
         }
         from.count = from.items.length;
         to.count = to.items.length;
@@ -156,7 +360,14 @@ export default function ClientesKanban() {
 
   return (
     <div className="p-3">
-      <h1 className="text-2xl font-semibold mb-4">Pipeline — Clientes</h1>
+      <h1 className="text-2xl font-semibold mb-3">Pipeline — Clientes</h1>
+
+      <FiltersBar
+        value={filters}
+        onChange={setFilters}
+        onClear={() => setFilters({ q: "", source: "", assignee: "", only_due: false })}
+      />
+
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
         {cols.map((col) => (
           <Column key={col.key} title={`${col.title} ${col.count ? `(${col.count})` : ""}`} onDrop={(e) => onDrop(e, col.key)}>
@@ -164,6 +375,7 @@ export default function ClientesKanban() {
               <Card
                 key={item.id}
                 item={item}
+                onClick={() => { setDetailItem(item); setDetailOpen(true); }}
                 onDragStart={(e) => onDragStart(e, item, col.key)}
                 onNext={() => {
                   const next = nextStageOf(col.key);
@@ -175,10 +387,17 @@ export default function ClientesKanban() {
           </Column>
         ))}
       </div>
+
+      <DetailModal
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        item={detailItem}
+      />
     </div>
   );
 }
 
+/* ─────────────── Column / Card ─────────────── */
 function Column({ title, children, onDrop }) {
   return (
     <div
@@ -192,23 +411,27 @@ function Column({ title, children, onDrop }) {
   );
 }
 
-function Card({ item, onDragStart, onNext, isLast }) {
+function Card({ item, onDragStart, onNext, isLast, onClick }) {
   const assignee = item.assignee_email || item.assignee || null;
+  const title = item.nombre || item.empresa || item.email || "Sin nombre";
   return (
     <div
       draggable
       onDragStart={onDragStart}
-      className="cursor-grab active:cursor-grabbing rounded-xl border border-base-300 bg-base-100 p-3"
-      title="Arrastrá para mover de etapa"
+      onClick={onClick}
+      className="cursor-pointer active:cursor-grabbing rounded-xl border border-base-300 bg-base-100 p-3 hover:shadow"
+      title="Click para ver detalle. Arrastrá para mover de etapa."
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="font-medium truncate">{item.nombre}</div>
-          <div className="text-xs opacity-60 truncate">{item.email || "—"}</div>
+          <div className="font-medium truncate">{title}</div>
+          {item.empresa && item.nombre && (
+            <div className="text-xs opacity-60 truncate">{item.empresa}</div>
+          )}
         </div>
         <button
           className="btn btn-ghost btn-xs"
-          onClick={onNext}
+          onClick={(e) => { e.stopPropagation(); onNext(); }}
           disabled={isLast}
           title={isLast ? "Última etapa" : "Mover a la siguiente etapa"}
         >
