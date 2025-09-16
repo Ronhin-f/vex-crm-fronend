@@ -70,10 +70,9 @@ function applyFiltersFE(list = [], f = {}) {
   const q = (f.q || "").toLowerCase().trim();
   return (list || []).filter((c) => {
     if (q) {
-      const hay =
-        [c.nombre, c.empresa, c.email, c.telefono]
-          .map((v) => (v || "").toLowerCase())
-          .some((v) => v.includes(q));
+      const hay = [c.nombre, c.empresa, c.email, c.telefono]
+        .map((v) => (v || "").toLowerCase())
+        .some((v) => v.includes(q));
       if (!hay) return false;
     }
     if (f.source) {
@@ -96,8 +95,8 @@ function applyFiltersFE(list = [], f = {}) {
 }
 
 /* ─────────────── Badges ─────────────── */
-function DueBadge({ date }) {
-  if (!date) return <span className="badge badge-ghost">Sin due</span>;
+function DueBadge({ date, compact }) {
+  if (!date) return null; // ⬅️ no mostramos placeholder
   const due = new Date(date);
   const mins = (due.getTime() - Date.now()) / 60000;
   let tone = "badge-info";
@@ -110,22 +109,23 @@ function DueBadge({ date }) {
     label = "Vence hoy";
   }
   return (
-    <span className={`badge ${tone} badge-outline`}>
+    <span className={`badge ${tone} ${compact ? "badge-xs" : "badge-sm"} badge-outline`}>
       <CalendarClock size={12} className="mr-1" />
       {label}: {due.toLocaleString()}
     </span>
   );
 }
 
-function EstimateChip({ url }) {
-  if (!url) return <span className="badge badge-ghost">Sin estimate</span>;
+function EstimateChip({ url, compact }) {
+  if (!url) return null; // ⬅️ no mostramos placeholder
   return (
     <a
       href={url}
       target="_blank"
       rel="noreferrer"
-      className="badge badge-primary badge-outline no-underline"
+      className={`badge badge-primary ${compact ? "badge-xs" : "badge-sm"} badge-outline no-underline`}
       title="Ver estimate"
+      onClick={(e) => e.stopPropagation()}
     >
       <Paperclip size={12} className="mr-1" />
       Estimate
@@ -160,7 +160,7 @@ function useQueryState() {
   return [state, setState];
 }
 
-function FiltersBar({ value, onChange, onClear }) {
+function FiltersBar({ value, onChange, onClear, right }) {
   const [typing, setTyping] = useState(value.q);
   useEffect(() => {
     const t = setTimeout(() => onChange({ ...value, q: typing }), 350);
@@ -179,7 +179,7 @@ function FiltersBar({ value, onChange, onClear }) {
         />
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
         <select
           className="select select-sm select-bordered"
           value={value.source}
@@ -223,6 +223,8 @@ function FiltersBar({ value, onChange, onClear }) {
             <Filter size={16} /> Filtros
           </div>
         )}
+
+        {right}
       </div>
     </div>
   );
@@ -243,27 +245,42 @@ function DetailModal({ open, onClose, item }) {
             <h3 className="text-lg font-semibold truncate">
               {item.nombre || item.empresa || item.email || "Sin nombre"}
             </h3>
-            {item.empresa && <div className="text-sm opacity-70 truncate flex items-center gap-1">
-              <Building2 size={14} /> {item.empresa}
-            </div>}
+            {item.empresa && (
+              <div className="text-sm opacity-70 truncate flex items-center gap-1">
+                <Building2 size={14} /> {item.empresa}
+              </div>
+            )}
           </div>
-          <button className="btn btn-sm" onClick={onClose}><X size={16} /> Cerrar</button>
+          <button className="btn btn-sm" onClick={onClose}>
+            <X size={16} /> Cerrar
+          </button>
         </div>
 
         <div className="mt-3 grid md:grid-cols-2 gap-3">
           <div className="rounded-xl bg-base-200 p-3">
             <div className="text-sm font-medium mb-2">Contacto</div>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2"><Mail size={14}/> {item.email || "—"}</div>
-              <div className="flex items-center gap-2"><Phone size={14}/> {item.telefono || "—"}</div>
-              <div className="flex items-center gap-2"><UserCircle2 size={14}/> {assignee}</div>
+              <div className="flex items-center gap-2">
+                <Mail size={14} /> {item.email || "—"}
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone size={14} /> {item.telefono || "—"}
+              </div>
+              <div className="flex items-center gap-2">
+                <UserCircle2 size={14} /> {assignee}
+              </div>
             </div>
           </div>
 
           <div className="rounded-xl bg-base-200 p-3">
             <div className="text-sm font-medium mb-2">Seguimiento</div>
             <div className="flex flex-wrap gap-2 items-center">
-              <span className="badge badge-outline"><Tag size={12} className="mr-1"/>Source: {item.source || "—"}</span>
+              {item.source && (
+                <span className="badge badge-outline">
+                  <Tag size={12} className="mr-1" />
+                  {item.source}
+                </span>
+              )}
               <DueBadge date={item.due_date} />
               <EstimateChip url={item.estimate_url} />
               {item.stage && <span className="badge badge-outline">{item.stage}</span>}
@@ -280,7 +297,7 @@ function DetailModal({ open, onClose, item }) {
         </div>
 
         <div className="mt-3 text-xs opacity-60 flex items-center gap-3">
-          <Clock3 size={12}/> Creado: {item.created_at ? new Date(item.created_at).toLocaleString() : "—"}
+          <Clock3 size={12} /> Creado: {item.created_at ? new Date(item.created_at).toLocaleString() : "—"}
         </div>
       </div>
     </div>
@@ -296,6 +313,21 @@ export default function ClientesKanban() {
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailItem, setDetailItem] = useState(null);
+
+  // NUEVO: modo compacto (persistente)
+  const [compact, setCompact] = useState(() => {
+    try {
+      const v = localStorage.getItem("vex_pipeline_compact");
+      return v == null ? true : v === "1";
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("vex_pipeline_compact", compact ? "1" : "0");
+    } catch {}
+  }, [compact]);
 
   // Anti-flicker & cancelación de requests en vuelo
   const firstLoadRef = useRef(true);
@@ -358,9 +390,7 @@ export default function ClientesKanban() {
         const order = data?.order?.length ? data.order : PIPELINE;
         ordered = order.map((k) => {
           const base = Array.isArray(data?.columns?.[k]) ? data.columns[k] : [];
-          const items = sortByDueCreated(
-            base.map((i) => ({ ...i, ...(byId.get(i.id) || {}) }))
-          );
+          const items = sortByDueCreated(base.map((i) => ({ ...i, ...(byId.get(i.id) || {}) })));
           return { key: k, title: k, items, count: items.length };
         });
       }
@@ -410,7 +440,7 @@ export default function ClientesKanban() {
         if (idx >= 0) {
           const [itm] = from.items.splice(idx, 1);
           itm.categoria = toKey; // espejo por compat
-          itm.stage = toKey;     // asegura que el detalle muestre la etapa nueva
+          itm.stage = toKey; // asegura que el detalle muestre la etapa nueva
           to.items.unshift(itm);
           to.items = sortByDueCreated(to.items);
         }
@@ -447,7 +477,18 @@ export default function ClientesKanban() {
 
   return (
     <div className="p-3">
-      <h1 className="text-2xl font-semibold mb-3">Pipeline — Clientes</h1>
+      <div className="mb-3 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Pipeline — Clientes</h1>
+        <label className="label cursor-pointer gap-2">
+          <span className="text-sm opacity-80">Compacto</span>
+          <input
+            type="checkbox"
+            className="toggle toggle-sm"
+            checked={compact}
+            onChange={() => setCompact((v) => !v)}
+          />
+        </label>
+      </div>
 
       <FiltersBar
         value={filters}
@@ -466,6 +507,7 @@ export default function ClientesKanban() {
               <Card
                 key={item.id}
                 item={item}
+                compact={compact}
                 onClick={() => {
                   setDetailItem(item);
                   setDetailOpen(true);
@@ -482,11 +524,7 @@ export default function ClientesKanban() {
         ))}
       </div>
 
-      <DetailModal
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        item={detailItem}
-      />
+      <DetailModal open={detailOpen} onClose={() => setDetailOpen(false)} item={detailItem} />
     </div>
   );
 }
@@ -505,27 +543,51 @@ function Column({ title, children, onDrop }) {
   );
 }
 
-function Card({ item, onDragStart, onNext, isLast, onClick }) {
+function Card({ item, onDragStart, onNext, isLast, onClick, compact }) {
   const assignee = item.assignee_email || item.assignee || null;
   const title = item.nombre || item.empresa || item.email || "Sin nombre";
+
+  // chips: ocultamos vacíos y reducimos en modo compacto
+  const chips = [
+    item.source && (
+      <span key="src" className={`badge badge-outline ${compact ? "badge-xs" : "badge-sm"}`}>
+        {item.source}
+      </span>
+    ),
+    assignee && (
+      <span key="asg" className={`badge badge-outline ${compact ? "badge-xs" : "badge-sm"}`}>
+        <UserCircle2 size={12} className="mr-1" />
+        {(assignee.split?.("@")[0] || assignee)}
+      </span>
+    ),
+    item.due_date && <DueBadge key="due" date={item.due_date} compact={compact} />,
+    item.estimate_url && <EstimateChip key="est" url={item.estimate_url} compact={compact} />,
+  ].filter(Boolean);
+
+  const visible = compact ? chips.slice(0, 2) : chips;
+  const overflow = chips.length - visible.length;
+
   return (
     <div
       draggable
       onDragStart={onDragStart}
       onClick={onClick}
-      className="cursor-pointer active:cursor-grabbing rounded-xl border border-base-300 bg-base-100 p-3 hover:shadow"
+      className={`cursor-pointer active:cursor-grabbing rounded-xl border border-base-300 bg-base-100 p-3 hover:shadow ${
+        compact ? "py-2" : "py-3"
+      }`}
       title="Click para ver detalle. Arrastrá para mover de etapa."
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="font-medium truncate">{title}</div>
-          {item.empresa && item.nombre && (
-            <div className="text-xs opacity-60 truncate">{item.empresa}</div>
-          )}
+          <div className={`font-medium truncate ${compact ? "text-sm" : ""}`}>{title}</div>
+          {item.empresa && item.nombre && <div className="text-xs opacity-60 truncate">{item.empresa}</div>}
         </div>
         <button
           className="btn btn-ghost btn-xs"
-          onClick={(e) => { e.stopPropagation(); onNext(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onNext();
+          }}
           disabled={isLast}
           title={isLast ? "Última etapa" : "Mover a la siguiente etapa"}
         >
@@ -533,26 +595,32 @@ function Card({ item, onDragStart, onNext, isLast, onClick }) {
         </button>
       </div>
 
-      {/* Chips clave */}
-      <div className="flex flex-wrap items-center gap-2 mt-2">
-        <span className="badge badge-outline">Source: {item.source || "—"}</span>
-        <span className="badge badge-outline">
-          <UserCircle2 size={12} className="mr-1" />
-          {assignee || "Sin asignar"}
-        </span>
-        <DueBadge date={item.due_date} />
-        <EstimateChip url={item.estimate_url} />
-      </div>
+      {(visible.length > 0 || overflow > 0) && (
+        <div className={`flex flex-wrap items-center gap-1.5 mt-2 ${compact ? "-mt-0.5" : ""}`}>
+          {visible}
+          {overflow > 0 && (
+            <div className={`badge badge-ghost ${compact ? "badge-xs" : "badge-sm"}`} title="Más info">
+              +{overflow}
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* Contacto */}
-      <div className="grid grid-cols-2 gap-2 text-xs opacity-70 mt-2">
-        <div className="flex items-center gap-1 truncate">
-          <Mail size={12} /> <span className="truncate">{item.email || "—"}</span>
+      {/* Contacto: solo si hay datos */}
+      {(item.email || item.telefono) && (
+        <div className={`grid grid-cols-2 gap-2 text-xs opacity-70 mt-2 ${compact ? "-mt-0.5" : ""}`}>
+          {item.email && (
+            <div className="flex items-center gap-1 truncate" title={item.email}>
+              <Mail size={12} /> <span className="truncate">{item.email}</span>
+            </div>
+          )}
+          {item.telefono && (
+            <div className="flex items-center gap-1 truncate" title={item.telefono}>
+              <Phone size={12} /> <span className="truncate">{item.telefono}</span>
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-1 truncate">
-          <Phone size={12} /> <span className="truncate">{item.telefono || "—"}</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
