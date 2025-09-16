@@ -261,30 +261,48 @@ export default function ClientesKanban() {
         only_due: filters.only_due ? 1 : undefined,
       };
 
-      // 1) columnas del kanban (con soporte de filtros si tu endpoint ya los acepta)
+      // 1) columnas del kanban
       const data = await fetchClientesKanban(beParams);
 
-      // 2) enriquecemos con detalles de /clientes aplicando filtros en server (si existen) o en FE
+      // 2) enriquecemos con detalles de /clientes
       const { data: fullList = [] } = await api.get(`/clientes${qs(beParams)}`);
       const byId = new Map(Array.isArray(fullList) ? fullList.map((c) => [c.id, c]) : []);
 
-      const byKey = new Map(
-        (data.columns || []).map((c) => [
-          c.key,
-          {
-            ...c,
-            items: sortByDueCreated(
+      let ordered = [];
+
+      if (Array.isArray(data?.columns)) {
+        // SHAPE A: [{ key, title, items }]
+        const byKey = new Map(
+          (data.columns || []).map((c) => {
+            const key = c.key || c.title;
+            const items = sortByDueCreated(
               (c.items || []).map((i) => ({ ...i, ...(byId.get(i.id) || {}) }))
-            ),
-          },
-        ])
-      );
+            );
+            return [key, { ...c, key, items, count: items.length }];
+          })
+        );
 
-      const ordered = PIPELINE.map(
-        (k) => byKey.get(k) || { key: k, title: k, count: 0, items: [] }
-      );
+        const order = data.order?.length
+          ? data.order
+          : (data.columns || []).map((c) => c.key || c.title);
 
-      // count correcto
+        ordered = (order.length ? order : PIPELINE).map(
+          (k) => byKey.get(k) || { key: k, title: k, count: 0, items: [] }
+        );
+      } else {
+        // SHAPE B: { columns: { [stage]: Item[] }, order?: string[] }
+        const order = data?.order?.length ? data.order : PIPELINE;
+
+        ordered = order.map((k) => {
+          const base = Array.isArray(data?.columns?.[k]) ? data.columns[k] : [];
+          const items = sortByDueCreated(
+            base.map((i) => ({ ...i, ...(byId.get(i.id) || {}) }))
+          );
+          return { key: k, title: k, items, count: items.length };
+        });
+      }
+
+      // asegurar counts
       ordered.forEach((c) => (c.count = c.items.length));
       setCols(ordered);
     } catch (e) {
