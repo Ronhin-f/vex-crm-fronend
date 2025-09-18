@@ -22,12 +22,12 @@ const resources = {
       app: { brand: "Vex CRM" },
 
       nav: {
-        dashboard: "Dashboard",
+        dashboard: "Tablero",
         clients: "Clientes",
         orders: "Compras",
         tasks: "Tareas",
         pipeline: "Pipeline",
-        kanbanTasks: "Kanban tareas",
+        kanbanTasks: "Kanban de tareas",
         settings: "Ajustes",
       },
 
@@ -41,24 +41,24 @@ const resources = {
         assign: "Asignar",
         due: "Vencimiento",
         upload: "Subir",
-        estimate: "Estimate",
-        testDispatch: "Probar dispatch",
+        estimate: "Presupuesto",
+        testDispatch: "Probar envío",
         close: "Cerrar",
         ok: "OK",
         cancel: "Cancelar",
         clear: "Limpiar",
-        // ➕ nuevas
         refreshInsights: "Actualizar insights",
-        dispatchNow: "Enviar follow-ups",
+        dispatchNow: "Despachar avisos ahora",
         loading: "Cargando...",
         sending: "Enviando...",
         sentSummary: "{{ok}} enviados, {{err}} con error",
       },
 
       errors: {
-        permission: "No tenés permisos para ejecutar el dispatcher.",
-        genericSend: "No se pudo despachar follow-ups.",
+        permission: "No tenés permisos para ejecutar el envío.",
+        genericSend: "No se pudieron despachar los avisos.",
         generic: "Ocurrió un error.",
+        network: "Error de red",
       },
 
       common: {
@@ -76,32 +76,45 @@ const resources = {
         stages: {
           "Incoming Leads": "Leads entrantes",
           "Unqualified": "No calificados",
-          "Qualified": "Calificado",
-          "Follow-up Missed": "Follow-up perdido",
+          "Qualified": "Calificados",
+          "Follow-up Missed": "Seguimiento perdido",
           "Bid/Estimate Sent": "Presupuesto enviado",
-          "Won": "Ganado",
-          "Lost": "Perdido",
+          "Won": "Ganados",
+          "Lost": "Perdidos",
         },
         taskStates: {
           todo: "Por hacer",
           doing: "En curso",
           waiting: "En espera",
-          done: "Hecho",
+          done: "Hecha",
         },
         badges: {
-          estimate: "Estimate",
-          noEstimate: "Sin estimate",
+          estimate: "Presupuesto",
+          noEstimate: "Sin presupuesto",
           noDue: "Sin vencimiento",
-          noDueShort: "Sin due",
+          noDueShort: "Sin venc.",
           dueAt: "Vence:",
           due: "Vence",
           overdue: "Vencido",
           dueToday: "Vence hoy",
         },
+        // Etiquetas estándar para orígenes conocidos (fallback si no matchea)
+        sources: {
+          Outreach: "Prospección",
+          "Building Connected": "Building Connected",
+          "Building Connected ITB": "Building Connected (ITB)",
+          "Blue Book": "Blue Book",
+          "Blue Book ITB": "Blue Book (ITB)",
+          Gmail: "Gmail",
+          Email: "Email",
+          Website: "Sitio web",
+          Referral: "Referencia",
+          Unknown: "Desconocido",
+        },
       },
 
       dashboard: {
-        title: "Vex CRM — Dashboard",
+        title: "Vex CRM — Tablero",
         hello: "Hola, {{email}}",
       },
 
@@ -113,7 +126,7 @@ const resources = {
       },
 
       cards: {
-        topRecentClients: "Top clientes recientes",
+        topRecentClients: "Clientes recientes",
         noRecentClients: "No hay clientes recientes.",
         upcoming7d: "Próximos 7 días",
         noUpcoming: "Sin seguimientos próximos.",
@@ -122,7 +135,7 @@ const resources = {
       },
 
       insights: {
-        baseline: "Baseline",
+        baseline: "Línea base",
         empty: "Aún no hay recomendaciones. Cargá clientes/tareas y volvé a intentar.",
       },
 
@@ -132,9 +145,9 @@ const resources = {
         movedTo: "Movido a {{stage}}",
         filters: {
           searchPlaceholder: "Buscar (nombre, email, teléfono, empresa)",
-          sourceAll: "Source: todos",
-          assigneeAll: "Assignee: todos",
-          onlyDue: "Solo con follow-up",
+          sourceAll: "Origen: todos",
+          assigneeAll: "Responsable: todos",
+          onlyDue: "Solo con seguimiento",
           title: "Filtros",
         },
         help: {
@@ -163,7 +176,7 @@ const resources = {
         help: {
           drag: "Arrastrá para mover de columna",
           nextCol: "Mover a la siguiente columna",
-          markDone: "Marcar como hecho",
+          markDone: "Marcar como hecha",
         },
       },
 
@@ -171,31 +184,31 @@ const resources = {
         title: "Clientes",
         form: {
           name: "Nombre *",
-          stage: "Stage",
+          stage: "Etapa",
           email: "Email",
           phone: "Teléfono",
-          assignee: "Assignee (email)",
-          dueDate: "Due Date",
+          assignee: "Responsable (email)",
+          dueDate: "Vence",
           source: "Origen",
-          estimateUrl: "Estimate (URL)",
+          estimateUrl: "Presupuesto (URL)",
           contactInfo: "Información de contacto",
           add: "Agregar",
           upload: "Subir archivo",
         },
         list: {
           none: "No hay clientes.",
-          viewEstimate: "Ver estimate",
+          viewEstimate: "Ver presupuesto",
           prompts: {
-            assign: "Assignee (email):",
-            due: "Due date (YYYY-MM-DD HH:mm):",
-            estimateUrl: "URL de Estimate:",
+            assign: "Responsable (email):",
+            due: "Fecha de vencimiento (YYYY-MM-DD HH:mm):",
+            estimateUrl: "URL del presupuesto:",
           },
         },
         toasts: {
           loadError: "Error al cargar clientes",
           created: "Cliente creado",
           cannotCreate: "No se pudo crear el cliente",
-          estimateUploaded: "Estimate subido",
+          estimateUploaded: "Presupuesto subido",
           moved: "Cliente movido",
           moveError: "No pude mover el cliente",
           updated: "Actualizado",
@@ -228,13 +241,13 @@ const resources = {
       },
 
       compras: {
-        title: "🛒 Lista de Compras",
+        title: "🛒 Lista de compras",
         fields: {
           product: "Producto",
           quantity: "Cantidad",
           note: "Observación",
         },
-        interpretPlaceholder: "Ej: 3 jeans y 2 celulares",
+        interpretPlaceholder: "Ej.: 3 jeans y 2 celulares",
         searchPlaceholder: "Buscar en la lista…",
         empty: "No hay ítems para mostrar",
         toasts: {
@@ -257,14 +270,14 @@ const resources = {
         title: "⚙️ Integraciones",
         slackWebhook: "Slack Incoming Webhook",
         placeholders: { webhook: "https://hooks.slack.com/services/…" },
-        tips: { dispatchNote: "Tip: el dispatch manda los recordatorios cuyo enviar_en sea ≤ ahora." },
+        tips: { dispatchNote: "Tip: el despacho manda recordatorios cuyo enviar_en sea ≤ ahora." },
         toasts: {
           saved: "Webhook guardado",
           cannotSave: "No se pudo guardar",
-          dispatchOk: "Dispatch OK: {{n}} enviados",
+          dispatchOk: "Despacho OK: {{n}} enviados",
           dispatchError: "No se pudo probar",
         },
-        buttons: { save: "Guardar", test: "Probar dispatch" },
+        buttons: { save: "Guardar", test: "Probar envío" },
       },
 
       analytics: {
@@ -276,10 +289,10 @@ const resources = {
         qualRate: "Tasa",
         uncontactable: "No contactables",
         noFirstTouch: "Sin primer contacto",
-        uncategorized: "Sin stage/pipeline",
+        uncategorized: "Sin etapa/pipeline",
         stalledIncoming: "Estancados en Incoming ≥ {{d}} días",
-        bySource: "Win rate por Source",
-        byOwner: "Win rate por Owner",
+        bySource: "Tasa de ganados por Origen",
+        byOwner: "Tasa de ganados por Responsable",
       },
     },
   },
@@ -314,9 +327,8 @@ const resources = {
         ok: "OK",
         cancel: "Cancel",
         clear: "Clear",
-        // ➕ new
         refreshInsights: "Refresh insights",
-        dispatchNow: "Send follow-ups",
+        dispatchNow: "Dispatch notices now",
         loading: "Loading...",
         sending: "Sending...",
         sentSummary: "{{ok}} sent, {{err}} failed",
@@ -324,8 +336,9 @@ const resources = {
 
       errors: {
         permission: "You don't have permission to run the dispatcher.",
-        genericSend: "Could not dispatch follow-ups.",
+        genericSend: "Could not dispatch notices.",
         generic: "Something went wrong.",
+        network: "Network error",
       },
 
       common: {
@@ -364,6 +377,18 @@ const resources = {
           due: "Due",
           overdue: "Overdue",
           dueToday: "Due today",
+        },
+        sources: {
+          Outreach: "Outreach",
+          "Building Connected": "Building Connected",
+          "Building Connected ITB": "Building Connected (ITB)",
+          "Blue Book": "Blue Book",
+          "Blue Book ITB": "Blue Book (ITB)",
+          Gmail: "Gmail",
+          Email: "Email",
+          Website: "Website",
+          Referral: "Referral",
+          Unknown: "Unknown",
         },
       },
 
@@ -486,11 +511,11 @@ const resources = {
         toasts: {
           loadError: "Failed to load tasks/clients",
           created: "Task created",
-          cannotCreate: "Could not create task",
+          cannotCreate: "Could not create the task",
           completed: "Task completed",
-          cannotComplete: "Could not complete task",
+          cannotComplete: "Could not complete",
           deleted: "Task deleted",
-          cannotDelete: "Could not delete task",
+          cannotDelete: "Could not delete",
         },
       },
 
