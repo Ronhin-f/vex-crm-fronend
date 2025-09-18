@@ -1,5 +1,6 @@
 // src/routes/ClientesKanban.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { fetchClientesKanban, moveCliente } from "../utils/vexKanbanApi";
 import api from "../utils/api";
 import { toast } from "react-hot-toast";
@@ -18,7 +19,7 @@ import {
   Tag,
 } from "lucide-react";
 
-// NUEVO orden con 2 columnas extra
+/* ─────────────── Pipeline canónico (BE) ─────────────── */
 const PIPELINE = [
   "Incoming Leads",
   "Unqualified",
@@ -28,17 +29,6 @@ const PIPELINE = [
   "Won",
   "Lost",
 ];
-
-// (Opcional/UI) etiquetas amigables
-const LABELS = {
-  "Incoming Leads": "Incoming Leads",
-  Unqualified: "No calificados",
-  Qualified: "Qualified",
-  "Follow-up Missed": "Follow-up perdido",
-  "Bid/Estimate Sent": "Estimate enviado",
-  Won: "Won",
-  Lost: "Lost",
-};
 
 /* ─────────────── Utils ─────────────── */
 function sortByDueCreated(items = []) {
@@ -82,7 +72,7 @@ function applyFiltersFE(list = [], f = {}) {
       const asg = (c.assignee_email || c.assignee || "").trim();
       if (f.assignee === "Sin asignar") {
         if (asg) return false;
-      } else if (asg.toLowerCase() !== f.assignee.toLowerCase()) {
+      } else if ((asg || "").toLowerCase() !== f.assignee.toLowerCase()) {
         return false;
       }
     }
@@ -96,17 +86,18 @@ function applyFiltersFE(list = [], f = {}) {
 
 /* ─────────────── Badges ─────────────── */
 function DueBadge({ date, compact }) {
-  if (!date) return null; // ⬅️ no mostramos placeholder
+  const { t } = useTranslation();
+  if (!date) return null; // no placeholder
   const due = new Date(date);
   const mins = (due.getTime() - Date.now()) / 60000;
   let tone = "badge-info";
-  let label = "Vence";
+  let label = t("common.badges.due");
   if (mins < 0) {
     tone = "badge-error";
-    label = "Vencido";
+    label = t("common.badges.overdue");
   } else if (mins <= 60 * 24) {
     tone = "badge-warning";
-    label = "Vence hoy";
+    label = t("common.badges.dueToday");
   }
   return (
     <span className={`badge ${tone} ${compact ? "badge-xs" : "badge-sm"} badge-outline`}>
@@ -117,18 +108,19 @@ function DueBadge({ date, compact }) {
 }
 
 function EstimateChip({ url, compact }) {
-  if (!url) return null; // ⬅️ no mostramos placeholder
+  const { t } = useTranslation();
+  if (!url) return null;
   return (
     <a
       href={url}
       target="_blank"
       rel="noreferrer"
       className={`badge badge-primary ${compact ? "badge-xs" : "badge-sm"} badge-outline no-underline`}
-      title="Ver estimate"
+      title={t("clients.list.viewEstimate")}
       onClick={(e) => e.stopPropagation()}
     >
       <Paperclip size={12} className="mr-1" />
-      Estimate
+      {t("common.badges.estimate")}
     </a>
   );
 }
@@ -161,10 +153,11 @@ function useQueryState() {
 }
 
 function FiltersBar({ value, onChange, onClear, right }) {
+  const { t } = useTranslation();
   const [typing, setTyping] = useState(value.q);
   useEffect(() => {
-    const t = setTimeout(() => onChange({ ...value, q: typing }), 350);
-    return () => clearTimeout(t);
+    const tmo = setTimeout(() => onChange({ ...value, q: typing }), 350);
+    return () => clearTimeout(tmo);
   }, [typing]); // eslint-disable-line
 
   return (
@@ -173,7 +166,7 @@ function FiltersBar({ value, onChange, onClear, right }) {
         <Search size={16} className="opacity-70" />
         <input
           className="input input-sm input-bordered w-full"
-          placeholder="Buscar (nombre, email, teléfono, empresa)"
+          placeholder={t("pipeline.filters.searchPlaceholder")}
           value={typing}
           onChange={(e) => setTyping(e.target.value)}
         />
@@ -185,11 +178,14 @@ function FiltersBar({ value, onChange, onClear, right }) {
           value={value.source}
           onChange={(e) => onChange({ ...value, source: e.target.value })}
         >
-          <option value="">Source: todos</option>
+          <option value="">{t("pipeline.filters.sourceAll")}</option>
+          {/* sources conocidos; si llega otro, se verá crudo */}
           <option>Outreach</option>
           <option>Blue Book ITB</option>
           <option>Inbound</option>
           <option>Referral</option>
+          <option>Building Connected</option>
+          <option>Gmail</option>
         </select>
 
         <select
@@ -197,15 +193,13 @@ function FiltersBar({ value, onChange, onClear, right }) {
           value={value.assignee}
           onChange={(e) => onChange({ ...value, assignee: e.target.value })}
         >
-          <option value="">Assignee: todos</option>
-          <option>Sin asignar</option>
-          <option>Mauricio</option>
-          <option>Melisa</option>
+          <option value="">{t("pipeline.filters.assigneeAll")}</option>
+          <option>{t("common.unassigned")}</option>
           {/* agrega tus usuarios reales si corresponde */}
         </select>
 
         <label className="label cursor-pointer gap-2">
-          <span className="label-text">Solo con follow-up</span>
+          <span className="label-text">{t("pipeline.filters.onlyDue")}</span>
           <input
             type="checkbox"
             className="toggle toggle-sm"
@@ -214,13 +208,13 @@ function FiltersBar({ value, onChange, onClear, right }) {
           />
         </label>
 
-        {(value.q || value.source || value.assignee || value.only_due) ? (
+        {value.q || value.source || value.assignee || value.only_due ? (
           <button className="btn btn-sm" onClick={onClear}>
-            <X size={16} /> Limpiar
+            <X size={16} /> {t("actions.clear")}
           </button>
         ) : (
           <div className="btn btn-sm btn-ghost no-animation">
-            <Filter size={16} /> Filtros
+            <Filter size={16} /> {t("pipeline.filters.title")}
           </div>
         )}
 
@@ -230,10 +224,13 @@ function FiltersBar({ value, onChange, onClear, right }) {
   );
 }
 
-/* ─────────────── Detalle (panel modal) ─────────────── */
+/* ─────────────── Detalle (modal) ─────────────── */
 function DetailModal({ open, onClose, item }) {
+  const { t } = useTranslation();
   if (!open || !item) return null;
-  const assignee = item.assignee_email || item.assignee || "Sin asignar";
+  const assignee = item.assignee_email || item.assignee || t("common.unassigned");
+  const stageLabel = (s) => t(`common.stages.${s}`, s);
+
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4" onClick={onClose}>
       <div
@@ -243,7 +240,7 @@ function DetailModal({ open, onClose, item }) {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h3 className="text-lg font-semibold truncate">
-              {item.nombre || item.empresa || item.email || "Sin nombre"}
+              {item.nombre || item.empresa || item.email || t("common.noData")}
             </h3>
             {item.empresa && (
               <div className="text-sm opacity-70 truncate flex items-center gap-1">
@@ -252,13 +249,13 @@ function DetailModal({ open, onClose, item }) {
             )}
           </div>
           <button className="btn btn-sm" onClick={onClose}>
-            <X size={16} /> Cerrar
+            <X size={16} /> {t("actions.close")}
           </button>
         </div>
 
         <div className="mt-3 grid md:grid-cols-2 gap-3">
           <div className="rounded-xl bg-base-200 p-3">
-            <div className="text-sm font-medium mb-2">Contacto</div>
+            <div className="text-sm font-medium mb-2">{t("pipeline.modals.contact")}</div>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <Mail size={14} /> {item.email || "—"}
@@ -273,21 +270,22 @@ function DetailModal({ open, onClose, item }) {
           </div>
 
           <div className="rounded-xl bg-base-200 p-3">
-            <div className="text-sm font-medium mb-2">Seguimiento</div>
+            <div className="text-sm font-medium mb-2">{t("pipeline.modals.tracking")}</div>
             <div className="flex flex-wrap gap-2 items-center">
               {item.source && (
                 <span className="badge badge-outline">
                   <Tag size={12} className="mr-1" />
-                  {item.source}
+                  {/* si no hay traducción de source, cae al crudo */}
+                  {t(`common.sources.${item.source}`, item.source)}
                 </span>
               )}
               <DueBadge date={item.due_date} />
               <EstimateChip url={item.estimate_url} />
-              {item.stage && <span className="badge badge-outline">{item.stage}</span>}
+              {item.stage && <span className="badge badge-outline">{stageLabel(item.stage)}</span>}
             </div>
             {item.notas && (
               <div className="mt-3">
-                <div className="text-xs opacity-60 mb-1">Notas</div>
+                <div className="text-xs opacity-60 mb-1">{t("common.notes")}</div>
                 <div className="rounded-lg bg-base-100 p-2 border border-base-300 text-sm whitespace-pre-wrap">
                   {item.notas}
                 </div>
@@ -297,7 +295,8 @@ function DetailModal({ open, onClose, item }) {
         </div>
 
         <div className="mt-3 text-xs opacity-60 flex items-center gap-3">
-          <Clock3 size={12} /> Creado: {item.created_at ? new Date(item.created_at).toLocaleString() : "—"}
+          <Clock3 size={12} /> {t("common.createdAt")}:{" "}
+          {item.created_at ? new Date(item.created_at).toLocaleString() : "—"}
         </div>
       </div>
     </div>
@@ -306,6 +305,7 @@ function DetailModal({ open, onClose, item }) {
 
 /* ─────────────── Página principal ─────────────── */
 export default function ClientesKanban() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useQueryState();
   const [cols, setCols] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -314,7 +314,7 @@ export default function ClientesKanban() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailItem, setDetailItem] = useState(null);
 
-  // NUEVO: modo compacto (persistente)
+  // Modo compacto (persistente)
   const [compact, setCompact] = useState(() => {
     try {
       const v = localStorage.getItem("vex_pipeline_compact");
@@ -355,7 +355,7 @@ export default function ClientesKanban() {
       const data = await fetchClientesKanban(beParams);
       if (myReq !== inflightRef.current) return;
 
-      // 2) enriquecemos con detalles de /clientes (con fallback FE si el BE devuelve 500)
+      // 2) enriquecemos con /clientes; fallback FE si BE falla
       let fullList = [];
       try {
         const res = await api.get(`/clientes${qs(beParams)}`);
@@ -399,7 +399,7 @@ export default function ClientesKanban() {
       if (myReq === inflightRef.current) setCols(ordered);
     } catch (e) {
       console.error(e);
-      toast.error("No pude cargar el Kanban de clientes");
+      toast.error(t("pipeline.toasts.loadError"));
     } finally {
       if (myReq === inflightRef.current && (firstLoadRef.current || cols.length === 0)) {
         setLoading(false);
@@ -440,7 +440,7 @@ export default function ClientesKanban() {
         if (idx >= 0) {
           const [itm] = from.items.splice(idx, 1);
           itm.categoria = toKey; // espejo por compat
-          itm.stage = toKey; // asegura que el detalle muestre la etapa nueva
+          itm.stage = toKey;
           to.items.unshift(itm);
           to.items = sortByDueCreated(to.items);
         }
@@ -448,13 +448,13 @@ export default function ClientesKanban() {
         to.count = to.items.length;
         return copy;
       });
-      toast.success(`Movido a ${toKey}`);
+      toast.success(t("pipeline.toasts.moved", { stage: t(`common.stages.${toKey}`, toKey) }));
     } catch {
-      toast.error("No pude mover el cliente");
+      toast.error(t("pipeline.toasts.moveError"));
     }
   }
 
-  // Layout de columnas dinámico (según cols o fallback PIPELINE)
+  // Layout dinámico
   const colCount = cols?.length || PIPELINE.length;
   const gridStyle = { gridTemplateColumns: `repeat(${colCount}, minmax(240px,1fr))` };
 
@@ -475,12 +475,15 @@ export default function ClientesKanban() {
       </div>
     );
 
+  const stageLabel = (s) => t(`common.stages.${s}`, s);
+  const sourceLabel = (s) => t(`common.sources.${s}`, s || "—");
+
   return (
     <div className="p-3">
       <div className="mb-3 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Pipeline — Clientes</h1>
+        <h1 className="text-2xl font-semibold">{t("pipeline.title")}</h1>
         <label className="label cursor-pointer gap-2">
-          <span className="text-sm opacity-80">Compacto</span>
+          <span className="text-sm opacity-80">{t("ui.compact", "Compacto")}</span>
           <input
             type="checkbox"
             className="toggle toggle-sm"
@@ -500,13 +503,13 @@ export default function ClientesKanban() {
         {cols.map((col) => (
           <Column
             key={col.key}
-            title={`${LABELS[col.key] ?? col.title} ${col.count ? `(${col.count})` : ""}`}
+            title={`${stageLabel(col.key)} ${col.count ? `(${col.count})` : ""}`}
             onDrop={(e) => onDrop(e, col.key)}
           >
             {col.items.map((item) => (
               <Card
                 key={item.id}
-                item={item}
+                item={{ ...item, sourceLabel }}
                 compact={compact}
                 onClick={() => {
                   setDetailItem(item);
@@ -544,14 +547,14 @@ function Column({ title, children, onDrop }) {
 }
 
 function Card({ item, onDragStart, onNext, isLast, onClick, compact }) {
+  const { t } = useTranslation();
   const assignee = item.assignee_email || item.assignee || null;
-  const title = item.nombre || item.empresa || item.email || "Sin nombre";
+  const title = item.nombre || item.empresa || item.email || t("common.noData");
 
-  // chips: ocultamos vacíos y reducimos en modo compacto
   const chips = [
     item.source && (
       <span key="src" className={`badge badge-outline ${compact ? "badge-xs" : "badge-sm"}`}>
-        {item.source}
+        {t(`common.sources.${item.source}`, item.source)}
       </span>
     ),
     assignee && (
@@ -575,7 +578,7 @@ function Card({ item, onDragStart, onNext, isLast, onClick, compact }) {
       className={`cursor-pointer active:cursor-grabbing rounded-xl border border-base-300 bg-base-100 p-3 hover:shadow ${
         compact ? "py-2" : "py-3"
       }`}
-      title="Click para ver detalle. Arrastrá para mover de etapa."
+      title={t("pipeline.help.cardHint")}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -589,7 +592,7 @@ function Card({ item, onDragStart, onNext, isLast, onClick, compact }) {
             onNext();
           }}
           disabled={isLast}
-          title={isLast ? "Última etapa" : "Mover a la siguiente etapa"}
+          title={isLast ? t("pipeline.help.lastStage") : t("pipeline.help.moveNext")}
         >
           <ChevronRight size={14} />
         </button>
@@ -599,14 +602,13 @@ function Card({ item, onDragStart, onNext, isLast, onClick, compact }) {
         <div className={`flex flex-wrap items-center gap-1.5 mt-2 ${compact ? "-mt-0.5" : ""}`}>
           {visible}
           {overflow > 0 && (
-            <div className={`badge badge-ghost ${compact ? "badge-xs" : "badge-sm"}`} title="Más info">
+            <div className={`badge badge-ghost ${compact ? "badge-xs" : "badge-sm"}`} title={t("cards.topRecentClients", "Más info")}>
               +{overflow}
             </div>
           )}
         </div>
       )}
 
-      {/* Contacto: solo si hay datos */}
       {(item.email || item.telefono) && (
         <div className={`grid grid-cols-2 gap-2 text-xs opacity-70 mt-2 ${compact ? "-mt-0.5" : ""}`}>
           {item.email && (
