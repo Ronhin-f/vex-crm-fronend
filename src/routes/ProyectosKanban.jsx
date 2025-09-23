@@ -1,7 +1,7 @@
-// src/routes/ClientesKanban.jsx
+// src/routes/ProyectosKanban.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { fetchClientesKanban, moveCliente } from "../utils/vexKanbanApi";
+import { fetchProyectosKanban, moveProyecto } from "../utils/vexKanbanApi";
 import api from "../utils/api";
 import { toast } from "react-hot-toast";
 import {
@@ -11,7 +11,6 @@ import {
   Paperclip,
   UserCircle2,
   ChevronRight,
-  Filter,
   X,
   Search,
   Clock3,
@@ -31,11 +30,11 @@ const PIPELINE = [
 ];
 
 /* ─────────────── Utils ─────────────── */
-function sortByDueCreated(items = []) {
+function sortByDueCreated(items = [], dueKey = "fecha_cierre_estimada") {
   const arr = [...items];
   arr.sort((a, b) => {
-    const da = a.due_date ? new Date(a.due_date).getTime() : Infinity;
-    const db = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+    const da = a[dueKey] ? new Date(a[dueKey]).getTime() : Infinity;
+    const db = b[dueKey] ? new Date(b[dueKey]).getTime() : Infinity;
     if (da !== db) return da - db;
     const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
     const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -55,49 +54,20 @@ function qs(params = {}) {
   return s ? `?${s}` : "";
 }
 
-/** Filtro FE cuando el BE no banca filtros */
-function applyFiltersFE(list = [], f = {}) {
-  const q = (f.q || "").toLowerCase().trim();
-  return (list || []).filter((c) => {
-    if (q) {
-      const hay = [c.nombre, c.empresa, c.email, c.telefono]
-        .map((v) => (v || "").toLowerCase())
-        .some((v) => v.includes(q));
-      if (!hay) return false;
-    }
-    if (f.source) {
-      if ((c.source || "") !== f.source) return false;
-    }
-    if (f.assignee) {
-      const asg = (c.assignee_email || c.assignee || "").trim();
-      if (f.assignee === "Sin asignar") {
-        if (asg) return false;
-      } else if ((asg || "").toLowerCase() !== f.assignee.toLowerCase()) {
-        return false;
-      }
-    }
-    if (f.only_due) {
-      const duev = c.due_date || c.next_follow_up;
-      if (!duev) return false;
-    }
-    return true;
-  });
-}
-
 /* ─────────────── Badges ─────────────── */
-function DueBadge({ date, compact }) {
+function DueBadge({ date, compact, labelOverride }) {
   const { t } = useTranslation();
-  if (!date) return null; // no placeholder
+  if (!date) return null;
   const due = new Date(date);
   const mins = (due.getTime() - Date.now()) / 60000;
   let tone = "badge-info";
-  let label = t("common.badges.due");
+  let label = labelOverride || t("common.badges.due");
   if (mins < 0) {
     tone = "badge-error";
-    label = t("common.badges.overdue");
+    label = labelOverride || t("common.badges.overdue");
   } else if (mins <= 60 * 24) {
     tone = "badge-warning";
-    label = t("common.badges.dueToday");
+    label = labelOverride || t("common.badges.dueToday");
   }
   return (
     <span className={`badge ${tone} ${compact ? "badge-xs" : "badge-sm"} badge-outline`}>
@@ -107,20 +77,32 @@ function DueBadge({ date, compact }) {
   );
 }
 
-function EstimateChip({ url, compact }) {
+function EstimateChip({ url, compact, amount, currency }) {
   const { t } = useTranslation();
-  if (!url) return null;
+  if (!url && amount == null) return null;
+  const text =
+    amount != null
+      ? `${t("common.badges.estimate")}: ${amount}${currency ? ` ${currency}` : ""}`
+      : t("common.badges.estimate");
+  const inner = (
+    <span
+      className={`badge badge-primary ${compact ? "badge-xs" : "badge-sm"} badge-outline no-underline`}
+      title={t("clients.list.viewEstimate")}
+    >
+      <Paperclip size={12} className="mr-1" />
+      {text}
+    </span>
+  );
+  if (!url) return inner;
   return (
     <a
       href={url}
       target="_blank"
       rel="noreferrer"
-      className={`badge badge-primary ${compact ? "badge-xs" : "badge-sm"} badge-outline no-underline`}
-      title={t("clients.list.viewEstimate")}
+      className="no-underline"
       onClick={(e) => e.stopPropagation()}
     >
-      <Paperclip size={12} className="mr-1" />
-      {t("common.badges.estimate")}
+      {inner}
     </a>
   );
 }
@@ -131,9 +113,8 @@ function useQueryState() {
     const u = new URL(window.location.href);
     return {
       q: u.searchParams.get("q") || "",
-      source: u.searchParams.get("source") || "",
-      assignee: u.searchParams.get("assignee") || "",
-      only_due: u.searchParams.get("only_due") === "1",
+      cliente_id: u.searchParams.get("cliente_id") || "",
+      stage: u.searchParams.get("stage") || "",
     };
   });
 
@@ -141,8 +122,8 @@ function useQueryState() {
     const current = new URL(window.location.href);
     const next = new URL(window.location.href);
     Object.entries(state).forEach(([k, v]) => {
-      if (!v || (k === "only_due" && !v)) next.searchParams.delete(k);
-      else next.searchParams.set(k, k === "only_due" ? "1" : String(v));
+      if (!v) next.searchParams.delete(k);
+      else next.searchParams.set(k, String(v));
     });
     if (next.search !== current.search) {
       window.history.replaceState({}, "", `${next.pathname}${next.search}`);
@@ -175,46 +156,31 @@ function FiltersBar({ value, onChange, onClear, right }) {
       <div className="flex gap-2 items-center">
         <select
           className="select select-sm select-bordered"
-          value={value.source}
-          onChange={(e) => onChange({ ...value, source: e.target.value })}
+          value={value.stage}
+          onChange={(e) => onChange({ ...value, stage: e.target.value })}
         >
-          <option value="">{t("pipeline.filters.sourceAll")}</option>
-          {/* sources conocidos; si llega otro, se verá crudo */}
-          <option>Outreach</option>
-          <option>Blue Book ITB</option>
-          <option>Inbound</option>
-          <option>Referral</option>
-          <option>Building Connected</option>
-          <option>Gmail</option>
+          <option value="">{t("pipeline.filters.stageAll", "Todas las etapas")}</option>
+          {PIPELINE.map((s) => (
+            <option key={s} value={s}>
+              {t(`common.stages.${s}`, s)}
+            </option>
+          ))}
         </select>
 
-        <select
-          className="select select-sm select-bordered"
-          value={value.assignee}
-          onChange={(e) => onChange({ ...value, assignee: e.target.value })}
-        >
-          <option value="">{t("pipeline.filters.assigneeAll")}</option>
-          <option>{t("common.unassigned")}</option>
-          {/* agrega tus usuarios reales si corresponde */}
-        </select>
+        <input
+          className="input input-sm input-bordered w-44"
+          placeholder={t("projects.filters.clientId", "Cliente ID")}
+          value={value.cliente_id}
+          onChange={(e) => onChange({ ...value, cliente_id: e.target.value })}
+        />
 
-        <label className="label cursor-pointer gap-2">
-          <span className="label-text">{t("pipeline.filters.onlyDue")}</span>
-          <input
-            type="checkbox"
-            className="toggle toggle-sm"
-            checked={value.only_due}
-            onChange={(e) => onChange({ ...value, only_due: e.target.checked })}
-          />
-        </label>
-
-        {value.q || value.source || value.assignee || value.only_due ? (
+        {value.q || value.stage || value.cliente_id ? (
           <button className="btn btn-sm" onClick={onClear}>
             <X size={16} /> {t("actions.clear")}
           </button>
         ) : (
           <div className="btn btn-sm btn-ghost no-animation">
-            <Filter size={16} /> {t("pipeline.filters.title")}
+            {t("pipeline.filters.title")}
           </div>
         )}
 
@@ -228,7 +194,6 @@ function FiltersBar({ value, onChange, onClear, right }) {
 function DetailModal({ open, onClose, item }) {
   const { t } = useTranslation();
   if (!open || !item) return null;
-  const assignee = item.assignee_email || item.assignee || t("common.unassigned");
   const stageLabel = (s) => t(`common.stages.${s}`, s);
 
   return (
@@ -240,11 +205,11 @@ function DetailModal({ open, onClose, item }) {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h3 className="text-lg font-semibold truncate">
-              {item.nombre || item.empresa || item.email || t("common.noData")}
+              {item.nombre || t("common.noData")}
             </h3>
-            {item.empresa && (
+            {item.cliente_id && (
               <div className="text-sm opacity-70 truncate flex items-center gap-1">
-                <Building2 size={14} /> {item.empresa}
+                <Building2 size={14} /> ID Cliente: {item.cliente_id}
               </div>
             )}
           </div>
@@ -253,7 +218,34 @@ function DetailModal({ open, onClose, item }) {
           </button>
         </div>
 
+        {item.descripcion && (
+          <div className="mt-3 rounded-xl bg-base-200 p-3 text-sm whitespace-pre-wrap">
+            {item.descripcion}
+          </div>
+        )}
+
         <div className="mt-3 grid md:grid-cols-2 gap-3">
+          <div className="rounded-xl bg-base-200 p-3">
+            <div className="text-sm font-medium mb-2">{t("projects.modal.meta", "Detalles")}</div>
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="badge badge-outline">{stageLabel(item.stage)}</span>
+              <EstimateChip
+                url={item.estimate_url}
+                amount={item.estimate_amount}
+                currency={item.estimate_currency}
+              />
+              {item.prob_win != null && (
+                <span className="badge badge-outline">
+                  {t("projects.fields.probWin", "Prob. win")}: {item.prob_win}%
+                </span>
+              )}
+              <DueBadge
+                date={item.fecha_cierre_estimada}
+                labelOverride={t("projects.fields.closeDate", "Cierre est.")}
+              />
+            </div>
+          </div>
+
           <div className="rounded-xl bg-base-200 p-3">
             <div className="text-sm font-medium mb-2">{t("pipeline.modals.contact")}</div>
             <div className="space-y-2 text-sm">
@@ -263,34 +255,17 @@ function DetailModal({ open, onClose, item }) {
               <div className="flex items-center gap-2">
                 <Phone size={14} /> {item.telefono || "—"}
               </div>
-              <div className="flex items-center gap-2">
-                <UserCircle2 size={14} /> {assignee}
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-base-200 p-3">
-            <div className="text-sm font-medium mb-2">{t("pipeline.modals.tracking")}</div>
-            <div className="flex flex-wrap gap-2 items-center">
-              {item.source && (
-                <span className="badge badge-outline">
-                  <Tag size={12} className="mr-1" />
-                  {/* si no hay traducción de source, cae al crudo */}
-                  {t(`common.sources.${item.source}`, item.source)}
-                </span>
-              )}
-              <DueBadge date={item.due_date} />
-              <EstimateChip url={item.estimate_url} />
-              {item.stage && <span className="badge badge-outline">{stageLabel(item.stage)}</span>}
-            </div>
-            {item.notas && (
-              <div className="mt-3">
-                <div className="text-xs opacity-60 mb-1">{t("common.notes")}</div>
-                <div className="rounded-lg bg-base-100 p-2 border border-base-300 text-sm whitespace-pre-wrap">
-                  {item.notas}
+              {item.assignee && (
+                <div className="flex items-center gap-2">
+                  <UserCircle2 size={14} /> {item.assignee}
                 </div>
-              </div>
-            )}
+              )}
+              {item.source && (
+                <div className="flex items-center gap-2">
+                  <Tag size={14} /> {t(`common.sources.${item.source}`, item.source)}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -304,7 +279,7 @@ function DetailModal({ open, onClose, item }) {
 }
 
 /* ─────────────── Página principal ─────────────── */
-export default function ClientesKanban() {
+export default function ProyectosKanban() {
   const { t } = useTranslation();
   const [filters, setFilters] = useQueryState();
   const [cols, setCols] = useState([]);
@@ -346,28 +321,39 @@ export default function ClientesKanban() {
     try {
       const beParams = {
         q: filters.q || undefined,
-        source: filters.source || undefined,
-        assignee: filters.assignee || undefined,
-        only_due: filters.only_due ? 1 : undefined,
+        stage: filters.stage || undefined,
+        cliente_id: filters.cliente_id || undefined,
       };
 
-      // 1) columnas del kanban
-      const data = await fetchClientesKanban(beParams);
+      // 1) columnas del kanban (proyectos)
+      const data = await fetchProyectosKanban(beParams);
       if (myReq !== inflightRef.current) return;
 
-      // 2) enriquecemos con /clientes; fallback FE si BE falla
+      // 2) enriquecemos con /proyectos; si BE no banca filtros, hacemos fallback
       let fullList = [];
       try {
-        const res = await api.get(`/clientes${qs(beParams)}`);
-        fullList = Array.isArray(res.data) ? res.data : [];
+        const res = await api.get(`/proyectos${qs(beParams)}`);
+        const payload = res.data;
+        fullList = Array.isArray(payload?.items) ? payload.items : Array.isArray(payload) ? payload : [];
       } catch {
-        const res = await api.get(`/clientes`);
-        const all = Array.isArray(res.data) ? res.data : [];
-        fullList = applyFiltersFE(all, beParams);
+        const res = await api.get(`/proyectos`);
+        const payload = res.data;
+        fullList = Array.isArray(payload?.items) ? payload.items : Array.isArray(payload) ? payload : [];
+        // filtros FE simples
+        if (filters.q) {
+          const qv = filters.q.toLowerCase().trim();
+          fullList = fullList.filter(
+            (p) =>
+              (p.nombre || "").toLowerCase().includes(qv) ||
+              (p.descripcion || "").toLowerCase().includes(qv)
+          );
+        }
+        if (filters.stage) fullList = fullList.filter((p) => p.stage === filters.stage);
+        if (filters.cliente_id) fullList = fullList.filter((p) => String(p.cliente_id || "") === String(filters.cliente_id));
       }
       if (myReq !== inflightRef.current) return;
 
-      const byId = new Map(fullList.map((c) => [c.id, c]));
+      const byId = new Map(fullList.map((p) => [p.id, p]));
 
       let ordered = [];
       if (Array.isArray(data?.columns)) {
@@ -430,7 +416,7 @@ export default function ClientesKanban() {
 
   async function doMove(id, fromKey, toKey) {
     try {
-      await moveCliente(id, toKey);
+      await moveProyecto(id, toKey);
       setCols((prev) => {
         const copy = prev.map((c) => ({ ...c, items: [...c.items] }));
         const from = copy.find((c) => c.key === fromKey);
@@ -476,12 +462,11 @@ export default function ClientesKanban() {
     );
 
   const stageLabel = (s) => t(`common.stages.${s}`, s);
-  const sourceLabel = (s) => t(`common.sources.${s}`, s || "—");
 
   return (
     <div className="p-3">
       <div className="mb-3 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{t("pipeline.title")}</h1>
+        <h1 className="text-2xl font-semibold">Proyectos</h1>
         <label className="label cursor-pointer gap-2">
           <span className="text-sm opacity-80">{t("ui.compact", "Compacto")}</span>
           <input
@@ -496,7 +481,7 @@ export default function ClientesKanban() {
       <FiltersBar
         value={filters}
         onChange={setFilters}
-        onClear={() => setFilters({ q: "", source: "", assignee: "", only_due: false })}
+        onClear={() => setFilters({ q: "", stage: "", cliente_id: "" })}
       />
 
       <div className="grid gap-3" style={gridStyle}>
@@ -509,7 +494,7 @@ export default function ClientesKanban() {
             {col.items.map((item) => (
               <Card
                 key={item.id}
-                item={{ ...item, sourceLabel }}
+                item={item}
                 compact={compact}
                 onClick={() => {
                   setDetailItem(item);
@@ -548,26 +533,37 @@ function Column({ title, children, onDrop }) {
 
 function Card({ item, onDragStart, onNext, isLast, onClick, compact }) {
   const { t } = useTranslation();
-  const assignee = item.assignee_email || item.assignee || null;
-  const title = item.nombre || item.empresa || item.email || t("common.noData");
+  const title = item.nombre || t("common.noData");
 
   const chips = [
-    item.source && (
-      <span key="src" className={`badge badge-outline ${compact ? "badge-xs" : "badge-sm"}`}>
-        {t(`common.sources.${item.source}`, item.source)}
+    item.stage && (
+      <span key="stage" className={`badge badge-outline ${compact ? "badge-xs" : "badge-sm"}`}>
+        {t(`common.stages.${item.stage}`, item.stage)}
       </span>
     ),
-    assignee && (
-      <span key="asg" className={`badge badge-outline ${compact ? "badge-xs" : "badge-sm"}`}>
-        <UserCircle2 size={12} className="mr-1" />
-        {(assignee.split?.("@")[0] || assignee)}
+    <EstimateChip
+      key="est"
+      url={item.estimate_url}
+      amount={item.estimate_amount}
+      currency={item.estimate_currency}
+      compact={compact}
+    />,
+    item.prob_win != null && (
+      <span key="prob" className={`badge badge-outline ${compact ? "badge-xs" : "badge-sm"}`}>
+        {t("projects.fields.probWin", "Prob. win")}: {item.prob_win}%
       </span>
     ),
-    item.due_date && <DueBadge key="due" date={item.due_date} compact={compact} />,
-    item.estimate_url && <EstimateChip key="est" url={item.estimate_url} compact={compact} />,
+    item.fecha_cierre_estimada && (
+      <DueBadge
+        key="close"
+        date={item.fecha_cierre_estimada}
+        compact={compact}
+        labelOverride={t("projects.fields.closeDate", "Cierre est.")}
+      />
+    ),
   ].filter(Boolean);
 
-  const visible = compact ? chips.slice(0, 2) : chips;
+  const visible = compact ? chips.slice(0, 3) : chips;
   const overflow = chips.length - visible.length;
 
   return (
@@ -583,7 +579,11 @@ function Card({ item, onDragStart, onNext, isLast, onClick, compact }) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className={`font-medium truncate ${compact ? "text-sm" : ""}`}>{title}</div>
-          {item.empresa && item.nombre && <div className="text-xs opacity-60 truncate">{item.empresa}</div>}
+          {item.cliente_id && (
+            <div className="text-xs opacity-60 truncate flex items-center gap-1">
+              <Building2 size={12} /> ID Cliente: {item.cliente_id}
+            </div>
+          )}
         </div>
         <button
           className="btn btn-ghost btn-xs"

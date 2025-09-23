@@ -9,12 +9,12 @@ import RutaProtegida from "./components/RutaPrivada";
 import { AuthProvider } from "./context/AuthContext";
 
 // ─── Lazy routes (code split) ────────────────────────────────────────────────
-const DashboardCRM   = lazy(() => import("./routes/DashboardCRM"));
-const Clientes       = lazy(() => import("./routes/Clientes"));
-const Tareas         = lazy(() => import("./routes/Tareas"));
-const Compras        = lazy(() => import("./routes/Compras"));
-const ClientesKanban = lazy(() => import("./routes/ClientesKanban"));
-const TareasKanban   = lazy(() => import("./routes/TareasKanban"));
+const DashboardCRM    = lazy(() => import("./routes/DashboardCRM"));
+const Clientes        = lazy(() => import("./routes/Clientes"));
+const Tareas          = lazy(() => import("./routes/Tareas"));
+const Proveedores     = lazy(() => import("./routes/Proveedores"));
+const ProyectosKanban = lazy(() => import("./routes/ProyectosKanban"));
+const TareasKanban    = lazy(() => import("./routes/TareasKanban"));
 
 const PageLoader = () => (
   <div className="p-6">
@@ -107,10 +107,13 @@ const router = createHashRouter([
       { path: "dashboard", element: <Navigate to="/" replace /> }, // alias legacy
       { path: "clientes", element: withSuspense(<Clientes />) },
       { path: "tareas", element: withSuspense(<Tareas />) },
-      { path: "compras", element: withSuspense(<Compras />) },
+
+      // Proveedores (reemplaza al viejo módulo de compras)
+      { path: "proveedores", element: withSuspense(<Proveedores />) },
+      { path: "compras", element: <Navigate to="/proveedores" replace /> }, // alias por compat
 
       // Kanban
-      { path: "pipeline", element: withSuspense(<ClientesKanban />) },
+      { path: "pipeline", element: withSuspense(<ProyectosKanban />) },
       { path: "kanban-tareas", element: withSuspense(<TareasKanban />) },
 
       // Aliases/retrocompat

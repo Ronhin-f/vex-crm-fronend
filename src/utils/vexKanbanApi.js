@@ -40,35 +40,48 @@ const DEFAULT_CLIENTES_ORDER = [
 
 // Soportamos filtros: q, source, assignee, only_due (boolean)
 export async function fetchClientesKanban(filters = {}) {
-  // Endpoint kanban dedicado, si existe; si no, re-construimos desde /clientes
   try {
     const { data } = await api.get(`/kanban/clientes${qs(filters)}`);
-    // data esperado: { columns: { [stage]: Cliente[] } | [{key,items}], order?: string[] }
     return normalizeKanban(data);
   } catch {
-    // Fallback: traemos todos y agrupamos en FE
     const { data: lista } = await api.get(`/clientes${qs(filters)}`);
     const order = [...DEFAULT_CLIENTES_ORDER];
     const columns = {};
     order.forEach((k) => (columns[k] = []));
     (lista || []).forEach((c) => {
       const stage = c.stage || "Incoming Leads";
-      if (!columns[stage]) columns[stage] = []; // soporta stages extra que vengan del BE
+      if (!columns[stage]) columns[stage] = [];
       columns[stage].push(c);
     });
     return normalizeKanban({ columns, order });
   }
 }
 
-// Normaliza + ordena por follow-up (si existe), luego created_at e id
-function normalizeKanban(raw) {
-  // Preferimos el order del BE; si no hay, usamos el default y agregamos extras al final
-  let order = raw?.order?.length ? raw.order : [...DEFAULT_CLIENTES_ORDER];
+// ─────────────────── Proyectos: Kanban ───────────────────
+export async function fetchProyectosKanban(filters = {}) {
+  try {
+    const { data } = await api.get(`/kanban/proyectos${qs(filters)}`);
+    return normalizeKanban(data);
+  } catch {
+    const { data: lista } = await api.get(`/proyectos${qs(filters)}`);
+    const order = [...DEFAULT_CLIENTES_ORDER];
+    const columns = {};
+    order.forEach((k) => (columns[k] = []));
+    (lista || []).forEach((p) => {
+      const stage = p.stage || "Incoming Leads";
+      if (!columns[stage]) columns[stage] = [];
+      columns[stage].push(p);
+    });
+    return normalizeKanban({ columns, order });
+  }
+}
 
+// Normaliza + ordena
+function normalizeKanban(raw) {
+  let order = raw?.order?.length ? raw.order : [...DEFAULT_CLIENTES_ORDER];
   const columns = {};
 
   if (Array.isArray(raw?.columns)) {
-    // Ej: [{key,title,items}]
     for (const col of raw.columns) {
       const key = col.key || col.title || "Incoming Leads";
       const arr = [...(col.items || [])];
@@ -88,8 +101,6 @@ function normalizeKanban(raw) {
       order = [...order, ...extras];
     }
   } else {
-    // Ej: { columns: { "Qualified": [...], ... } }
-    // Respetamos el order dado; si no hay, usamos default y luego agregamos extras al final
     const incomingKeys = raw?.columns ? Object.keys(raw.columns) : [];
     const extras = incomingKeys.filter((k) => !order.includes(k));
     order = raw?.order?.length ? raw.order : [...order, ...extras];
@@ -102,7 +113,7 @@ function normalizeKanban(raw) {
         if (da !== db) return da - db;
         const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
         const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
-        if (cb !== ca) return cb - ca; // más nuevo primero
+        if (cb !== ca) return cb - ca;
         return (a.id || 0) - (b.id || 0);
       });
       columns[col] = arr;
@@ -119,10 +130,15 @@ export async function moveCliente(id, stage, orden) {
   return data;
 }
 
+export async function moveProyecto(id, stage, orden) {
+  const payload = { stage };
+  if (typeof orden === "number") payload.orden = orden;
+  const { data } = await api.patch(`/kanban/proyectos/${id}/move`, payload);
+  return data;
+}
+
 // ─────────────────── Tareas: Kanban ───────────────────
-// Soporta filtros: q, assignee, only_due, etc.
 export async function fetchTareasKanban(filters = {}) {
-  // 1) Intento con endpoint dedicado si existe
   try {
     const { data } = await api.get(`/kanban/tareas${qs(filters)}`);
     if (Array.isArray(data?.columns)) {
@@ -142,11 +158,7 @@ export async function fetchTareasKanban(filters = {}) {
       });
       return { columns, order };
     }
-  } catch {
-    // seguimos al fallback
-  }
-
-  // 2) Fallback: construimos desde /tareas
+  } catch {}
   const { data: lista = [] } = await api.get(`/tareas${qs(filters)}`);
   const byEstado = new Map();
   (Array.isArray(lista) ? lista : []).forEach((t) => {
@@ -166,7 +178,6 @@ export async function fetchTareasKanban(filters = {}) {
   return { columns, order };
 }
 
-// (existente) mover tarea dentro del kanban
 export async function moveTarea(id, estado, orden) {
   const payload = { estado };
   if (typeof orden === "number") payload.orden = orden;
@@ -174,7 +185,6 @@ export async function moveTarea(id, estado, orden) {
   return data;
 }
 
-// KPIs (existente)
 export async function fetchKpis() {
   const { data } = await api.get("/kanban/kpis");
   return data;
