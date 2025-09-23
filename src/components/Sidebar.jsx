@@ -71,20 +71,18 @@ export default function Sidebar({ onNavigate = () => {} }) {
               <Users size={18} /> {t("nav.clients", "Clientes")}
             </NavLink>
           </li>
+
           {/* Proyectos (pipeline basado en oportunidades) */}
           <li className="mx-1">
             <NavLink to="/pipeline" onClick={onNavigate} className={linkClass}>
               <KanbanSquare size={18} /> {t("nav.projects", "Proyectos")}
             </NavLink>
           </li>
-          {/* Proveedores */}
+
+          {/* Subcontratistas */}
           <li className="mx-1">
-            <NavLink
-              to="/proveedores"
-              onClick={onNavigate}
-              className={linkClass}
-            >
-              <Building2 size={18} /> {t("nav.vendors", "Proveedores")}
+            <NavLink to="/proveedores" onClick={onNavigate} className={linkClass}>
+              <Building2 size={18} /> {t("nav.providers", "Subcontratistas")}
             </NavLink>
           </li>
 
@@ -101,6 +99,7 @@ export default function Sidebar({ onNavigate = () => {} }) {
               <FileText size={18} /> {t("nav.tasks", "Tareas")}
             </NavLink>
           </li>
+
           {/* Kanban de tareas */}
           <li className="mx-1">
             <NavLink
@@ -108,7 +107,7 @@ export default function Sidebar({ onNavigate = () => {} }) {
               onClick={onNavigate}
               className={linkClass}
             >
-              <ListTodo size={18} /> {t("nav.kanbanTasks", "Kanban tareas")}
+              <ListTodo size={18} /> {t("nav.kanbanTasks", "Kanban de tareas")}
             </NavLink>
           </li>
         </ul>

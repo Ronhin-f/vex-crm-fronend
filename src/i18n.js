@@ -25,9 +25,9 @@ const resources = {
       nav: {
         dashboard: "Tablero",
         clients: "Clientes",
-        projects: "Proyectos",        // ✅ NUEVO
-        suppliers: "Proveedores",     // ✅ NUEVO
-        orders: "Compras",            // (legacy/compat)
+        projects: "Proyectos",
+        providers: "Subcontratistas",
+        orders: "Compras",
         tasks: "Tareas",
         pipeline: "Pipeline",
         kanbanTasks: "Kanban de tareas",
@@ -101,7 +101,6 @@ const resources = {
           overdue: "Vencido",
           dueToday: "Vence hoy",
         },
-        // Etiquetas estándar para orígenes conocidos (fallback si no matchea)
         sources: {
           Outreach: "Prospección",
           "Building Connected": "Building Connected",
@@ -142,9 +141,8 @@ const resources = {
         empty: "Aún no hay recomendaciones. Cargá clientes/tareas y volvé a intentar.",
       },
 
-      // ✅ Ajustado para que el título diga “Proyectos”
       pipeline: {
-        title: "Proyectos",
+        title: "Pipeline — Clientes",
         empty: "Sin tarjetas",
         movedTo: "Movido a {{stage}}",
         filters: {
@@ -159,11 +157,14 @@ const resources = {
           lastStage: "Última etapa",
           moveNext: "Mover a la siguiente etapa",
         },
-        // ✅ Mensajes actualizados a “proyecto”
+        modals: {
+          contact: "Contacto",
+          tracking: "Seguimiento",
+        },
         toasts: {
-          loadError: "No pude cargar el Kanban de proyectos",
-          moved: "Proyecto movido a {{stage}}",
-          moveError: "No pude mover el proyecto",
+          loadError: "No pude cargar el Kanban de clientes",
+          moved: "Movido a {{stage}}",
+          moveError: "No pude mover el cliente",
         },
       },
 
@@ -305,9 +306,9 @@ const resources = {
       nav: {
         dashboard: "Dashboard",
         clients: "Clients",
-        projects: "Projects",        // ✅ NEW
-        suppliers: "Suppliers",      // ✅ NEW
-        orders: "Purchases",         // (legacy/compat)
+        projects: "Projects",
+        providers: "Subcontractors",
+        orders: "Purchases",
         tasks: "Tasks",
         pipeline: "Pipeline",
         kanbanTasks: "Tasks Kanban",
@@ -416,9 +417,13 @@ const resources = {
         insights: "Business insights",
       },
 
-      // ✅ Adjusted so header shows “Projects”
+      insights: {
+        baseline: "Baseline",
+        empty: "No recommendations yet. Add clients/tasks and try again.",
+      },
+
       pipeline: {
-        title: "Projects",
+        title: "Pipeline — Clients",
         empty: "No cards",
         movedTo: "Moved to {{stage}}",
         filters: {
@@ -433,11 +438,14 @@ const resources = {
           lastStage: "Last stage",
           moveNext: "Move to next stage",
         },
-        // ✅ Messages updated to “project”
+        modals: {
+          contact: "Contact",
+          tracking: "Follow-up",
+        },
         toasts: {
-          loadError: "Couldn't load projects Kanban",
-          moved: "Project moved to {{stage}}",
-          moveError: "Couldn't move project",
+          loadError: "Couldn't load clients Kanban",
+          moved: "Moved to {{stage}}",
+          moveError: "Couldn't move client",
         },
       },
 
@@ -580,7 +588,6 @@ i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
-// Persistir cambio de idioma
 i18n.on("languageChanged", (lng) => {
   try { localStorage.setItem("vex_lang", lng); } catch {}
 });

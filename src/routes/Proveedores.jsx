@@ -1,5 +1,5 @@
 // src/routes/Proveedores.jsx
-// Reemplazado por listado + CRUD de Proveedores/Subcontratistas
+// Listado + CRUD de Subcontratistas/Proveedores (API: /proveedores)
 import { useEffect, useState } from "react";
 import api from "../utils/api";
 import { toast } from "react-hot-toast";
@@ -27,8 +27,8 @@ function qs(obj = {}) {
   return s ? `?${s}` : "";
 }
 
-export default function Compras() {
-  // Ahora esta ruta muestra Proveedores
+export default function Proveedores() {
+  // Esta vista usa la tabla "proveedores" del BE, pero rotulamos como "Subcontratistas"
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,10 +36,10 @@ export default function Compras() {
   const [q, setQ] = useState("");
   const [tipo, setTipo] = useState("");
 
-  // alta rápida
+  // alta rápida (por defecto: subcontratista)
   const [form, setForm] = useState({
     nombre: "",
-    tipo: "proveedor",
+    tipo: "subcontratista",
     email: "",
     telefono: "",
     direccion: "",
@@ -50,7 +50,7 @@ export default function Compras() {
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({
     nombre: "",
-    tipo: "proveedor",
+    tipo: "subcontratista",
     email: "",
     telefono: "",
     direccion: "",
@@ -64,7 +64,7 @@ export default function Compras() {
       setItems(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
-      toast.error("No pude cargar proveedores");
+      toast.error("No pude cargar subcontratistas");
     } finally {
       setLoading(false);
     }
@@ -94,16 +94,16 @@ export default function Compras() {
       setItems((prev) => [data, ...prev]);
       setForm({
         nombre: "",
-        tipo: "proveedor",
+        tipo: "subcontratista",
         email: "",
         telefono: "",
         direccion: "",
         notas: "",
       });
-      toast.success("Proveedor creado");
+      toast.success("Subcontratista creado");
     } catch (e) {
       console.error(e);
-      toast.error("No pude crear el proveedor");
+      toast.error("No pude crear el subcontratista");
     }
   }
 
@@ -111,7 +111,7 @@ export default function Compras() {
     setEditingId(it.id);
     setDraft({
       nombre: it.nombre || "",
-      tipo: it.tipo || "proveedor",
+      tipo: it.tipo || "subcontratista",
       email: it.email || "",
       telefono: it.telefono || "",
       direccion: it.direccion || "",
@@ -132,22 +132,22 @@ export default function Compras() {
       const { data } = await api.patch(`/proveedores/${id}`, payload);
       setItems((prev) => prev.map((x) => (x.id === id ? { ...x, ...data } : x)));
       setEditingId(null);
-      toast.success("Proveedor actualizado");
+      toast.success("Subcontratista actualizado");
     } catch (e) {
       console.error(e);
-      toast.error("No pude actualizar el proveedor");
+      toast.error("No pude actualizar el subcontratista");
     }
   }
 
   async function remove(id) {
-    if (!confirm("¿Eliminar proveedor?")) return;
+    if (!confirm("¿Eliminar subcontratista?")) return;
     try {
       await api.delete(`/proveedores/${id}`);
       setItems((prev) => prev.filter((x) => x.id !== id));
-      toast.success("Proveedor eliminado");
+      toast.success("Subcontratista eliminado");
     } catch (e) {
       console.error(e);
-      toast.error("No pude eliminar el proveedor");
+      toast.error("No pude eliminar el subcontratista");
     }
   }
 
@@ -155,7 +155,7 @@ export default function Compras() {
     <div className="max-w-6xl mx-auto p-4 md:p-6">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Building2 size={22} /> Proveedores
+          <Building2 size={22} /> Subcontratistas
         </h1>
         <div className="flex items-center gap-2">
           <div className="join">
@@ -175,8 +175,8 @@ export default function Compras() {
               title="Tipo"
             >
               <option value="">Todos</option>
-              <option value="proveedor">Proveedor</option>
               <option value="subcontratista">Subcontratista</option>
+              <option value="proveedor">Proveedor</option>
             </select>
             {(q || tipo) && (
               <button
@@ -212,8 +212,8 @@ export default function Compras() {
               value={form.tipo}
               onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}
             >
-              <option value="proveedor">Proveedor</option>
               <option value="subcontratista">Subcontratista</option>
+              <option value="proveedor">Proveedor</option>
             </select>
           </div>
           <div className="md:col-span-3">
@@ -224,7 +224,7 @@ export default function Compras() {
                 className="input input-bordered w-full pl-8"
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                placeholder="contacto@proveedor.com"
+                placeholder="contacto@subcontratista.com"
               />
             </div>
           </div>
@@ -269,7 +269,7 @@ export default function Compras() {
           <div className="md:col-span-12">
             <button className="btn btn-primary">
               <Plus size={16} />
-              Agregar proveedor
+              Agregar subcontratista
             </button>
           </div>
         </div>
@@ -302,7 +302,9 @@ export default function Compras() {
               ) : items.length === 0 ? (
                 <tr>
                   <td colSpan={7}>
-                    <div className="p-6 text-sm opacity-70">No hay proveedores.</div>
+                    <div className="p-6 text-sm opacity-70">
+                      No hay subcontratistas.
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -332,8 +334,8 @@ export default function Compras() {
                               setDraft((d) => ({ ...d, tipo: e.target.value }))
                             }
                           >
-                            <option value="proveedor">Proveedor</option>
                             <option value="subcontratista">Subcontratista</option>
+                            <option value="proveedor">Proveedor</option>
                           </select>
                         ) : (
                           <span className="badge badge-outline">{it.tipo || "—"}</span>
