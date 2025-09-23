@@ -179,6 +179,7 @@ function FiltersBar({ value, onChange, onClear, right }) {
           onChange={(e) => onChange({ ...value, source: e.target.value })}
         >
           <option value="">{t("pipeline.filters.sourceAll")}</option>
+          {/* sources conocidos; si llega otro, se verá crudo */}
           <option>Outreach</option>
           <option>Blue Book ITB</option>
           <option>Inbound</option>
@@ -194,6 +195,7 @@ function FiltersBar({ value, onChange, onClear, right }) {
         >
           <option value="">{t("pipeline.filters.assigneeAll")}</option>
           <option>{t("common.unassigned")}</option>
+          {/* agrega tus usuarios reales si corresponde */}
         </select>
 
         <label className="label cursor-pointer gap-2">
@@ -306,7 +308,6 @@ export default function ProyectosKanban() {
   const [filters, setFilters] = useQueryState();
   const [cols, setCols] = useState([]);
   const [loading, setLoading] = useState(true);
-  const colMap = useMemo(() => new Map(cols.map((c) => [c.key, c])), [cols]);
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailItem, setDetailItem] = useState(null);
@@ -352,7 +353,7 @@ export default function ProyectosKanban() {
       const data = await fetchProyectosKanban(beParams);
       if (myReq !== inflightRef.current) return;
 
-      // 2) enriquecemos con /clientes; merge por cliente_id
+      // 2) enriquecer con /clientes para completar email/teléfono/empresa
       let fullClients = [];
       try {
         const res = await api.get(`/clientes`);
@@ -450,7 +451,7 @@ export default function ProyectosKanban() {
         const idx = from.items.findIndex((x) => x.id === id);
         if (idx >= 0) {
           const [itm] = from.items.splice(idx, 1);
-          itm.categoria = toKey;
+          itm.categoria = toKey; // espejo por compat
           itm.stage = toKey;
           to.items.unshift(itm);
           to.items = sortByDueCreated(to.items);
@@ -486,14 +487,13 @@ export default function ProyectosKanban() {
     );
 
   const stageLabel = (s) => t(`common.stages.${s}`, s);
-  const sourceLabel = (s) => t(`common.sources.${s}`, s || "—");
 
   return (
     <div className="p-3">
       <div className="mb-3 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{t("pipeline.title")}</h1>
+        <h1 className="text-2xl font-semibold">{t("pipeline.titleProjects", "Pipeline — Proyectos")}</h1>
         <label className="label cursor-pointer gap-2">
-          <span className="text-sm opacity-80">Compacto</span>
+          <span className="text-sm opacity-80">{t("ui.compact", "Compacto")}</span>
           <input
             type="checkbox"
             className="toggle toggle-sm"
@@ -519,7 +519,7 @@ export default function ProyectosKanban() {
             {col.items.map((item) => (
               <Card
                 key={item.id}
-                item={{ ...item, sourceLabel }}
+                item={item}
                 compact={compact}
                 onClick={() => {
                   setDetailItem(item);

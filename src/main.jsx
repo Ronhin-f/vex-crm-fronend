@@ -35,22 +35,20 @@ const ErrorFallback = () => (
    Guarda en localStorage ANTES de montar React y normaliza a /#/
    ────────────────────────────────────────────────────────────── */
 (() => {
-  // Extrae params de un string que puede tener "#/ruta?..." o "?..."
   const paramsFrom = (str) => {
     if (!str) return new URLSearchParams();
     const i = str.indexOf("?");
     return new URLSearchParams(i >= 0 ? str.slice(i + 1) : "");
   };
 
-  const qs = new URLSearchParams(window.location.search); // ?...
-  const hs = paramsFrom(window.location.hash);            // #/?...
+  const qs = new URLSearchParams(window.location.search);
+  const hs = paramsFrom(window.location.hash);
 
   const vexToken =
     qs.get("vex_token") || qs.get("token") ||
     hs.get("vex_token") || hs.get("token");
 
   const userParam = qs.get("user") || hs.get("user");
-
   let changed = false;
 
   if (vexToken) {
@@ -61,7 +59,6 @@ const ErrorFallback = () => (
 
   if (userParam) {
     try {
-      // URLSearchParams ya decodifica; parse directo
       const u = JSON.parse(userParam);
       localStorage.setItem("user", JSON.stringify(u));
       if (u?.email) localStorage.setItem("usuario_email", u.email);
@@ -70,7 +67,6 @@ const ErrorFallback = () => (
       localStorage.setItem("login-event", String(Date.now()));
       changed = true;
     } catch {
-      // intento de respaldo si viniera doble-encodificado
       try {
         const u = JSON.parse(decodeURIComponent(userParam));
         localStorage.setItem("user", JSON.stringify(u));
@@ -84,9 +80,8 @@ const ErrorFallback = () => (
   }
 
   if (changed) {
-    // HashRouter: aseguramos quedarnos en una ruta válida
     const target = (location.hash && location.hash.startsWith("#/")) ? location.hash : "#/";
-    history.replaceState({}, document.title, "/" + target); // limpia query y deja hash bueno
+    history.replaceState({}, document.title, "/" + target);
   }
 })();
 
@@ -105,6 +100,8 @@ const router = createHashRouter([
     children: [
       { index: true, element: withSuspense(<DashboardCRM />) },
       { path: "dashboard", element: <Navigate to="/" replace /> }, // alias legacy
+
+      // CRM
       { path: "clientes", element: withSuspense(<Clientes />) },
       { path: "tareas", element: withSuspense(<Tareas />) },
 
@@ -119,6 +116,7 @@ const router = createHashRouter([
       // Aliases/retrocompat
       { path: "kanban", element: <Navigate to="/kanban-tareas" replace /> },
       { path: "pipeline-clientes", element: <Navigate to="/pipeline" replace /> },
+      { path: "proyectos", element: <Navigate to="/pipeline" replace /> }, // alias adicional
 
       // Catch-all
       { path: "*", element: <ErrorFallback /> },

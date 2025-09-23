@@ -76,7 +76,7 @@ export async function fetchProyectosKanban(filters = {}) {
   }
 }
 
-// Normaliza + ordena
+// Normaliza + ordena por due_date y fallback created_at
 function normalizeKanban(raw) {
   let order = raw?.order?.length ? raw.order : [...DEFAULT_CLIENTES_ORDER];
   const columns = {};
@@ -84,16 +84,7 @@ function normalizeKanban(raw) {
   if (Array.isArray(raw?.columns)) {
     for (const col of raw.columns) {
       const key = col.key || col.title || "Incoming Leads";
-      const arr = [...(col.items || [])];
-      arr.sort((a, b) => {
-        const da = a.next_follow_up ? new Date(a.next_follow_up).getTime() : Infinity;
-        const db = b.next_follow_up ? new Date(b.next_follow_up).getTime() : Infinity;
-        if (da !== db) return da - db;
-        const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
-        if (cb !== ca) return cb - ca;
-        return (a.id || 0) - (b.id || 0);
-      });
+      const arr = sortByDue([...(col.items || [])], "due_date");
       columns[key] = arr;
     }
     if (!raw?.order?.length) {
@@ -106,16 +97,7 @@ function normalizeKanban(raw) {
     order = raw?.order?.length ? raw.order : [...order, ...extras];
 
     for (const col of order) {
-      const arr = [...(raw?.columns?.[col] || [])];
-      arr.sort((a, b) => {
-        const da = a.next_follow_up ? new Date(a.next_follow_up).getTime() : Infinity;
-        const db = b.next_follow_up ? new Date(b.next_follow_up).getTime() : Infinity;
-        if (da !== db) return da - db;
-        const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
-        if (cb !== ca) return cb - ca;
-        return (a.id || 0) - (b.id || 0);
-      });
+      const arr = sortByDue([...(raw?.columns?.[col] || [])], "due_date");
       columns[col] = arr;
     }
   }
@@ -158,16 +140,21 @@ export async function fetchTareasKanban(filters = {}) {
       });
       return { columns, order };
     }
-  } catch {}
+  } catch {
+    // seguimos al fallback
+  }
+
+  // Fallback: construimos desde /tareas
   const { data: lista = [] } = await api.get(`/tareas${qs(filters)}`);
   const byEstado = new Map();
   (Array.isArray(lista) ? lista : []).forEach((t) => {
-    const key = t.estado || "To Do";
+    const key = t.estado || "todo";
     if (!byEstado.has(key)) byEstado.set(key, []);
     byEstado.get(key).push(t);
   });
 
-  const defaultOrder = ["To Do", "Doing", "Done"];
+  // Claves alineadas con el backend
+  const defaultOrder = ["todo", "doing", "waiting", "done"];
   const order = byEstado.size ? Array.from(byEstado.keys()) : defaultOrder;
 
   const columns = order.map((k) => {
