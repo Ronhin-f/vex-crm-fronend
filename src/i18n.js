@@ -1,3 +1,4 @@
+// src/i18n.js
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
@@ -24,7 +25,9 @@ const resources = {
       nav: {
         dashboard: "Tablero",
         clients: "Clientes",
-        orders: "Compras",
+        projects: "Proyectos",        // ✅ NUEVO
+        suppliers: "Proveedores",     // ✅ NUEVO
+        orders: "Compras",            // (legacy/compat)
         tasks: "Tareas",
         pipeline: "Pipeline",
         kanbanTasks: "Kanban de tareas",
@@ -139,8 +142,9 @@ const resources = {
         empty: "Aún no hay recomendaciones. Cargá clientes/tareas y volvé a intentar.",
       },
 
+      // ✅ Ajustado para que el título diga “Proyectos”
       pipeline: {
-        title: "Pipeline — Clientes",
+        title: "Proyectos",
         empty: "Sin tarjetas",
         movedTo: "Movido a {{stage}}",
         filters: {
@@ -155,14 +159,11 @@ const resources = {
           lastStage: "Última etapa",
           moveNext: "Mover a la siguiente etapa",
         },
-        modals: {
-          contact: "Contacto",
-          tracking: "Seguimiento",
-        },
+        // ✅ Mensajes actualizados a “proyecto”
         toasts: {
-          loadError: "No pude cargar el Kanban de clientes",
-          moved: "Movido a {{stage}}",
-          moveError: "No pude mover el cliente",
+          loadError: "No pude cargar el Kanban de proyectos",
+          moved: "Proyecto movido a {{stage}}",
+          moveError: "No pude mover el proyecto",
         },
       },
 
@@ -304,7 +305,9 @@ const resources = {
       nav: {
         dashboard: "Dashboard",
         clients: "Clients",
-        orders: "Purchases",
+        projects: "Projects",        // ✅ NEW
+        suppliers: "Suppliers",      // ✅ NEW
+        orders: "Purchases",         // (legacy/compat)
         tasks: "Tasks",
         pipeline: "Pipeline",
         kanbanTasks: "Tasks Kanban",
@@ -413,13 +416,9 @@ const resources = {
         insights: "Business insights",
       },
 
-      insights: {
-        baseline: "Baseline",
-        empty: "No recommendations yet. Add clients/tasks and try again.",
-      },
-
+      // ✅ Adjusted so header shows “Projects”
       pipeline: {
-        title: "Pipeline — Clients",
+        title: "Projects",
         empty: "No cards",
         movedTo: "Moved to {{stage}}",
         filters: {
@@ -434,14 +433,11 @@ const resources = {
           lastStage: "Last stage",
           moveNext: "Move to next stage",
         },
-        modals: {
-          contact: "Contact",
-          tracking: "Follow-up",
-        },
+        // ✅ Messages updated to “project”
         toasts: {
-          loadError: "Couldn't load clients Kanban",
-          moved: "Moved to {{stage}}",
-          moveError: "Couldn't move client",
+          loadError: "Couldn't load projects Kanban",
+          moved: "Project moved to {{stage}}",
+          moveError: "Couldn't move project",
         },
       },
 
