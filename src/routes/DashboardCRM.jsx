@@ -32,14 +32,14 @@ export default function DashboardCRM() {
   const [dispatchBusy, setDispatchBusy] = useState(false);
   const [insightsBusy, setInsightsBusy] = useState(false);
 
-  // -------- métricas base (dashboard + kanban/kpis) --------
+  // -------- métricas base (dashboard) --------
   const [metrics, setMetrics] = useState({
     total_clientes: 0,
     total_tareas: 0,
     proximos_7d: 0,
   });
 
-  // Añadimos unqualified y followup_missed
+  // KPIs de pipeline y próximos 7 días
   const [kpis, setKpis] = useState({
     won: 0,
     lost: 0,
@@ -88,9 +88,8 @@ export default function DashboardCRM() {
   async function loadAll() {
     setIsLoading(true);
     try {
-      const [dashRes, kpiRes, aiRes, intRes, anRes] = await Promise.allSettled([
+      const [dashRes, aiRes, intRes, anRes] = await Promise.allSettled([
         api.get("/dashboard"),
-        api.get("/kanban/kpis"),
         api.get("/ai/insights"),
         api.get("/integraciones"),
         api.get("/analytics/kpis"),
@@ -102,35 +101,6 @@ export default function DashboardCRM() {
         setMetrics(dash.metrics ?? { total_clientes: 0, total_tareas: 0, proximos_7d: 0 });
         setTop(Array.isArray(dash.topClientes) ? dash.topClientes : []);
         setSeg(Array.isArray(dash.proximosSeguimientos) ? dash.proximosSeguimientos : []);
-      }
-
-      // KPIs pipeline
-      if (kpiRes.status === "fulfilled") {
-        const k = kpiRes.value?.data ?? {};
-        const arr =
-          Array.isArray(k.clientesPorCat) && k.clientesPorCat.length
-            ? k.clientesPorCat.map((x) => ({ categoria: x.categoria, total: Number(x.total) || 0 }))
-            : Array.isArray(k.clientesPorStage)
-            ? k.clientesPorStage.map((x) => ({ categoria: x.stage, total: Number(x.total) || 0 }))
-            : [];
-
-        const get = (name) => arr.find((x) => x.categoria === name)?.total ?? 0;
-
-        const won = get("Won");
-        const lost = get("Lost");
-        const unqualified = get("Unqualified");
-        const followup_missed = get("Follow-up Missed");
-        const totalWL = won + lost;
-        const winRate = totalWL ? Math.round((won / totalWL) * 100) : 0;
-
-        setKpis({
-          won,
-          lost,
-          winRate,
-          proximos7d: Number(k.proximos7d ?? k.proximos_7d ?? 0),
-          unqualified,
-          followup_missed,
-        });
       }
 
       // Insights (IA o heurísticas)
@@ -150,9 +120,25 @@ export default function DashboardCRM() {
         setIntegraciones(intRes.value?.data ?? { slack: { configured: false }, whatsapp: { configured: false } });
       }
 
-      // Analytics KPIs (incluye qualification)
+      // Analytics KPIs (pipeline + qualification + tasks)
       if (anRes.status === "fulfilled") {
         const an = anRes.value?.data ?? {};
+
+        // --- pipeline summary (nuevo source)
+        const won  = Number(an?.pipeline?.summary?.won ?? 0);
+        const lost = Number(an?.pipeline?.summary?.lost ?? 0);
+        const winRate = Number(an?.pipeline?.summary?.win_rate ?? 0);
+        const stages = Array.isArray(an?.pipeline?.summary?.stages) ? an.pipeline.summary.stages : [];
+        const getStageCount = (name) => Number(stages.find((r) => r.stage === name)?.total ?? 0);
+        const unqualified = getStageCount("Unqualified");
+        const followup_missed = getStageCount("Follow-up Missed");
+
+        // --- tasks summary (para próximos 7 días)
+        const proximos7d = Number(an?.tasks?.due_next_7d ?? 0);
+
+        setKpis({ won, lost, winRate, proximos7d, unqualified, followup_missed });
+
+        // --- resto de analytics para secciones inferiores
         const q = an.qualification ?? {};
         const qual = {
           total: Number(q.total ?? 0),
@@ -356,7 +342,7 @@ export default function DashboardCRM() {
           </div>
         </div>
 
-        {/* NUEVO: estados intermedios del pipeline */}
+        {/* Estados intermedios del pipeline */}
         <div className="stats shadow bg-base-100 mb-8 w-full">
           <div className="stat">
             <div className="stat-figure text-neutral">
@@ -374,7 +360,7 @@ export default function DashboardCRM() {
           </div>
         </div>
 
-        {/* Métricas base (reemplazamos el 3er tile por Overdue) */}
+        {/* Métricas base */}
         <div className="stats shadow bg-base-100 mb-8 w-full">
           <div className="stat">
             <div className="stat-figure text-primary">

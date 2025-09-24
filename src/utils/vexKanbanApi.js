@@ -172,7 +172,9 @@ export async function moveTarea(id, estado, orden) {
   return data;
 }
 
-export async function fetchKpis() {
-  const { data } = await api.get("/kanban/kpis");
+// ─────────────────── KPIs (Dashboard) ───────────────────
+// Apunta al nuevo endpoint y agrega cache-buster para evitar 304 y caché de CDN/navegador.
+export async function fetchKpis(params = {}) {
+  const { data } = await api.get(`/analytics/kpis${qs({ ...params, t: Date.now() })}`);
   return data;
 }
