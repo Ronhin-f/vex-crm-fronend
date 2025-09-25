@@ -1,15 +1,16 @@
 // src/routes/TareasKanban.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { fetchTareasKanban, moveTarea } from "../utils/vexKanbanApi";
 import { toast } from "react-hot-toast";
 import { CalendarClock, ChevronRight, Check, Filter, Search, X } from "lucide-react";
 
-/* ─────────────── Columnas base ─────────────── */
+/* ─────────────── Columnas base (keys BE) ─────────────── */
 const COLS = [
-  { key: "todo",    title: "Por hacer" },
-  { key: "doing",   title: "En curso" },
-  { key: "waiting", title: "En espera" },
-  { key: "done",    title: "Hecho" },
+  { key: "todo"    },
+  { key: "doing"   },
+  { key: "waiting" },
+  { key: "done"    },
 ];
 
 /* ─────────────── Utils ─────────────── */
@@ -17,14 +18,12 @@ function safeDate(v) {
   const d = v ? new Date(v) : null;
   return isNaN(d?.getTime?.() ?? NaN) ? null : d;
 }
-
 function sortByDueCreated(items = []) {
   const arr = [...items];
   arr.sort((a, b) => {
     const da = safeDate(a.vence_en)?.getTime?.() ?? Infinity;
     const db = safeDate(b.vence_en)?.getTime?.() ?? Infinity;
     if (da !== db) return da - db;
-    // fallback por fecha de creación si viene del BE
     const ca = safeDate(a.created_at)?.getTime?.() ?? 0;
     const cb = safeDate(b.created_at)?.getTime?.() ?? 0;
     return cb - ca;
@@ -32,6 +31,7 @@ function sortByDueCreated(items = []) {
   return arr;
 }
 
+/* ─────────────── Estado de query en URL ─────────────── */
 function useQueryState() {
   const [state, setState] = useState(() => {
     const u = new URL(window.location.href);
@@ -56,6 +56,7 @@ function useQueryState() {
   return [state, setState];
 }
 
+/* ─────────────── Filtro FE ─────────────── */
 function applyFiltersFE(list = [], f = {}) {
   const q = (f.q || "").toLowerCase().trim();
   return (list || []).filter((t) => {
@@ -65,35 +66,35 @@ function applyFiltersFE(list = [], f = {}) {
         .some((v) => v.includes(q));
       if (!hay) return false;
     }
-    if (f.only_due) {
-      if (!t.vence_en) return false;
-    }
+    if (f.only_due && !t.vence_en) return false;
     return true;
   });
 }
 
 /* ─────────────── UI helpers ─────────────── */
-function DueBadge({ date }) {
-  if (!date) return <span className="badge badge-ghost">Sin due</span>;
+function DueBadge({ date, compact }) {
+  const { t } = useTranslation();
+  if (!date) return null;
   const due = new Date(date);
   const mins = (due.getTime() - Date.now()) / 60000;
   let tone = "badge-info";
-  let label = "Vence";
-  if (mins < 0) { tone = "badge-error"; label = "Vencido"; }
-  else if (mins <= 1440) { tone = "badge-warning"; label = "Vence hoy"; }
+  let label = t("common.badges.due");
+  if (mins < 0) { tone = "badge-error"; label = t("common.badges.overdue"); }
+  else if (mins <= 1440) { tone = "badge-warning"; label = t("common.badges.dueToday"); }
   return (
-    <span className={`badge ${tone} badge-outline`}>
+    <span className={`badge ${tone} ${compact ? "badge-xs" : "badge-sm"} badge-outline`}>
       <CalendarClock size={12} className="mr-1" />
       {label}: {due.toLocaleString()}
     </span>
   );
 }
 
-function FiltersBar({ value, onChange, onClear }) {
+function FiltersBar({ value, onChange, onClear, right }) {
+  const { t } = useTranslation();
   const [typing, setTyping] = useState(value.q);
   useEffect(() => {
-    const t = setTimeout(() => onChange({ ...value, q: typing }), 300);
-    return () => clearTimeout(t);
+    const tmo = setTimeout(() => onChange({ ...value, q: typing }), 300);
+    return () => clearTimeout(tmo);
   }, [typing]); // eslint-disable-line
 
   return (
@@ -102,7 +103,7 @@ function FiltersBar({ value, onChange, onClear }) {
         <Search size={16} className="opacity-70" />
         <input
           className="input input-sm input-bordered w-full"
-          placeholder="Buscar (título o cliente)"
+          placeholder={t("kanbanTasks.filters.placeholder", "Buscar (título o cliente)")}
           value={typing}
           onChange={(e) => setTyping(e.target.value)}
         />
@@ -110,7 +111,7 @@ function FiltersBar({ value, onChange, onClear }) {
 
       <div className="flex items-center gap-3">
         <label className="label cursor-pointer gap-2">
-          <span className="label-text">Solo con due</span>
+          <span className="label-text">{t("pipeline.filters.onlyDue")}</span>
           <input
             type="checkbox"
             className="toggle toggle-sm"
@@ -121,13 +122,15 @@ function FiltersBar({ value, onChange, onClear }) {
 
         {(value.q || value.only_due) ? (
           <button className="btn btn-sm" onClick={onClear}>
-            <X size={16} /> Limpiar
+            <X size={16} /> {t("actions.clear")}
           </button>
         ) : (
           <div className="btn btn-sm btn-ghost no-animation">
-            <Filter size={16} /> Filtros
+            <Filter size={16} /> {t("pipeline.filters.title")}
           </div>
         )}
+
+        {right}
       </div>
     </div>
   );
@@ -135,10 +138,22 @@ function FiltersBar({ value, onChange, onClear }) {
 
 /* ─────────────── Página ─────────────── */
 export default function TareasKanban() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useQueryState();
 
-  const [cols, setCols] = useState([]);         // data cruda del BE
+  const [cols, setCols] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // modo compacto persistente
+  const [compact, setCompact] = useState(() => {
+    try {
+      const v = localStorage.getItem("vex_tasks_compact");
+      return v == null ? true : v === "1";
+    } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("vex_tasks_compact", compact ? "1" : "0"); } catch {}
+  }, [compact]);
 
   const firstLoadRef = useRef(true);
   const inflightRef = useRef(0);
@@ -156,35 +171,29 @@ export default function TareasKanban() {
     try {
       const data = await fetchTareasKanban();
 
-      // Normalizamos forma de respuesta:
-      // - array: [{ key, title, items }]
-      // - objeto: { columns: {todo:[], ...}, order?:[] }
+      // Normalizo formatos { columns:[...] } o { columns:{...}, order }
       let ordered = [];
-
       if (Array.isArray(data?.columns)) {
         const byKey = new Map(
           (data.columns || []).map((c) => {
             const key = c.key || c.title;
             const items = sortByDueCreated(c.items || []);
-            return [key, { key, title: c.title || key, items, count: items.length }];
+            return [key, { key, title: key, items, count: items.length }];
           })
         );
         const order = data.order?.length
           ? data.order
           : (data.columns || []).map((c) => c.key || c.title);
         ordered = (order.length ? order : COLS.map((c) => c.key)).map(
-          (k) => byKey.get(k) || { key: k, title: (COLS.find((c) => c.key === k)?.title || k), items: [], count: 0 }
+          (k) => byKey.get(k) || { key: k, title: k, items: [], count: 0 }
         );
       } else {
         const colObj = data?.columns && !Array.isArray(data.columns) ? data.columns : data || {};
-        const order = data?.order?.length
-          ? data.order
-          : COLS.map((c) => c.key);
+        const order = data?.order?.length ? data.order : COLS.map((c) => c.key);
         ordered = order.map((k) => {
           const base = Array.isArray(colObj?.[k]) ? colObj[k] : [];
           const items = sortByDueCreated(base);
-          const title = (COLS.find((c) => c.key === k)?.title) || k;
-          return { key: k, title, items, count: items.length };
+          return { key: k, title: k, items, count: items.length };
         });
       }
 
@@ -192,7 +201,7 @@ export default function TareasKanban() {
       if (reqId === inflightRef.current) setCols(ordered);
     } catch (e) {
       console.error(e);
-      toast.error("No pude cargar el Kanban de tareas");
+      toast.error(t("kanbanTasks.toasts.loadError"));
     } finally {
       if (reqId === inflightRef.current && (firstLoadRef.current || cols.length === 0)) {
         setLoading(false);
@@ -201,7 +210,7 @@ export default function TareasKanban() {
     }
   }
 
-  // Aplico filtros FE sobre las columnas del BE
+  // Filtros FE aplicados a las columnas
   const filteredCols = useMemo(() => {
     return (cols || []).map((c) => {
       const items = applyFiltersFE(c.items, filters);
@@ -216,15 +225,12 @@ export default function TareasKanban() {
     e.dataTransfer.setData("text/plain", JSON.stringify({ id: item.id, fromKey }));
     e.dataTransfer.effectAllowed = "move";
   }
-
   async function onDrop(e, toKey) {
     e.preventDefault();
     const payload = JSON.parse(e.dataTransfer.getData("text/plain") || "{}");
-    if (!payload.id) return;
-    if (payload.fromKey === toKey) return;
+    if (!payload.id || payload.fromKey === toKey) return;
     await doMove(payload.id, payload.fromKey, toKey);
   }
-
   const nextOf = (key) => {
     const i = COLS.findIndex((c) => c.key === key);
     return COLS[Math.min(i + 1, COLS.length - 1)]?.key || key;
@@ -232,7 +238,7 @@ export default function TareasKanban() {
 
   async function doMove(id, fromKey, toKey) {
     try {
-      await moveTarea(id, toKey); // el BE actualiza estado/orden/completada
+      await moveTarea(id, toKey); // el BE marca completada si es 'done'
       setCols((prev) => {
         const copy = prev.map((c) => ({ ...c, items: [...c.items] }));
         const from = copy.find((c) => c.key === fromKey);
@@ -244,23 +250,29 @@ export default function TareasKanban() {
           it.estado = toKey;
           it.completada = toKey === "done";
           to.items.unshift(it);
-          to.items = sortByDueCreated(to.items); // mantiene orden por due
+          to.items = sortByDueCreated(to.items);
         }
         from.count = from.items.length;
         to.count = to.items.length;
         return copy;
       });
-      toast.success("Tarea movida");
+      toast.success(t("kanbanTasks.toasts.moved"));
     } catch {
-      toast.error("No pude mover la tarea");
+      toast.error(t("kanbanTasks.toasts.moveError"));
     }
   }
 
   /* ─────────────── Render ─────────────── */
+  const titleOf = (key) => {
+    const { t } = useTranslation();
+    // mapea usando las traducciones de estados
+    return t(`common.taskStates.${key}`, key);
+  };
+
   if (loading) {
     return (
       <div className="p-3">
-        <h1 className="text-2xl font-semibold mb-4">Kanban — Tareas</h1>
+        <h1 className="text-2xl font-semibold mb-4">{t("kanbanTasks.title")}</h1>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           {Array.from({ length: 4 }).map((_, k) => (
             <div key={k} className="rounded-2xl bg-base-200 border border-base-300 min-h-[280px] p-3">
@@ -277,7 +289,18 @@ export default function TareasKanban() {
 
   return (
     <div className="p-3">
-      <h1 className="text-2xl font-semibold mb-3">Kanban — Tareas</h1>
+      <div className="mb-3 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">{t("kanbanTasks.title")}</h1>
+        <label className="label cursor-pointer gap-2">
+          <span className="text-sm opacity-80">Compacto</span>
+          <input
+            type="checkbox"
+            className="toggle toggle-sm"
+            checked={compact}
+            onChange={() => setCompact((v) => !v)}
+          />
+        </label>
+      </div>
 
       <FiltersBar
         value={filters}
@@ -289,13 +312,14 @@ export default function TareasKanban() {
         {COLS.map((col) => (
           <Column
             key={col.key}
-            title={`${col.title} ${colMap.get(col.key)?.count ? `(${colMap.get(col.key).count})` : ""}`}
+            title={`${titleOf(col.key)} ${colMap.get(col.key)?.count ? `(${colMap.get(col.key).count})` : ""}`}
             onDrop={(e) => onDrop(e, col.key)}
           >
             {(colMap.get(col.key)?.items || []).map((item) => (
               <TaskCard
                 key={item.id}
                 item={item}
+                compact={compact}
                 onDragStart={(e) => onDragStart(e, item, col.key)}
                 onNext={() => {
                   const next = nextOf(col.key);
@@ -328,35 +352,44 @@ function Column({ title, children, onDrop }) {
   );
 }
 
-function TaskCard({ item, onDragStart, onNext, onDone, isLast }) {
+function TaskCard({ item, compact, onDragStart, onNext, onDone, isLast }) {
+  const { t } = useTranslation();
   return (
     <div
       draggable
       onDragStart={onDragStart}
-      className="cursor-grab active:cursor-grabbing rounded-xl border border-base-300 bg-base-100 p-3 hover:shadow"
-      title="Arrastrá para mover de columna"
+      className={`cursor-grab active:cursor-grabbing rounded-xl border border-base-300 bg-base-100 p-3 hover:shadow ${compact ? "py-2" : "py-3"}`}
+      title={t("kanbanTasks.help.drag")}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="font-medium truncate">{item.titulo}</div>
+          <div className={`font-medium truncate ${compact ? "text-sm" : ""}`}>{item.titulo}</div>
           <div className="text-xs opacity-60 truncate">{item.cliente_nombre || "—"}</div>
         </div>
         <div className="flex items-center gap-1">
           {!isLast && (
-            <button className="btn btn-ghost btn-xs" onClick={(e) => { e.stopPropagation(); onNext(); }} title="Mover a la siguiente columna">
+            <button
+              className="btn btn-ghost btn-xs"
+              onClick={(e) => { e.stopPropagation(); onNext(); }}
+              title={t("kanbanTasks.help.nextCol")}
+            >
               <ChevronRight size={14} />
             </button>
           )}
           {item.estado !== "done" && (
-            <button className="btn btn-ghost btn-xs" onClick={(e) => { e.stopPropagation(); onDone(); }} title="Marcar como hecho">
+            <button
+              className="btn btn-ghost btn-xs"
+              onClick={(e) => { e.stopPropagation(); onDone(); }}
+              title={t("kanbanTasks.help.markDone")}
+            >
               <Check size={14} />
             </button>
           )}
         </div>
       </div>
 
-      <div className="mt-2">
-        <DueBadge date={item.vence_en} />
+      <div className={`mt-2 ${compact ? "-mt-0.5" : ""}`}>
+        <DueBadge date={item.vence_en} compact={compact} />
       </div>
     </div>
   );

@@ -45,13 +45,15 @@ export default function Tareas() {
       descripcion: form.descripcion?.trim() || null,
       cliente_id: form.cliente_id ? Number(form.cliente_id) : null,
       vence_en: form.vence_en ? new Date(form.vence_en).toISOString() : null,
+      estado: "todo",
       completada: false,
     };
     try {
-      await api.post("/tareas", payload);
+      const { data } = await api.post("/tareas", payload);
+      // inserto sin esperar otro GET para que el dashboard tenga datos ya
+      setItems((prev) => [data ?? payload, ...prev]);
       setForm({ titulo: "", descripcion: "", cliente_id: "", vence_en: "" });
       toast.success("Tarea creada");
-      load();
     } catch (e) {
       console.error(e);
       toast.error("No pude crear la tarea");
@@ -68,18 +70,28 @@ export default function Tareas() {
     });
   }
 
+  // util: arma payload PATCH sólo con campos presentes
+  const clean = (obj) => {
+    const out = {};
+    Object.entries(obj).forEach(([k, v]) => {
+      if (v === "" || v === undefined) return;
+      out[k] = v === null ? null : v;
+    });
+    return out;
+  };
+
   async function saveEdit(id) {
-    const payload = {
-      titulo: draft.titulo?.trim() || null,
-      descripcion: draft.descripcion?.trim() || null,
+    const payload = clean({
+      titulo: draft.titulo?.trim(),
+      descripcion: draft.descripcion?.trim(),
       cliente_id: draft.cliente_id ? Number(draft.cliente_id) : null,
       vence_en: draft.vence_en ? new Date(draft.vence_en).toISOString() : null,
-    };
+    });
     try {
-      await api.put(`/tareas/${id}`, payload);
+      const { data } = await api.patch(`/tareas/${id}`, payload);
+      setItems((prev) => prev.map((x) => (x.id === id ? { ...x, ...(data || payload) } : x)));
       setEditingId(null);
       toast.success("Tarea actualizada");
-      load();
     } catch (e) {
       console.error(e);
       toast.error("No pude actualizar la tarea");
@@ -89,9 +101,9 @@ export default function Tareas() {
   // ---- Completar / Reabrir ----
   async function markDone(id) {
     try {
-      await api.patch(`/tareas/${id}`);
+      const { data } = await api.patch(`/tareas/${id}`, { completada: true, estado: "done" });
+      setItems((prev) => prev.map((t) => (t.id === id ? { ...t, ...(data || { completada: true, estado: "done" }) } : t)));
       toast.success("Marcada como hecha");
-      load();
     } catch (e) {
       console.error(e);
       toast.error("No pude completar la tarea");
@@ -100,9 +112,9 @@ export default function Tareas() {
 
   async function reopen(id) {
     try {
-      await api.put(`/tareas/${id}`, { completada: false, estado: "todo" });
+      const { data } = await api.patch(`/tareas/${id}`, { completada: false, estado: "todo" });
+      setItems((prev) => prev.map((t) => (t.id === id ? { ...t, ...(data || { completada: false, estado: "todo" }) } : t)));
       toast.success("Tarea reabierta");
-      load();
     } catch (e) {
       console.error(e);
       toast.error("No pude reabrir la tarea");
