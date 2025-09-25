@@ -7,10 +7,10 @@ import { CalendarClock, ChevronRight, Check, Filter, Search, X } from "lucide-re
 
 /* ─────────────── Columnas base (keys BE) ─────────────── */
 const COLS = [
-  { key: "todo"    },
-  { key: "doing"   },
+  { key: "todo" },
+  { key: "doing" },
   { key: "waiting" },
-  { key: "done"    },
+  { key: "done" },
 ];
 
 /* ─────────────── Utils ─────────────── */
@@ -210,6 +210,14 @@ export default function TareasKanban() {
     }
   }
 
+  // ❇️ Precalcular títulos con el hook ya resuelto (evita hooks en helpers)
+  const titles = useMemo(() => ({
+    todo:    t("common.taskStates.todo",    "Por hacer"),
+    doing:   t("common.taskStates.doing",   "En progreso"),
+    waiting: t("common.taskStates.waiting", "En espera"),
+    done:    t("common.taskStates.done",    "Hecho"),
+  }), [t]);
+
   // Filtros FE aplicados a las columnas
   const filteredCols = useMemo(() => {
     return (cols || []).map((c) => {
@@ -227,7 +235,10 @@ export default function TareasKanban() {
   }
   async function onDrop(e, toKey) {
     e.preventDefault();
-    const payload = JSON.parse(e.dataTransfer.getData("text/plain") || "{}");
+    let payload = {};
+    try {
+      payload = JSON.parse(e.dataTransfer.getData("text/plain") || "{}");
+    } catch { payload = {}; }
     if (!payload.id || payload.fromKey === toKey) return;
     await doMove(payload.id, payload.fromKey, toKey);
   }
@@ -263,11 +274,7 @@ export default function TareasKanban() {
   }
 
   /* ─────────────── Render ─────────────── */
-  const titleOf = (key) => {
-    const { t } = useTranslation();
-    // mapea usando las traducciones de estados
-    return t(`common.taskStates.${key}`, key);
-  };
+  const titleOf = (key) => titles[key] ?? key;
 
   if (loading) {
     return (
