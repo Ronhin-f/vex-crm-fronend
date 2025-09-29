@@ -1,4 +1,3 @@
-// frontend/src/routes/ProyectosKanban.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { fetchProyectosKanban, moveProyecto } from "../utils/vexKanbanApi";
@@ -17,6 +16,8 @@ import {
   Clock3,
   Building2,
   Tag,
+  Plus,
+  Save,
 } from "lucide-react";
 
 /* ─────────────── Pipeline canónico (BE) ─────────────── */
@@ -224,7 +225,7 @@ function FiltersBar({ value, onChange, onClear, right }) {
   );
 }
 
-/* ─────────────── Detalle (modal) ─────────────── */
+/* ─────────────── Modales ─────────────── */
 function DetailModal({ open, onClose, item }) {
   const { t } = useTranslation();
   if (!open || !item) return null;
@@ -302,6 +303,179 @@ function DetailModal({ open, onClose, item }) {
   );
 }
 
+function CreateProjectModal({ open, onClose, onCreated, clients }) {
+  const { t } = useTranslation();
+  const [form, setForm] = useState({
+    nombre: "",
+    cliente_id: "",
+    stage: PIPELINE[0],
+    estimate_amount: "",
+    estimate_currency: "USD",
+    source: "",
+    assignee: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setForm((f) => ({ ...f, stage: PIPELINE[0] }));
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.nombre?.trim()) {
+      toast.error(t("validation.requiredName", "Nombre requerido"));
+      return;
+    }
+    try {
+      setSaving(true);
+      const payload = {
+        nombre: form.nombre?.trim(),
+        cliente_id: form.cliente_id ? Number(form.cliente_id) : null,
+        stage: form.stage,
+        source: form.source || null,
+        assignee: form.assignee || null,
+        estimate_amount: form.estimate_amount ? Number(form.estimate_amount) : null,
+        estimate_currency: form.estimate_currency || null,
+      };
+      const res = await api.post("/proyectos", payload);
+      if (res?.data?.ok) {
+        toast.success(t("pipeline.toasts.created", "Proyecto creado"));
+        onClose();
+        onCreated?.();
+      } else {
+        throw new Error(res?.data?.message || "Error creando proyecto");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error(t("pipeline.toasts.createError", "No se pudo crear"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4" onClick={onClose}>
+      <form
+        className="w-full max-w-lg rounded-2xl bg-base-100 shadow-xl border border-base-300 p-4 space-y-3"
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={onSubmit}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">{t("pipeline.newProject", "Nuevo proyecto")}</h3>
+          <button type="button" className="btn btn-sm" onClick={onClose}>
+            <X size={16} /> {t("actions.close")}
+          </button>
+        </div>
+
+        <label className="form-control">
+          <span className="label-text">{t("common.name", "Nombre")}</span>
+          <input
+            className="input input-bordered"
+            value={form.nombre}
+            onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+            placeholder="Ej: Roof repair – Store #112"
+            required
+          />
+        </label>
+
+        <div className="grid md:grid-cols-2 gap-3">
+          <label className="form-control">
+            <span className="label-text">{t("common.client", "Cliente")}</span>
+            <select
+              className="select select-bordered"
+              value={form.cliente_id}
+              onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+            >
+              <option value="">{t("common.none", "— Ninguno —")}</option>
+              {(clients || []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre || `Cliente #${c.id}`}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="form-control">
+            <span className="label-text">{t("common.stage", "Etapa")}</span>
+            <select
+              className="select select-bordered"
+              value={form.stage}
+              onChange={(e) => setForm({ ...form, stage: e.target.value })}
+            >
+              {PIPELINE.map((s) => (
+                <option key={s} value={s}>
+                  {t(`common.stages.${s}`, s)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-3">
+          <label className="form-control">
+            <span className="label-text">{t("common.amount", "Monto estimado")}</span>
+            <input
+              className="input input-bordered"
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.estimate_amount}
+              onChange={(e) => setForm({ ...form, estimate_amount: e.target.value })}
+              placeholder="Ej: 12500"
+            />
+          </label>
+
+          <label className="form-control">
+            <span className="label-text">{t("common.currency", "Moneda")}</span>
+            <input
+              className="input input-bordered"
+              value={form.estimate_currency}
+              onChange={(e) => setForm({ ...form, estimate_currency: e.target.value })}
+              placeholder="USD"
+            />
+          </label>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-3">
+          <label className="form-control">
+            <span className="label-text">{t("common.source", "Source")}</span>
+            <input
+              className="input input-bordered"
+              value={form.source}
+              onChange={(e) => setForm({ ...form, source: e.target.value })}
+              placeholder="Outreach / Referral / ..."
+            />
+          </label>
+
+          <label className="form-control">
+            <span className="label-text">{t("common.assignee", "Asignado a")}</span>
+            <input
+              className="input input-bordered"
+              value={form.assignee}
+              onChange={(e) => setForm({ ...form, assignee: e.target.value })}
+              placeholder="email@empresa.com"
+            />
+          </label>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button type="button" className="btn btn-ghost" onClick={onClose}>
+            {t("actions.cancel", "Cancelar")}
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            <Save size={16} className="mr-1" />
+            {t("actions.create", "Crear")}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 /* ─────────────── Página principal ─────────────── */
 export default function ProyectosKanban() {
   const { t } = useTranslation();
@@ -311,6 +485,10 @@ export default function ProyectosKanban() {
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailItem, setDetailItem] = useState(null);
+
+  // Nuevo: modal de creación + clientes para el select
+  const [createOpen, setCreateOpen] = useState(false);
+  const [clientsForCreate, setClientsForCreate] = useState([]);
 
   // Modo compacto (persistente)
   const [compact, setCompact] = useState(() => {
@@ -330,6 +508,20 @@ export default function ProyectosKanban() {
   // Anti-flicker & cancelación de requests en vuelo
   const firstLoadRef = useRef(true);
   const inflightRef = useRef(0);
+
+  // Cargar clientes (solo para el modal)
+  useEffect(() => {
+    async function fetchClients() {
+      try {
+        const res = await api.get("/clientes");
+        const list = Array.isArray(res.data) ? res.data : res.data?.items || [];
+        setClientsForCreate(list);
+      } catch {
+        setClientsForCreate([]);
+      }
+    }
+    fetchClients();
+  }, []);
 
   useEffect(() => {
     reload();
@@ -492,15 +684,21 @@ export default function ProyectosKanban() {
     <div className="p-3">
       <div className="mb-3 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{t("pipeline.titleProjects", "Pipeline — Proyectos")}</h1>
-        <label className="label cursor-pointer gap-2">
-          <span className="text-sm opacity-80">{t("ui.compact", "Compacto")}</span>
-          <input
-            type="checkbox"
-            className="toggle toggle-sm"
-            checked={compact}
-            onChange={() => setCompact((v) => !v)}
-          />
-        </label>
+        <div className="flex items-center gap-3">
+          <button className="btn btn-primary btn-sm" onClick={() => setCreateOpen(true)}>
+            <Plus size={16} className="mr-1" />
+            {t("actions.newProject", "Nuevo proyecto")}
+          </button>
+          <label className="label cursor-pointer gap-2">
+            <span className="text-sm opacity-80">{t("ui.compact", "Compacto")}</span>
+            <input
+              type="checkbox"
+              className="toggle toggle-sm"
+              checked={compact}
+              onChange={() => setCompact((v) => !v)}
+            />
+          </label>
+        </div>
       </div>
 
       <FiltersBar
@@ -538,6 +736,12 @@ export default function ProyectosKanban() {
       </div>
 
       <DetailModal open={detailOpen} onClose={() => setDetailOpen(false)} item={detailItem} />
+      <CreateProjectModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={reload}
+        clients={clientsForCreate}
+      />
     </div>
   );
 }
