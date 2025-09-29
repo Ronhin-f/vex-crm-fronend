@@ -19,6 +19,7 @@ import {
   Tag,
   Plus,
   Save,
+  Pencil,
 } from "lucide-react";
 
 /* ─────────────── Pipeline canónico (BE) ─────────────── */
@@ -216,7 +217,7 @@ function FiltersBar({ value, onChange, onClear, right }) {
 }
 
 /* ─────────────── Modales ─────────────── */
-function DetailModal({ open, onClose, item }) {
+function DetailModal({ open, onClose, item, onEdit }) {
   const { t } = useTranslation();
   if (!open || !item) return null;
   const assignee = item.assignee_email || item.assignee || t("common.unassigned");
@@ -240,9 +241,14 @@ function DetailModal({ open, onClose, item }) {
               </div>
             )}
           </div>
-          <button className="btn btn-sm" onClick={onClose}>
-            <X size={16} /> {t("actions.close")}
-          </button>
+          <div className="flex items-center gap-2">
+            <button className="btn btn-sm" onClick={() => onEdit?.(item)}>
+              <Pencil size={16} /> {t("actions.update")}
+            </button>
+            <button className="btn btn-sm" onClick={onClose}>
+              <X size={16} /> {t("actions.close")}
+            </button>
+          </div>
         </div>
 
         <div className="mt-3 grid md:grid-cols-2 gap-3">
@@ -495,6 +501,202 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
   );
 }
 
+/* ========= Modal de Edición ========= */
+function EditProjectModal({ open, onClose, onSaved, item, clients }) {
+  const { t } = useTranslation();
+  const [form, setForm] = useState({
+    nombre: "",
+    cliente_id: "",
+    stage: PIPELINE[0],
+    estimate_amount: "",
+    estimate_currency: "USD",
+    source: "",
+    assignee: "",
+    descripcion: "",
+    due_date: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open || !item) return;
+    setForm({
+      nombre: item.nombre || "",
+      cliente_id: item.cliente_id ?? "",
+      stage: item.stage || PIPELINE[0],
+      estimate_amount: item.estimate_amount ?? "",
+      estimate_currency: item.estimate_currency || "USD",
+      source: item.source || "",
+      assignee: item.assignee || item.assignee_email || "",
+      descripcion: item.descripcion || item.notas || "",
+      due_date: item.due_date ? new Date(item.due_date).toISOString().slice(0, 16) : "",
+    });
+  }, [open, item]);
+
+  if (!open || !item) return null;
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setSaving(true);
+      const payload = {
+        nombre: form.nombre?.trim() || null,
+        cliente_id: form.cliente_id ? Number(form.cliente_id) : null,
+        stage: form.stage,
+        source: form.source || null,
+        assignee: form.assignee || null,
+        estimate_amount: form.estimate_amount !== "" ? Number(form.estimate_amount) : null,
+        estimate_currency: form.estimate_currency || null,
+        descripcion: form.descripcion?.trim() || null,
+        due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
+      };
+      const res = await api.patch(`/proyectos/${item.id}`, payload);
+      if (res?.data?.ok) {
+        toast.success(t("actions.update") + " OK");
+        onClose();
+        onSaved?.();
+      } else {
+        throw new Error(res?.data?.message || "update_error");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(t("clients.toasts.updateError"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4" onClick={onClose}>
+      <form
+        className="w-full max-w-lg rounded-2xl bg-base-100 shadow-xl border border-base-300 p-4 space-y-3"
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={onSubmit}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">
+            {t("actions.update")} — {item?.nombre || `#${item?.id}`}
+          </h3>
+          <button type="button" className="btn btn-sm" onClick={onClose}>
+            <X size={16} /> {t("actions.close")}
+          </button>
+        </div>
+
+        <label className="form-control">
+          <span className="label-text">{t("projects.form.name", "Nombre")}</span>
+          <input
+            className="input input-bordered"
+            value={form.nombre}
+            onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+          />
+        </label>
+
+        <div className="grid md:grid-cols-2 gap-3">
+          <label className="form-control">
+            <span className="label-text">{t("projects.form.client", "Cliente")}</span>
+            <select
+              className="select select-bordered"
+              value={form.cliente_id}
+              onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+            >
+              <option value="">{t("common.noData")}</option>
+              {(clients || []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre || `Cliente #${c.id}`}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="form-control">
+            <span className="label-text">{t("projects.form.stage", "Etapa")}</span>
+            <select
+              className="select select-bordered"
+              value={form.stage}
+              onChange={(e) => setForm({ ...form, stage: e.target.value })}
+            >
+              {PIPELINE.map((s) => (
+                <option key={s} value={s}>
+                  {t(`common.stages.${s}`, s)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-3">
+          <label className="form-control">
+            <span className="label-text">{t("projects.form.amount", "Monto estimado")}</span>
+            <input
+              className="input input-bordered"
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.estimate_amount}
+              onChange={(e) => setForm({ ...form, estimate_amount: e.target.value })}
+            />
+          </label>
+          <label className="form-control">
+            <span className="label-text">{t("projects.form.currency", "Moneda")}</span>
+            <input
+              className="input input-bordered"
+              value={form.estimate_currency}
+              onChange={(e) => setForm({ ...form, estimate_currency: e.target.value })}
+            />
+          </label>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-3">
+          <label className="form-control">
+            <span className="label-text">{t("projects.form.source", "Source")}</span>
+            <input
+              className="input input-bordered"
+              value={form.source}
+              onChange={(e) => setForm({ ...form, source: e.target.value })}
+            />
+          </label>
+          <label className="form-control">
+            <span className="label-text">{t("projects.form.assignee", "Asignado a")}</span>
+            <input
+              className="input input-bordered"
+              value={form.assignee}
+              onChange={(e) => setForm({ ...form, assignee: e.target.value })}
+            />
+          </label>
+        </div>
+
+        <label className="form-control">
+          <span className="label-text">{t("projects.form.dueDate", "Fecha límite")}</span>
+          <input
+            type="datetime-local"
+            className="input input-bordered"
+            value={form.due_date}
+            onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+          />
+        </label>
+
+        <label className="form-control">
+          <span className="label-text">{t("projects.form.notes", "Notas")}</span>
+          <textarea
+            className="textarea textarea-bordered h-24"
+            value={form.descripcion}
+            onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+          />
+        </label>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button type="button" className="btn btn-ghost" onClick={onClose}>
+            {t("actions.cancel")}
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            <Save size={16} className="mr-1" />
+            {t("actions.update")}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 /* ─────────────── Página principal ─────────────── */
 export default function ProyectosKanban() {
   const { t } = useTranslation();
@@ -508,6 +710,10 @@ export default function ProyectosKanban() {
   // Nuevo: modal de creación + clientes para el select
   const [createOpen, setCreateOpen] = useState(false);
   const [clientsForCreate, setClientsForCreate] = useState([]);
+
+  // Editar
+  const [editOpen, setEditOpen] = useState(false);
+  const [editItem, setEditItem] = useState(null);
 
   // Modo compacto (persistente)
   const [compact, setCompact] = useState(() => {
@@ -528,7 +734,7 @@ export default function ProyectosKanban() {
   const firstLoadRef = useRef(true);
   const inflightRef = useRef(0);
 
-  // Cargar clientes (solo para el modal)
+  // Cargar clientes (solo para los modales)
   useEffect(() => {
     async function fetchClients() {
       try {
@@ -756,11 +962,27 @@ export default function ProyectosKanban() {
         ))}
       </div>
 
-      <DetailModal open={detailOpen} onClose={() => setDetailOpen(false)} item={detailItem} />
+      <DetailModal
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        item={detailItem}
+        onEdit={(it) => {
+          setDetailOpen(false);
+          setEditItem(it);
+          setEditOpen(true);
+        }}
+      />
       <CreateProjectModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreated={reload}
+        clients={clientsForCreate}
+      />
+      <EditProjectModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        onSaved={reload}
+        item={editItem}
         clients={clientsForCreate}
       />
     </div>
