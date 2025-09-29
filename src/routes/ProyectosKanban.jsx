@@ -221,7 +221,7 @@ function DetailModal({ open, onClose, item }) {
   if (!open || !item) return null;
   const assignee = item.assignee_email || item.assignee || t("common.unassigned");
   const stageLabel = (s) => t(`common.stages.${s}`, s);
-  const notas = item.descripcion || item.notas || ""; // <- fallback
+  const notas = item.descripcion || item.notas || ""; // fallback
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4" onClick={onClose}>
@@ -304,12 +304,13 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
     estimate_currency: "USD",
     source: "",
     assignee: "",
-    descripcion: "", // Notas
+    descripcion: "",         // Notas
+    due_date: "",            // NUEVO
   });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) setForm((f) => ({ ...f, stage: PIPELINE[0] }));
+    if (open) setForm((f) => ({ ...f, stage: PIPELINE[0], due_date: "" }));
   }, [open]);
 
   if (!open) return null;
@@ -331,6 +332,7 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
         estimate_amount: form.estimate_amount ? Number(form.estimate_amount) : null,
         estimate_currency: form.estimate_currency || null,
         descripcion: form.descripcion?.trim() || null,
+        due_date: form.due_date ? new Date(form.due_date).toISOString() : null, // enviar ISO
       };
       const res = await api.post("/proyectos", payload);
       if (res?.data?.ok) {
@@ -362,6 +364,7 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
           </button>
         </div>
 
+        {/* Nombre */}
         <label className="form-control">
           <span className="label-text">{t("common.name", "Nombre")}</span>
           <input
@@ -373,6 +376,7 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
           />
         </label>
 
+        {/* Cliente + Etapa */}
         <div className="grid md:grid-cols-2 gap-3">
           <label className="form-control">
             <span className="label-text">{t("common.client", "Cliente")}</span>
@@ -406,6 +410,7 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
           </label>
         </div>
 
+        {/* Monto + Moneda */}
         <div className="grid md:grid-cols-2 gap-3">
           <label className="form-control">
             <span className="label-text">{t("common.amount", "Monto estimado")}</span>
@@ -420,7 +425,7 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
             />
           </label>
 
-        <label className="form-control">
+          <label className="form-control">
             <span className="label-text">{t("common.currency", "Moneda")}</span>
             <input
               className="input input-bordered"
@@ -431,6 +436,7 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
           </label>
         </div>
 
+        {/* Source + Assignee */}
         <div className="grid md:grid-cols-2 gap-3">
           <label className="form-control">
             <span className="label-text">{t("common.source", "Source")}</span>
@@ -452,6 +458,17 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
             />
           </label>
         </div>
+
+        {/* Due date */}
+        <label className="form-control">
+          <span className="label-text">{t("common.dueDate", "Fecha límite")}</span>
+          <input
+            type="datetime-local"
+            className="input input-bordered"
+            value={form.due_date}
+            onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+          />
+        </label>
 
         {/* Notas */}
         <label className="form-control">
@@ -570,7 +587,7 @@ export default function ProyectosKanban() {
                   email: i.email || cli?.email || null,
                   telefono: i.telefono || cli?.telefono || null,
                   empresa: i.empresa || cli?.nombre || null,
-                  notas: i.descripcion || i.notas || null, // <- asegurar que llegue al detalle
+                  notas: i.descripcion || i.notas || null,
                 };
               })
             );
