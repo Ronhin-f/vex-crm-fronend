@@ -55,6 +55,8 @@ const resources = {
         loading: "Cargando...",
         sending: "Enviando...",
         sentSummary: "{{ok}} enviados, {{err}} con error",
+        /* NUEVO */
+        newProject: "Nuevo proyecto",
       },
 
       errors: {
@@ -143,6 +145,8 @@ const resources = {
 
       pipeline: {
         title: "Pipeline — Clientes",
+        /* NUEVO por compat con ProyectosKanban */
+        titleProjects: "Pipeline — Proyectos",
         empty: "Sin tarjetas",
         movedTo: "Movido a {{stage}}",
         filters: {
@@ -165,6 +169,27 @@ const resources = {
           loadError: "No pude cargar el Kanban de clientes",
           moved: "Movido a {{stage}}",
           moveError: "No pude mover el cliente",
+        },
+      },
+
+      /* NUEVO: textos específicos de Proyectos */
+      projects: {
+        title: "Pipeline — Proyectos",
+        newProject: "Nuevo proyecto",
+        form: {
+          name: "Nombre",
+          client: "Cliente",
+          stage: "Etapa",
+          amount: "Monto estimado",
+          currency: "Moneda",
+          source: "Origen",
+          assignee: "Responsable",
+          dueDate: "Fecha límite",
+          notes: "Notas",
+        },
+        toasts: {
+          created: "Proyecto creado",
+          createError: "No se pudo crear el proyecto",
         },
       },
 
@@ -336,6 +361,8 @@ const resources = {
         loading: "Loading...",
         sending: "Sending...",
         sentSummary: "{{ok}} sent, {{err}} failed",
+        /* NEW */
+        newProject: "New project",
       },
 
       errors: {
@@ -424,6 +451,8 @@ const resources = {
 
       pipeline: {
         title: "Pipeline — Clients",
+        /* NEW for compatibility with projects page */
+        titleProjects: "Pipeline — Projects",
         empty: "No cards",
         movedTo: "Moved to {{stage}}",
         filters: {
@@ -446,6 +475,27 @@ const resources = {
           loadError: "Couldn't load clients Kanban",
           moved: "Moved to {{stage}}",
           moveError: "Couldn't move client",
+        },
+      },
+
+      /* NEW: projects texts */
+      projects: {
+        title: "Pipeline — Projects",
+        newProject: "New project",
+        form: {
+          name: "Name",
+          client: "Client",
+          stage: "Stage",
+          amount: "Estimated amount",
+          currency: "Currency",
+          source: "Source",
+          assignee: "Assignee",
+          dueDate: "Due date",
+          notes: "Notes",
+        },
+        toasts: {
+          created: "Project created",
+          createError: "Could not create project",
         },
       },
 
