@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+// frontend/src/routes/ProyectosKanban.jsx
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { fetchProyectosKanban, moveProyecto } from "../utils/vexKanbanApi";
 import api from "../utils/api";
@@ -45,18 +46,7 @@ function sortByDueCreated(items = []) {
   return arr;
 }
 
-function qs(params = {}) {
-  const p = new URLSearchParams();
-  Object.entries(params).forEach(([k, v]) => {
-    if (v === undefined || v === null) return;
-    if (String(v).trim() === "") return;
-    p.set(k, v);
-  });
-  const s = p.toString();
-  return s ? `?${s}` : "";
-}
-
-/** Filtro FE cuando el BE no banca filtros */
+/** Filtro FE cuando el BE no banca filtros (lo dejamos por compat) */
 function applyFiltersFE(list = [], f = {}) {
   const q = (f.q || "").toLowerCase().trim();
   return (list || []).filter((c) => {
@@ -231,6 +221,7 @@ function DetailModal({ open, onClose, item }) {
   if (!open || !item) return null;
   const assignee = item.assignee_email || item.assignee || t("common.unassigned");
   const stageLabel = (s) => t(`common.stages.${s}`, s);
+  const notas = item.descripcion || item.notas || ""; // <- fallback
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4" onClick={onClose}>
@@ -283,11 +274,11 @@ function DetailModal({ open, onClose, item }) {
               <EstimateChip url={item.estimate_url} />
               {item.stage && <span className="badge badge-outline">{stageLabel(item.stage)}</span>}
             </div>
-            {item.notas && (
+            {notas && (
               <div className="mt-3">
                 <div className="text-xs opacity-60 mb-1">{t("common.notes")}</div>
                 <div className="rounded-lg bg-base-100 p-2 border border-base-300 text-sm whitespace-pre-wrap">
-                  {item.notas}
+                  {notas}
                 </div>
               </div>
             )}
@@ -313,13 +304,12 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
     estimate_currency: "USD",
     source: "",
     assignee: "",
+    descripcion: "", // Notas
   });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      setForm((f) => ({ ...f, stage: PIPELINE[0] }));
-    }
+    if (open) setForm((f) => ({ ...f, stage: PIPELINE[0] }));
   }, [open]);
 
   if (!open) return null;
@@ -340,6 +330,7 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
         assignee: form.assignee || null,
         estimate_amount: form.estimate_amount ? Number(form.estimate_amount) : null,
         estimate_currency: form.estimate_currency || null,
+        descripcion: form.descripcion?.trim() || null,
       };
       const res = await api.post("/proyectos", payload);
       if (res?.data?.ok) {
@@ -429,7 +420,7 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
             />
           </label>
 
-          <label className="form-control">
+        <label className="form-control">
             <span className="label-text">{t("common.currency", "Moneda")}</span>
             <input
               className="input input-bordered"
@@ -461,6 +452,17 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
             />
           </label>
         </div>
+
+        {/* Notas */}
+        <label className="form-control">
+          <span className="label-text">{t("common.notes", "Notas")}</span>
+          <textarea
+            className="textarea textarea-bordered h-24"
+            value={form.descripcion}
+            onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+            placeholder={t("common.notesPlaceholder", "Contexto, próximos pasos, etc.")}
+          />
+        </label>
 
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" className="btn btn-ghost" onClick={onClose}>
@@ -505,7 +507,7 @@ export default function ProyectosKanban() {
     } catch {}
   }, [compact]);
 
-  // Anti-flicker & cancelación de requests en vuelo
+  // Anti-flicker & cancelación
   const firstLoadRef = useRef(true);
   const inflightRef = useRef(0);
 
@@ -568,6 +570,7 @@ export default function ProyectosKanban() {
                   email: i.email || cli?.email || null,
                   telefono: i.telefono || cli?.telefono || null,
                   empresa: i.empresa || cli?.nombre || null,
+                  notas: i.descripcion || i.notas || null, // <- asegurar que llegue al detalle
                 };
               })
             );
@@ -592,6 +595,7 @@ export default function ProyectosKanban() {
                 email: i.email || cli?.email || null,
                 telefono: i.telefono || cli?.telefono || null,
                 empresa: i.empresa || cli?.nombre || null,
+                notas: i.descripcion || i.notas || null,
               };
             })
           );
