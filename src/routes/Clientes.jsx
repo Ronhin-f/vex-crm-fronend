@@ -1,4 +1,4 @@
-// src/routes/Clientes.jsx — Clientes “puros”: ahora con contactos múltiples
+// src/routes/Clientes.jsx — Clientes “puros”: ahora con contactos múltiples (tabla compacta)
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
@@ -39,7 +39,7 @@ function SlideOver({ open, onClose, title, children, widthClass = "w-full sm:w-[
   );
 }
 
-/* ---------------- Contacto: fila + pequeño form inline ---------------- */
+/* ---------------- Contacto: fila ---------------- */
 function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
   return (
     <div className="flex items-start justify-between gap-3 p-3 border rounded-xl bg-base-100">
@@ -63,11 +63,11 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
               <Phone className="w-3 h-3" /> <span className="truncate">{c.telefono}</span>
             </div>
           ) : null}
-          {c.cargo || c.rol ? (
+          {(c.cargo || c.rol) && (
             <div className="text-xs opacity-70">
               {[c.cargo, c.rol].filter(Boolean).join(" · ")}
             </div>
-          ) : null}
+          )}
           {c.notas ? <div className="text-xs opacity-70 whitespace-pre-wrap">{c.notas}</div> : null}
         </div>
       </div>
@@ -88,6 +88,7 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
   );
 }
 
+/* ---------------- Form de contacto inline ---------------- */
 function ContactFormInline({ initial, onCancel, onSave, saving }) {
   const [f, setF] = useState({
     nombre: initial?.nombre || "",
@@ -111,7 +112,11 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
     });
   }, [initial]);
 
-  const onChange = (e) => setF((p) => ({ ...p, [e.target.name]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
+  const onChange = (e) =>
+    setF((p) => ({
+      ...p,
+      [e.target.name]: e.target.type === "checkbox" ? e.target.checked : e.target.value,
+    }));
 
   return (
     <form
@@ -258,7 +263,6 @@ export default function Clientes() {
         resp = await api.patch(`/clientes/${editing.id}`, form);
         setItems((prev) => prev.map((c) => (c.id === editing.id ? { ...c, ...resp.data } : c)));
         toast.success(t("clients.toasts.updated"));
-        // refrescamos contactos por si update tocó principal
         fetchContacts(editing.id);
       } else {
         resp = await api.post("/clientes", form);
@@ -348,7 +352,6 @@ export default function Clientes() {
   async function makePrimary(c) {
     try {
       const { data: updated } = await api.patch(`/contactos/${c.id}`, { es_principal: true });
-      // Refrescamos lista para que el cambio se vea en el resto
       setContacts((prev) =>
         prev
           .map((x) => (x.id === updated.id ? updated : { ...x, es_principal: false }))
@@ -376,25 +379,26 @@ export default function Clientes() {
         onChange={(e) => setQ(e.target.value)}
       />
 
+      {/* ---- Tabla compacta ---- */}
       <section className="card bg-base-100 shadow">
         <div className="card-body p-0">
           <div className="overflow-x-auto">
-            <table className="table table-zebra table-sm">
+            <table className="table table-zebra table-sm w-full">
               <thead>
                 <tr>
-                  <th>{t("clients.form.name")}</th>
-                  <th className="hidden md:table-cell">{t("clients.form.contactName", "Contacto")}</th>
-                  <th>Email</th>
-                  <th>{t("common.phone")}</th>
-                  <th className="hidden lg:table-cell">{t("clients.form.address", "Dirección")}</th>
-                  <th className="text-right pr-4">{t("actions.update")}</th>
+                  <th className="px-3 py-2">{t("clients.form.name")}</th>
+                  <th className="hidden md:table-cell px-3 py-2">{t("clients.form.contactName", "Contacto")}</th>
+                  <th className="px-3 py-2">Email</th>
+                  <th className="px-3 py-2">{t("common.phone")}</th>
+                  <th className="hidden lg:table-cell px-3 py-2">{t("clients.form.address", "Dirección")}</th>
+                  <th className="text-right pr-5 px-3 py-2">{t("actions.update")}</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   Array.from({ length: 6 }).map((_, i) => (
                     <tr key={i}>
-                      <td colSpan={6}>
+                      <td colSpan={6} className="px-3 py-2">
                         <div className="skeleton h-6 w-full" />
                       </td>
                     </tr>
@@ -407,16 +411,16 @@ export default function Clientes() {
                   </tr>
                 ) : (
                   list.map((c) => (
-                    <tr key={c.id} className="hover">
-                      <td onClick={() => openEdit(c)} className="cursor-pointer">
+                    <tr key={c.id} className="align-top">
+                      <td onClick={() => openEdit(c)} className="cursor-pointer px-3 py-2">
                         <div className="font-medium">{c.nombre}</div>
                         <div className="text-xs opacity-70">{c.observacion || "—"}</div>
                       </td>
-                      <td className="hidden md:table-cell">{c.contacto_nombre || "—"}</td>
-                      <td>{c.email || "—"}</td>
-                      <td>{c.telefono || "—"}</td>
-                      <td className="hidden lg:table-cell">{c.direccion || "—"}</td>
-                      <td className="text-right pr-4">
+                      <td className="hidden md:table-cell px-3 py-2">{c.contacto_nombre || "—"}</td>
+                      <td className="px-3 py-2">{c.email || "—"}</td>
+                      <td className="px-3 py-2">{c.telefono || "—"}</td>
+                      <td className="hidden lg:table-cell px-3 py-2">{c.direccion || "—"}</td>
+                      <td className="text-right pr-5 px-3 py-2">
                         <div className="flex justify-end gap-2">
                           <button className="btn btn-ghost btn-xs" onClick={() => openEdit(c)}>
                             {t("actions.update")}
@@ -536,13 +540,19 @@ export default function Clientes() {
           </div>
         </form>
 
-        {/* -------- Panel Contactos (solo si estoy editando un cliente existente) -------- */}
+        {/* -------- Panel Contactos (solo en edición) -------- */}
         {editing?.id ? (
           <section>
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-semibold">Contactos</h4>
               {!showAddContact ? (
-                <button className="btn btn-sm" onClick={() => { setShowAddContact(true); setEditingContact(null); }}>
+                <button
+                  className="btn btn-sm"
+                  onClick={() => {
+                    setShowAddContact(true);
+                    setEditingContact(null);
+                  }}
+                >
                   <Plus className="w-4 h-4 mr-1" /> Añadir contacto
                 </button>
               ) : null}
