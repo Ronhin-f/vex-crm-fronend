@@ -1,31 +1,19 @@
-// src/routes/Clientes.jsx — Clientes con contactos múltiples + filtro Activo/BID
+// src/routes/Clientes.jsx — Clientes con contactos múltiples + Activo/BID/Inactivo + edición rápida de estado
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import api from "../utils/api";
-import {
-  Plus,
-  X,
-  Mail,
-  Phone,
-  Pencil,
-  Trash2,
-  Star,
-} from "lucide-react";
+import { Plus, X, Mail, Phone, Pencil, Trash2, Star } from "lucide-react";
 
 /* ---------------- SlideOver genérico ---------------- */
 function SlideOver({ open, onClose, title, children, widthClass = "w-full sm:w-[540px] md:w-[760px]" }) {
   return (
     <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none select-none"}`}>
-      <div
-        className={`absolute inset-0 bg-black/40 transition-opacity ${open ? "opacity-100" : "opacity-0"}`}
-        onClick={onClose}
-      />
+      <div className={`absolute inset-0 bg-black/40 transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
       <div
         className={`absolute right-0 top-0 h-full bg-base-100 shadow-xl border-l border-base-200 ${widthClass}
                       transition-transform ${open ? "translate-x-0" : "translate-x-full"}`}
-        role="dialog"
-        aria-modal="true"
+        role="dialog" aria-modal="true"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-base-200">
           <h3 className="font-semibold">{title}</h3>
@@ -63,11 +51,7 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
               <Phone className="w-3 h-3" /> <span className="truncate">{c.telefono}</span>
             </div>
           ) : null}
-          {(c.cargo || c.rol) && (
-            <div className="text-xs opacity-70">
-              {[c.cargo, c.rol].filter(Boolean).join(" · ")}
-            </div>
-          )}
+          {(c.cargo || c.rol) && <div className="text-xs opacity-70">{[c.cargo, c.rol].filter(Boolean).join(" · ")}</div>}
           {c.notas ? <div className="text-xs opacity-70 whitespace-pre-wrap">{c.notas}</div> : null}
         </div>
       </div>
@@ -171,12 +155,29 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
   );
 }
 
-/* ---------------- Badge de estado ---------------- */
-function StatusBadge({ status }) {
-  const isActive = status === "active";
-  const cls = isActive ? "badge-success" : "badge-warning";
-  const label = isActive ? "Activo" : "BID";
-  return <span className={`badge ${cls} badge-sm`}>{label}</span>;
+/* ---------------- Badge + dropdown de estado ---------------- */
+function StatusBadge({ status, onChange }) {
+  const map = {
+    active: { cls: "badge-success", label: "Activo" },
+    bid: { cls: "badge-warning", label: "BID" },
+    inactive: { cls: "badge-ghost", label: "Inactivo" },
+  };
+  const { cls, label } = map[status] || map.active;
+
+  return (
+    <div className="dropdown dropdown-end">
+      <label tabIndex={0} className={`badge ${cls} badge-sm cursor-pointer`}>{label}</label>
+      <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40">
+        {Object.entries(map).map(([key, v]) => (
+          <li key={key}>
+            <button onClick={() => onChange(key)} className="justify-between">
+              {v.label} {key === status ? "✓" : ""}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 /* ---------------- Página Clientes ---------------- */
@@ -186,8 +187,8 @@ export default function Clientes() {
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
 
-  // ✅ filtro Activo/BID (por defecto: activos)
-  const [statusTab, setStatusTab] = useState("active"); // 'active' | 'bid'
+  // ✅ tabs: active | bid | inactive (default: active)
+  const [statusTab, setStatusTab] = useState("active");
 
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -210,7 +211,6 @@ export default function Clientes() {
   const load = async () => {
     setIsLoading(true);
     try {
-      // 👇 ahora el backend filtra por estado; ocultamos BID por defecto
       const { data } = await api.get("/clientes", { params: { status: statusTab } });
       setItems(Array.isArray(data) ? data : []);
     } catch {
@@ -277,18 +277,20 @@ export default function Clientes() {
         toast.success(t("clients.toasts.updated"));
         fetchContacts(editing.id);
       } else {
-        // cuando se crea desde la pestaña BID, lo creamos como BID
-        const payload = statusTab === "bid" ? { ...form, status: "bid" } : form;
+        const payload =
+          statusTab === "bid"
+            ? { ...form, status: "bid" }
+            : statusTab === "inactive"
+            ? { ...form, status: "inactive" }
+            : form;
         resp = await api.post("/clientes", payload);
-        // si estoy viendo BID y lo creé como BID, lo muestro arriba; si no, recargo
-        if (statusTab === "bid") setItems((prev) => [resp.data, ...prev]);
+        if (payload.status) setItems((prev) => [resp.data, ...prev]);
         toast.success(t("clients.toasts.created"));
       }
       setOpenForm(false);
       setEditing(null);
       reset();
       setContacts([]);
-      // si creé en Activos, o edité algo que puede cambiar filtros, refresco
       load();
     } catch {
       toast.error(editing?.id ? t("clients.toasts.updateError") : t("clients.toasts.cannotCreate"));
@@ -380,16 +382,28 @@ export default function Clientes() {
     }
   }
 
-  // 🔁 Convertir a Activo desde la pestaña BID
-  async function convertirAActivo(id) {
+  // 🔁 cambio rápido de estado (dropdown)
+  async function updateStatus(id, next) {
     try {
-      await api.post(`/clientes/${id}/convertir-a-activo`);
-      toast.success("Convertido a Activo");
-      // saco el cliente de la lista actual BID
-      setItems((prev) => prev.filter((c) => c.id !== id));
+      await api.patch(`/clientes/${id}`, { status: next });
+      toast.success(
+        `Estado: ${next === "active" ? "Activo" : next === "bid" ? "BID" : "Inactivo"}`
+      );
+      if (next !== statusTab) {
+        // si el estado cambió de pestaña, sacamos el registro
+        setItems((prev) => prev.filter((c) => c.id !== id));
+      } else {
+        // si quedó en la misma pestaña, refrescamos para ver el badge correcto
+        load();
+      }
     } catch {
-      toast.error("No se pudo convertir");
+      toast.error("No se pudo cambiar el estado");
     }
+  }
+
+  // Acción rápida para BID → Activo
+  async function convertirAActivo(id) {
+    await updateStatus(id, "active");
   }
 
   return (
@@ -401,7 +415,7 @@ export default function Clientes() {
         </button>
       </div>
 
-      {/* Tabs Activo/BID */}
+      {/* Tabs Activo/BID/Inactivo */}
       <div className="flex items-center gap-3">
         <div className="join rounded-xl border border-base-300 overflow-hidden">
           <button
@@ -415,6 +429,12 @@ export default function Clientes() {
             onClick={() => setStatusTab("bid")}
           >
             BID
+          </button>
+          <button
+            className={`join-item btn btn-sm ${statusTab === "inactive" ? "btn-primary" : "btn-ghost"}`}
+            onClick={() => setStatusTab("inactive")}
+          >
+            Inactivos
           </button>
         </div>
 
@@ -469,7 +489,10 @@ export default function Clientes() {
                       <td className="px-3 py-2">{c.telefono || "—"}</td>
                       <td className="hidden lg:table-cell px-3 py-2">{c.direccion || "—"}</td>
                       <td className="px-3 py-2">
-                        <StatusBadge status={c.status || (statusTab === "bid" ? "bid" : "active")} />
+                        <StatusBadge
+                          status={c.status || (statusTab === "bid" ? "bid" : statusTab === "inactive" ? "inactive" : "active")}
+                          onChange={(next) => updateStatus(c.id, next)}
+                        />
                       </td>
                       <td className="text-right pr-5 px-3 py-2">
                         <div className="flex justify-end gap-2">
@@ -517,66 +540,34 @@ export default function Clientes() {
         <form onSubmit={onSubmit} className="space-y-3 mb-6">
           <div>
             <label className="label">{t("clients.form.name")}</label>
-            <input
-              className="input input-bordered w-full"
-              name="nombre"
-              value={form.nombre}
-              onChange={onChange}
-              required
-            />
+            <input className="input input-bordered w-full" name="nombre" value={form.nombre} onChange={onChange} required />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label">{t("clients.form.contactName", "Contacto")}</label>
-              <input
-                className="input input-bordered w-full"
-                name="contacto_nombre"
-                value={form.contacto_nombre}
-                onChange={onChange}
-              />
+              <input className="input input-bordered w-full" name="contacto_nombre" value={form.contacto_nombre} onChange={onChange} />
             </div>
             <div>
               <label className="label">Email</label>
-              <input
-                type="email"
-                className="input input-bordered w-full"
-                name="email"
-                value={form.email}
-                onChange={onChange}
-              />
+              <input type="email" className="input input-bordered w-full" name="email" value={form.email} onChange={onChange} />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label">{t("clients.form.phone")}</label>
-              <input
-                className="input input-bordered w-full"
-                name="telefono"
-                value={form.telefono}
-                onChange={onChange}
-              />
+              <input className="input input-bordered w-full" name="telefono" value={form.telefono} onChange={onChange} />
             </div>
             <div>
               <label className="label">{t("clients.form.address", "Dirección")}</label>
-              <input
-                className="input input-bordered w-full"
-                name="direccion"
-                value={form.direccion}
-                onChange={onChange}
-              />
+              <input className="input input-bordered w-full" name="direccion" value={form.direccion} onChange={onChange} />
             </div>
           </div>
 
           <div>
             <label className="label">{t("clients.form.notes", "Observación")}</label>
-            <textarea
-              className="textarea textarea-bordered w-full"
-              name="observacion"
-              value={form.observacion}
-              onChange={onChange}
-            />
+            <textarea className="textarea textarea-bordered w-full" name="observacion" value={form.observacion} onChange={onChange} />
           </div>
 
           <div className="pt-2 flex gap-2 justify-end">
@@ -605,13 +596,7 @@ export default function Clientes() {
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-semibold">Contactos</h4>
               {!showAddContact ? (
-                <button
-                  className="btn btn-sm"
-                  onClick={() => {
-                    setShowAddContact(true);
-                    setEditingContact(null);
-                  }}
-                >
+                <button className="btn btn-sm" onClick={() => { setShowAddContact(true); setEditingContact(null); }}>
                   <Plus className="w-4 h-4 mr-1" /> Añadir contacto
                 </button>
               ) : null}
