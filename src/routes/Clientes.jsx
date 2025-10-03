@@ -1,4 +1,4 @@
-// src/routes/Clientes.jsx — Clientes “puros”: ahora con contactos múltiples (tabla compacta)
+// src/routes/Clientes.jsx — Clientes con contactos múltiples + filtro Activo/BID
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
@@ -171,12 +171,23 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
   );
 }
 
+/* ---------------- Badge de estado ---------------- */
+function StatusBadge({ status }) {
+  const isActive = status === "active";
+  const cls = isActive ? "badge-success" : "badge-warning";
+  const label = isActive ? "Activo" : "BID";
+  return <span className={`badge ${cls} badge-sm`}>{label}</span>;
+}
+
 /* ---------------- Página Clientes ---------------- */
 export default function Clientes() {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
+
+  // ✅ filtro Activo/BID (por defecto: activos)
+  const [statusTab, setStatusTab] = useState("active"); // 'active' | 'bid'
 
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -199,7 +210,8 @@ export default function Clientes() {
   const load = async () => {
     setIsLoading(true);
     try {
-      const { data } = await api.get("/clientes");
+      // 👇 ahora el backend filtra por estado; ocultamos BID por defecto
+      const { data } = await api.get("/clientes", { params: { status: statusTab } });
       setItems(Array.isArray(data) ? data : []);
     } catch {
       toast.error(t("clients.toasts.loadError"));
@@ -210,7 +222,7 @@ export default function Clientes() {
 
   useEffect(() => {
     load(); // eslint-disable-next-line
-  }, []);
+  }, [statusTab]);
 
   const reset = () =>
     setForm({ nombre: "", contacto_nombre: "", email: "", telefono: "", direccion: "", observacion: "" });
@@ -265,14 +277,19 @@ export default function Clientes() {
         toast.success(t("clients.toasts.updated"));
         fetchContacts(editing.id);
       } else {
-        resp = await api.post("/clientes", form);
-        setItems((prev) => [resp.data, ...prev]);
+        // cuando se crea desde la pestaña BID, lo creamos como BID
+        const payload = statusTab === "bid" ? { ...form, status: "bid" } : form;
+        resp = await api.post("/clientes", payload);
+        // si estoy viendo BID y lo creé como BID, lo muestro arriba; si no, recargo
+        if (statusTab === "bid") setItems((prev) => [resp.data, ...prev]);
         toast.success(t("clients.toasts.created"));
       }
       setOpenForm(false);
       setEditing(null);
       reset();
       setContacts([]);
+      // si creé en Activos, o edité algo que puede cambiar filtros, refresco
+      load();
     } catch {
       toast.error(editing?.id ? t("clients.toasts.updateError") : t("clients.toasts.cannotCreate"));
     } finally {
@@ -363,6 +380,18 @@ export default function Clientes() {
     }
   }
 
+  // 🔁 Convertir a Activo desde la pestaña BID
+  async function convertirAActivo(id) {
+    try {
+      await api.post(`/clientes/${id}/convertir-a-activo`);
+      toast.success("Convertido a Activo");
+      // saco el cliente de la lista actual BID
+      setItems((prev) => prev.filter((c) => c.id !== id));
+    } catch {
+      toast.error("No se pudo convertir");
+    }
+  }
+
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between gap-2">
@@ -372,12 +401,30 @@ export default function Clientes() {
         </button>
       </div>
 
-      <input
-        className="input input-bordered input-sm w-full max-w-md"
-        placeholder={t("common.search", "Buscar...")}
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-      />
+      {/* Tabs Activo/BID */}
+      <div className="flex items-center gap-3">
+        <div className="join rounded-xl border border-base-300 overflow-hidden">
+          <button
+            className={`join-item btn btn-sm ${statusTab === "active" ? "btn-primary" : "btn-ghost"}`}
+            onClick={() => setStatusTab("active")}
+          >
+            Activos
+          </button>
+          <button
+            className={`join-item btn btn-sm ${statusTab === "bid" ? "btn-primary" : "btn-ghost"}`}
+            onClick={() => setStatusTab("bid")}
+          >
+            BID
+          </button>
+        </div>
+
+        <input
+          className="input input-bordered input-sm w-full max-w-md"
+          placeholder={t("common.search", "Buscar...")}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </div>
 
       {/* ---- Tabla compacta ---- */}
       <section className="card bg-base-100 shadow">
@@ -391,6 +438,7 @@ export default function Clientes() {
                   <th className="px-3 py-2">Email</th>
                   <th className="px-3 py-2">{t("common.phone")}</th>
                   <th className="hidden lg:table-cell px-3 py-2">{t("clients.form.address", "Dirección")}</th>
+                  <th className="px-3 py-2">Estado</th>
                   <th className="text-right pr-5 px-3 py-2">{t("actions.update")}</th>
                 </tr>
               </thead>
@@ -398,14 +446,14 @@ export default function Clientes() {
                 {isLoading ? (
                   Array.from({ length: 6 }).map((_, i) => (
                     <tr key={i}>
-                      <td colSpan={6} className="px-3 py-2">
+                      <td colSpan={7} className="px-3 py-2">
                         <div className="skeleton h-6 w-full" />
                       </td>
                     </tr>
                   ))
                 ) : list.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center opacity-70 py-6">
+                    <td colSpan={7} className="text-center opacity-70 py-6">
                       {t("clients.list.none")}
                     </td>
                   </tr>
@@ -420,8 +468,19 @@ export default function Clientes() {
                       <td className="px-3 py-2">{c.email || "—"}</td>
                       <td className="px-3 py-2">{c.telefono || "—"}</td>
                       <td className="hidden lg:table-cell px-3 py-2">{c.direccion || "—"}</td>
+                      <td className="px-3 py-2">
+                        <StatusBadge status={c.status || (statusTab === "bid" ? "bid" : "active")} />
+                      </td>
                       <td className="text-right pr-5 px-3 py-2">
                         <div className="flex justify-end gap-2">
+                          {statusTab === "bid" ? (
+                            <button
+                              className="btn btn-ghost btn-xs text-success"
+                              onClick={() => convertirAActivo(c.id)}
+                            >
+                              Convertir a Activo
+                            </button>
+                          ) : null}
                           <button className="btn btn-ghost btn-xs" onClick={() => openEdit(c)}>
                             {t("actions.update")}
                           </button>
