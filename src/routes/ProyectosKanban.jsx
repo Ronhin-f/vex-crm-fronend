@@ -1,4 +1,4 @@
-// frontend/src/routes/ProyectosKanban.jsx
+// frontend/src/routes/ProyectosKanban.jsx 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { fetchProyectosKanban, moveProyecto } from "../utils/vexKanbanApi";
@@ -734,11 +734,11 @@ export default function ProyectosKanban() {
   const firstLoadRef = useRef(true);
   const inflightRef = useRef(0);
 
-  // Cargar clientes (solo para los modales)
+  // Cargar clientes (solo para los modales) ——— CAMBIO: incluir active + bid
   useEffect(() => {
     async function fetchClients() {
       try {
-        const res = await api.get("/clientes");
+        const res = await api.get("/clientes", { params: { status: "active,bid" } });
         const list = Array.isArray(res.data) ? res.data : res.data?.items || [];
         setClientsForCreate(list);
       } catch {
@@ -770,10 +770,10 @@ export default function ProyectosKanban() {
       const data = await fetchProyectosKanban(beParams);
       if (myReq !== inflightRef.current) return;
 
-      // 2) enriquecer con /clientes para completar email/teléfono/empresa
+      // 2) enriquecer con /clientes para completar email/teléfono/empresa ——— CAMBIO: active + bid
       let fullClients = [];
       try {
-        const res = await api.get(`/clientes`);
+        const res = await api.get(`/clientes`, { params: { status: "active,bid" } });
         fullClients = Array.isArray(res.data) ? res.data : [];
       } catch {
         fullClients = [];
