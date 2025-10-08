@@ -337,7 +337,9 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
         assignee: form.assignee || null,
         estimate_amount: form.estimate_amount ? Number(form.estimate_amount) : null,
         estimate_currency: form.estimate_currency || null,
+        // ⬇️ Notas: mandamos ambas llaves
         descripcion: form.descripcion?.trim() || null,
+        notas: form.descripcion?.trim() || null,
         due_date: form.due_date ? new Date(form.due_date).toISOString() : null, // enviar ISO
       };
       const res = await api.post("/proyectos", payload);
@@ -546,7 +548,9 @@ function EditProjectModal({ open, onClose, onSaved, item, clients }) {
         assignee: form.assignee || null,
         estimate_amount: form.estimate_amount !== "" ? Number(form.estimate_amount) : null,
         estimate_currency: form.estimate_currency || null,
+        // ⬇️ Notas: mandamos ambas llaves
         descripcion: form.descripcion?.trim() || null,
+        notas: form.descripcion?.trim() || null,
         due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
       };
       const res = await api.patch(`/proyectos/${item.id}`, payload);
