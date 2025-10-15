@@ -3,25 +3,41 @@
 // - Añade Bearer a cada request (salvo endpoints públicos)
 // - Valida expiración del JWT sin librerías
 // - Ante 401/403 limpia sesión y dispara logout cross-tab
+// - Permite override de baseURL en runtime (localStorage / window var)
 
 import axios from "axios";
 
-// ────────────────────────── Base URLs (env) ──────────────────────────
-const API_CORE_URL = (import.meta.env.VITE_API_CORE_URL || "https://vex-core-backend-production.up.railway.app").replace(/\/+$/, "");
-const API_CRM_URL  = (import.meta.env.VITE_API_CRM_URL  || (import.meta.env.VITE_API_URL || "http://localhost:3000")).replace(/\/+$/, "");
+/* ────────────────────────── Base URLs (env) ────────────────────────── */
+const ENV_CORE = (import.meta.env.VITE_API_CORE_URL || "https://vex-core-backend-production.up.railway.app").replace(/\/+$/, "");
+const ENV_CRM  = (import.meta.env.VITE_API_CRM_URL  || (import.meta.env.VITE_API_URL || "http://localhost:3000")).replace(/\/+$/, "");
 
-export const coreApi = axios.create({ baseURL: API_CORE_URL });
-export const crmApi  = axios.create({ baseURL: API_CRM_URL });
+/* Helpers para override en runtime (debug/SSO bridge) */
+function pickRuntimeBase(key, fallback) {
+  try {
+    const winHint = (typeof window !== "undefined" && window[key]) ? String(window[key]) : "";
+    const ls = (typeof localStorage !== "undefined" && localStorage.getItem("vex_api_base")) || "";
+    const chosen = (winHint || ls || "").trim();
+    return (chosen || fallback).replace(/\/+$/, "");
+  } catch {
+    return fallback;
+  }
+}
 
-// ────────────────────────── Utils ──────────────────────────
+export const coreApi = axios.create({ baseURL: pickRuntimeBase("__VEX_CORE_API_BASE__", ENV_CORE) });
+export const crmApi  = axios.create({ baseURL: pickRuntimeBase("__VEX_API_BASE__", ENV_CRM) });
+
+/* Exponer atajos para ajustar el baseURL en caliente desde consola si hace falta */
+if (typeof window !== "undefined") {
+  window.__VEX_SET_API__ = (u) => { crmApi.defaults.baseURL = String(u || ENV_CRM).replace(/\/+$/, ""); console.info("[api] crm base =", crmApi.defaults.baseURL); };
+  window.__VEX_SET_CORE__ = (u) => { coreApi.defaults.baseURL = String(u || ENV_CORE).replace(/\/+$/, ""); console.info("[api] core base =", coreApi.defaults.baseURL); };
+}
+
+/* ────────────────────────── Utils ────────────────────────── */
 function decodeJwt(token) {
   try {
     const b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
     const json = decodeURIComponent(
-      atob(b64)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
+      atob(b64).split("").map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")
     );
     return JSON.parse(json);
   } catch {
@@ -39,22 +55,43 @@ function pathFromConfig(config) {
   }
 }
 
+/* Endpoints públicos del backend (no requieren token) */
 function isPublicEndpoint(config) {
   const p = pathFromConfig(config);
-  // Endpoints públicos del backend (no requieren token)
   return (
-    /^\/healthz?$/.test(p) ||
-    /^\/upload(\/|$)/.test(p) ||    // /upload/estimate
-    /^\/uploads(\/|$)/.test(p)      // estáticos
+    /^\/?$/.test(p) ||                // root ok
+    /^\/healthz?$/.test(p) ||         // /health o /healthz
+    /^\/api\/health$/.test(p) ||      // /api/health
+    /^\/upload(\/|$)/.test(p) ||      // /upload/estimate
+    /^\/uploads(\/|$)/.test(p)        // estáticos
   );
+}
+
+/* Token + contexto desde localStorage con fallbacks */
+function getToken() {
+  try {
+    return localStorage.getItem("vex_token") || localStorage.getItem("token") || "";
+  } catch {
+    return "";
+  }
+}
+function getOrgId() {
+  try {
+    return localStorage.getItem("vex_org_id") || localStorage.getItem("organizacion_id") || "";
+  } catch { return ""; }
+}
+function getUserEmail() {
+  try {
+    return localStorage.getItem("vex_user") || localStorage.getItem("usuario_email") || "";
+  } catch { return ""; }
 }
 
 function broadcastLogout() {
   try {
-    // Limpiamos solo claves de sesión para no pisar preferencias del usuario
-    const keys = ["vex_token", "token", "user", "organizacion_id", "usuario_email"];
+    const keys = ["vex_token", "token", "user", "vex_user", "vex_org_id", "organizacion_id", "usuario_email"];
     keys.forEach((k) => localStorage.removeItem(k));
-    localStorage.setItem("logout-event", String(Date.now()));
+    localStorage.setItem("logout-event", String(Date.now())); // cross-tab
+    console.warn("[api] logout broadcast");
   } catch {}
 }
 
@@ -63,9 +100,9 @@ function setupInterceptor(apiInstance, name) {
   apiInstance.interceptors.request.use((config) => {
     if (isPublicEndpoint(config)) return config;
 
-    const token = localStorage.getItem("vex_token");
+    const token = getToken();
     if (!token) {
-      // Sin token: cancelamos request para no ensuciar logs/toasts
+      // Sin token: cancelamos request para no ensuciar toasts; el caller decide qué hacer
       throw new axios.Cancel(`[${name}] Sin token`);
     }
     const payload = decodeJwt(token);
@@ -76,6 +113,13 @@ function setupInterceptor(apiInstance, name) {
     }
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
+
+    // Contexto opcional (no requerido, pero útil para auditoría/routers passthrough)
+    const orgId = getOrgId();
+    const uEmail = getUserEmail();
+    if (orgId)   config.headers["X-Org-Id"] = orgId;
+    if (uEmail)  config.headers["X-User-Email"] = uEmail;
+
     return config;
   });
 
@@ -96,6 +140,19 @@ function setupInterceptor(apiInstance, name) {
 setupInterceptor(coreApi, "Core");
 setupInterceptor(crmApi, "CRM");
 
-// Export por defecto: apuntamos al backend CRM
+/* Reaplicar overrides si el SSO bridge escribe en localStorage después del boot */
+if (typeof window !== "undefined") {
+  window.addEventListener("vex:token-ready", () => {
+    try {
+      const hint = localStorage.getItem("vex_api_base");
+      if (hint) {
+        crmApi.defaults.baseURL = hint.replace(/\/+$/, "");
+        console.info("[api] baseURL actualizado por bridge:", crmApi.defaults.baseURL);
+      }
+    } catch {}
+  });
+}
+
+/* Export por defecto: apuntamos al backend CRM */
 const api = crmApi;
 export default api;
