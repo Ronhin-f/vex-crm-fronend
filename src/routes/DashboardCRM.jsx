@@ -36,8 +36,8 @@ export default function DashboardCRM() {
   const [metrics, setMetrics] = useState({
     total_clientes: 0,
     total_tareas: 0,
-    proximos_7d: 0,       // keep por compat (no se usa en la UI)
-    total_proyectos: 0,   // NUEVO: lo muestra la UI
+    proximos_7d: 0,       // compat
+    total_proyectos: 0,   // nuevo
   });
 
   // KPIs de pipeline + próximos 7 días (derivados de /analytics/kpis)
@@ -86,56 +86,66 @@ export default function DashboardCRM() {
     },
   });
 
-  async function loadAll() {
+  const isOk = (r) => r?.status === "fulfilled" && r.value?.status >= 200 && r.value?.status < 300;
+  const is304 = (r) => r?.status === "fulfilled" && r.value?.status === 304;
+
+  async function loadAll(signal) {
     setIsLoading(true);
     try {
+      const nc = { params: { _t: Date.now() }, signal };
+
       const [dashRes, aiRes, intRes, anRes] = await Promise.allSettled([
-        api.get("/dashboard"),
-        api.get("/ai/insights"),
-        api.get("/integraciones"),
-        api.get("/analytics/kpis"),
+        api.get("/dashboard", nc),
+        api.get("/ai/insights", nc),
+        api.get("/integraciones", nc),
+        api.get("/analytics/kpis", nc),
       ]);
 
       // Dashboard base (contadores + listas)
-      if (dashRes.status === "fulfilled") {
-        const d = dashRes.value?.data ?? {};
+      if (isOk(dashRes)) {
+        const d = dashRes.value.data ?? {};
         const m = d.metrics ?? {};
-        setMetrics({
-          total_clientes: Number(m.total_clientes ?? 0),
-          total_tareas: Number(m.total_tareas ?? 0),
-          proximos_7d: Number(m.proximos_7d ?? 0),
-          total_proyectos: Number(m.total_proyectos ?? 0),
-        });
+        setMetrics((prev) => ({
+          ...prev,
+          total_clientes: Number(m.total_clientes ?? prev.total_clientes ?? 0),
+          total_tareas: Number(m.total_tareas ?? prev.total_tareas ?? 0),
+          proximos_7d: Number(m.proximos_7d ?? prev.proximos_7d ?? 0),
+          total_proyectos: Number(m.total_proyectos ?? prev.total_proyectos ?? 0),
+        }));
         setTop(Array.isArray(d.topClientes) ? d.topClientes : []);
         setSeg(Array.isArray(d.proximosSeguimientos) ? d.proximosSeguimientos : []);
-      } else {
-        setMetrics((prev) => ({ ...prev, total_clientes: 0, total_tareas: 0, proximos_7d: 0, total_proyectos: 0 }));
-        setTop([]);
-        setSeg([]);
+      } else if (!is304(dashRes)) {
+        // si falló (no 304), no pisamos con ceros: dejamos lo anterior
+        console.warn("Dashboard GET falló o fue rechazado");
       }
 
       // Insights
-      if (aiRes.status === "fulfilled") {
-        const ai = aiRes.value?.data ?? {};
+      if (isOk(aiRes)) {
+        const ai = aiRes.value.data ?? {};
         setInsights({
           recomendaciones: ai.recomendaciones ?? null,
           model: ai.model ?? null,
           source: ai.source ?? null,
         });
-      } else {
-        setInsights({ recomendaciones: null, model: null, source: null });
+      } else if (!is304(aiRes)) {
+        // mantenemos el valor anterior
+        console.warn("AI insights GET sin datos (fallo o 304)");
       }
 
       // Integraciones
-      if (intRes.status === "fulfilled") {
-        setIntegraciones(intRes.value?.data ?? { slack: { configured: false }, whatsapp: { configured: false } });
-      } else {
-        setIntegraciones({ slack: { configured: false }, whatsapp: { configured: false } });
+      if (isOk(intRes)) {
+        const iv = intRes.value.data ?? {};
+        setIntegraciones({
+          slack: iv?.slack ?? { configured: false },
+          whatsapp: iv?.whatsapp ?? { configured: false },
+        });
+      } else if (!is304(intRes)) {
+        console.warn("Integraciones GET sin datos (fallo o 304)");
       }
 
       // Analytics KPIs (pipeline + qualification + tasks)
-      if (anRes.status === "fulfilled") {
-        const an = anRes.value?.data ?? {};
+      if (isOk(anRes)) {
+        const an = anRes.value.data ?? {};
 
         // --- pipeline summary
         const won = Number(an?.pipeline?.summary?.won ?? 0);
@@ -197,9 +207,9 @@ export default function DashboardCRM() {
           },
           qualification: qual,
         });
-      } else {
-        // si falla analytics, dejamos lo anterior y kpis en cero
-        setKpis({ won: 0, lost: 0, winRate: 0, proximos7d: 0, unqualified: 0, followup_missed: 0 });
+      } else if (!is304(anRes)) {
+        console.warn("Analytics KPIs GET sin datos (fallo)");
+        // no reseteamos kpis ni analytics si falla
       }
     } catch (e) {
       console.error("Dashboard error", e);
@@ -209,14 +219,12 @@ export default function DashboardCRM() {
   }
 
   useEffect(() => {
-    let mounted = true;
+    const controller = new AbortController();
     (async () => {
-      await loadAll();
-      if (!mounted) return;
+      await loadAll(controller.signal);
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onDispatch = async () => {
@@ -227,7 +235,7 @@ export default function DashboardCRM() {
       const ok = data?.ok ?? 0;
       const err = data?.err ?? 0;
       toast.success(t("actions.sentSummary", "{{ok}} enviados, {{err}} con error", { ok, err }), { id });
-      await loadAll();
+      await loadAll(); // refrescamos
     } catch (e) {
       const status = e?.response?.status;
       if (status === 403) {
@@ -243,7 +251,7 @@ export default function DashboardCRM() {
   const onRefreshInsights = async () => {
     setInsightsBusy(true);
     try {
-      const { data } = await api.get("/ai/insights");
+      const { data } = await api.get("/ai/insights", { params: { _t: Date.now() } });
       setInsights({
         recomendaciones: data?.recomendaciones ?? null,
         model: data?.model ?? null,
