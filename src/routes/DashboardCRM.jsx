@@ -32,14 +32,15 @@ export default function DashboardCRM() {
   const [dispatchBusy, setDispatchBusy] = useState(false);
   const [insightsBusy, setInsightsBusy] = useState(false);
 
-  // -------- métricas base (dashboard) --------
+  // -------- métricas base (solo contadores) --------
   const [metrics, setMetrics] = useState({
     total_clientes: 0,
     total_tareas: 0,
-    proximos_7d: 0,
+    proximos_7d: 0,       // keep por compat (no se usa en la UI)
+    total_proyectos: 0,   // NUEVO: lo muestra la UI
   });
 
-  // KPIs de pipeline y próximos 7 días
+  // KPIs de pipeline + próximos 7 días (derivados de /analytics/kpis)
   const [kpis, setKpis] = useState({
     won: 0,
     lost: 0,
@@ -63,7 +64,7 @@ export default function DashboardCRM() {
     whatsapp: { configured: false },
   });
 
-  // -------- analytics/kpis (incluye qualification) --------
+  // -------- analytics/kpis (detalle) --------
   const [analytics, setAnalytics] = useState({
     range: null,
     contacts: {
@@ -95,15 +96,25 @@ export default function DashboardCRM() {
         api.get("/analytics/kpis"),
       ]);
 
-      // Dashboard base
+      // Dashboard base (contadores + listas)
       if (dashRes.status === "fulfilled") {
-        const dash = dashRes.value?.data ?? {};
-        setMetrics(dash.metrics ?? { total_clientes: 0, total_tareas: 0, proximos_7d: 0 });
-        setTop(Array.isArray(dash.topClientes) ? dash.topClientes : []);
-        setSeg(Array.isArray(dash.proximosSeguimientos) ? dash.proximosSeguimientos : []);
+        const d = dashRes.value?.data ?? {};
+        const m = d.metrics ?? {};
+        setMetrics({
+          total_clientes: Number(m.total_clientes ?? 0),
+          total_tareas: Number(m.total_tareas ?? 0),
+          proximos_7d: Number(m.proximos_7d ?? 0),
+          total_proyectos: Number(m.total_proyectos ?? 0),
+        });
+        setTop(Array.isArray(d.topClientes) ? d.topClientes : []);
+        setSeg(Array.isArray(d.proximosSeguimientos) ? d.proximosSeguimientos : []);
+      } else {
+        setMetrics((prev) => ({ ...prev, total_clientes: 0, total_tareas: 0, proximos_7d: 0, total_proyectos: 0 }));
+        setTop([]);
+        setSeg([]);
       }
 
-      // Insights (IA o heurísticas)
+      // Insights
       if (aiRes.status === "fulfilled") {
         const ai = aiRes.value?.data ?? {};
         setInsights({
@@ -115,17 +126,19 @@ export default function DashboardCRM() {
         setInsights({ recomendaciones: null, model: null, source: null });
       }
 
-      // Integraciones (estado simple)
+      // Integraciones
       if (intRes.status === "fulfilled") {
         setIntegraciones(intRes.value?.data ?? { slack: { configured: false }, whatsapp: { configured: false } });
+      } else {
+        setIntegraciones({ slack: { configured: false }, whatsapp: { configured: false } });
       }
 
       // Analytics KPIs (pipeline + qualification + tasks)
       if (anRes.status === "fulfilled") {
         const an = anRes.value?.data ?? {};
 
-        // --- pipeline summary (nuevo source)
-        const won  = Number(an?.pipeline?.summary?.won ?? 0);
+        // --- pipeline summary
+        const won = Number(an?.pipeline?.summary?.won ?? 0);
         const lost = Number(an?.pipeline?.summary?.lost ?? 0);
         const winRate = Number(an?.pipeline?.summary?.win_rate ?? 0);
         const stages = Array.isArray(an?.pipeline?.summary?.stages) ? an.pipeline.summary.stages : [];
@@ -133,12 +146,12 @@ export default function DashboardCRM() {
         const unqualified = getStageCount("Unqualified");
         const followup_missed = getStageCount("Follow-up Missed");
 
-        // --- tasks summary (para próximos 7 días)
+        // --- tasks summary
         const proximos7d = Number(an?.tasks?.due_next_7d ?? 0);
 
         setKpis({ won, lost, winRate, proximos7d, unqualified, followup_missed });
 
-        // --- resto de analytics para secciones inferiores
+        // --- analytics detallado
         const q = an.qualification ?? {};
         const qual = {
           total: Number(q.total ?? 0),
@@ -184,6 +197,9 @@ export default function DashboardCRM() {
           },
           qualification: qual,
         });
+      } else {
+        // si falla analytics, dejamos lo anterior y kpis en cero
+        setKpis({ won: 0, lost: 0, winRate: 0, proximos7d: 0, unqualified: 0, followup_missed: 0 });
       }
     } catch (e) {
       console.error("Dashboard error", e);
@@ -370,6 +386,13 @@ export default function DashboardCRM() {
             <div className="stat-value">{metrics.total_clientes}</div>
           </div>
           <div className="stat">
+            <div className="stat-figure text-info">
+              <Tag size={20} />
+            </div>
+            <div className="stat-title">{t("metrics.projects", "Proyectos")}</div>
+            <div className="stat-value">{metrics.total_proyectos}</div>
+          </div>
+          <div className="stat">
             <div className="stat-figure text-secondary">
               <ClipboardList size={20} />
             </div>
@@ -515,7 +538,7 @@ export default function DashboardCRM() {
             </div>
           </section>
 
-          {/* Próximos 7 días */}
+          {/* Próximos 7 días (tareas) */}
           <section className="card bg-base-100 shadow">
             <div className="card-body">
               <h2 className="card-title">⏰ {t("cards.upcoming7d", "Próximos 7 días")}</h2>
