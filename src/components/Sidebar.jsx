@@ -4,12 +4,12 @@ import { useAuth } from "../context/AuthContext";
 import {
   Home,
   Users,
-  ClipboardList,
   FileText,
   LogOut,
   KanbanSquare,
   ListTodo,
   Building2,
+  Receipt,          // 👈 nuevo icono para Invoices
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle.jsx";
 import LanguageToggle from "./LanguageToggle.jsx";
@@ -89,11 +89,14 @@ export default function Sidebar({ onNavigate = () => {} }) {
           <li className="menu-title px-1 mt-2 uppercase tracking-wide text-xs text-base-content/60">
             {t("nav.section.ops", "Operaciones")}
           </li>
+
+          {/* 👇 antes era /compras (Purchases) */}
           <li className="mx-1">
-            <NavLink to="/compras" onClick={onNavigate} className={linkClass}>
-              <ClipboardList size={18} /> {t("nav.orders", "Compras")}
+            <NavLink to="/invoices" onClick={onNavigate} className={linkClass}>
+              <Receipt size={18} /> {t("nav.invoices", "Invoices")}
             </NavLink>
           </li>
+
           <li className="mx-1">
             <NavLink to="/tareas" onClick={onNavigate} className={linkClass}>
               <FileText size={18} /> {t("nav.tasks", "Tareas")}

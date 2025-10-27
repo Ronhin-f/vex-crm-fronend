@@ -28,6 +28,7 @@ const resources = {
         projects: "Proyectos",
         providers: "Subcontratistas",
         orders: "Compras",
+        invoices: "Facturas",          // 👈 NUEVO
         tasks: "Tareas",
         pipeline: "Pipeline",
         kanbanTasks: "Kanban de tareas",
@@ -127,6 +128,15 @@ const resources = {
         tasks: "Tareas",
         followups7d: "Seguimientos (7 días)",
         overdue: "Vencidas",
+      },
+
+      // 🔹 Opcional: textos para KPIs financieros del dashboard
+      finance: {
+        arTotal: "AR total",
+        overdueAmount: "Vencido (monto)",
+        overdueCount: "Facturas vencidas",
+        dueNext7: "Vence en 7 días",
+        dso: "DSO",
       },
 
       cards: {
@@ -293,6 +303,30 @@ const resources = {
         confirmDelete: "¿Eliminar este producto?",
       },
 
+      // 🔹 NUEVO: textos de la página de Facturas
+      invoices: {
+        title: "📄 Facturas",
+        empty: "No hay facturas aún. Creá la primera con “Nueva factura”.",
+        columns: {
+          number: "N°",
+          client: "Cliente",
+          issue: "Emisión",
+          due: "Vencimiento",
+          status: "Estado",
+          total: "Total",
+          dueAmount: "Saldo",
+        },
+        actions: {
+          newInvoice: "Nueva factura",
+          sendReminder: "Enviar recordatorio",
+        },
+        toasts: {
+          reminderQueued: "Recordatorio encolado",
+          reminderError: "No se pudo encolar el recordatorio",
+          loadError: "No pude cargar facturas",
+        },
+      },
+
       settings: {
         title: "⚙️ Integraciones",
         slackWebhook: "Slack Incoming Webhook",
@@ -334,6 +368,7 @@ const resources = {
         projects: "Projects",
         providers: "Subcontractors",
         orders: "Purchases",
+        invoices: "Invoices",          // 👈 NEW
         tasks: "Tasks",
         pipeline: "Pipeline",
         kanbanTasks: "Tasks Kanban",
@@ -433,6 +468,15 @@ const resources = {
         tasks: "Tasks",
         followups7d: "Follow-ups (7 days)",
         overdue: "Overdue",
+      },
+
+      // Optional: financial snapshot labels
+      finance: {
+        arTotal: "AR Total",
+        overdueAmount: "Overdue (amount)",
+        overdueCount: "Overdue invoices",
+        dueNext7: "Due next 7 days",
+        dso: "DSO",
       },
 
       cards: {
@@ -597,6 +641,30 @@ const resources = {
           requireProductQty: "Product and valid quantity are required",
         },
         confirmDelete: "Delete this item?",
+      },
+
+      // 🔹 NEW: Invoices page strings
+      invoices: {
+        title: "📄 Invoices",
+        empty: "No invoices yet. Create the first one with “New invoice”.",
+        columns: {
+          number: "#",
+          client: "Client",
+          issue: "Issue",
+          due: "Due",
+          status: "Status",
+          total: "Total",
+          dueAmount: "Amount due",
+        },
+        actions: {
+          newInvoice: "New invoice",
+          sendReminder: "Send reminder",
+        },
+        toasts: {
+          reminderQueued: "Reminder queued",
+          reminderError: "Could not queue reminder",
+          loadError: "Couldn't load invoices",
+        },
       },
 
       settings: {
