@@ -39,11 +39,19 @@ async function flowsEmit(trigger, payload) {
   return res.json().catch(() => ({}));
 }
 
-function scheduleTaskReminder({ taskId, title, dueISO, channel, minutesBefore = 15, assignee }) {
+function scheduleTaskReminder({
+  target, // "#general" o "@correo"
+  title,
+  dueISO,
+  offsetSec = 60, // segundos antes del vencimiento
+  assignee,
+  taskId,
+}) {
   if (!dueISO) return Promise.reject(new Error("No hay fecha de vencimiento"));
-  const when = new Date(new Date(dueISO).getTime() - minutesBefore * 60_000).toISOString();
+  const whenMs = new Date(dueISO).getTime() - offsetSec * 1000;
+  const when = new Date(Math.max(whenMs, Date.now() + 1000)).toISOString(); // evita pasado
   const text = `⏰ Recordatorio: "${title}" asignada a ${assignee || "(sin asignar)"} vence ${new Date(dueISO).toLocaleString()}`;
-  const payload = { channel, text, schedule_at: when, meta: { taskId, dueISO, minutesBefore, assignee, title } };
+  const payload = { channel: target, text, schedule_at: when, meta: { taskId, dueISO, offsetSec, assignee, title } };
   return flowsEmit("task.reminder.slack", payload);
 }
 /* =========================== */
@@ -56,11 +64,7 @@ function EstadoBadge({ estado }) {
 function PrioridadBadge({ prioridad }) {
   const key = (prioridad || "media").toLowerCase();
   const classes =
-    key === "alta"
-      ? "badge-error"
-      : key === "baja"
-      ? "badge-success"
-      : "badge-warning";
+    key === "alta" ? "badge-error" : key === "baja" ? "badge-success" : "badge-warning";
   const label =
     key === "alta" ? "Prioridad alta" : key === "baja" ? "Prioridad baja" : "Prioridad media";
   return <span className={`badge ${classes} badge-outline`}>{label}</span>;
@@ -84,13 +88,19 @@ export default function Tareas() {
     descripcion: "",
     cliente_id: "",        // desde select Correos
     vence_en: "",
-    usuario_email: "",     // asignado a
+    usuario_email: "",     // asignado a (usuario interno)
     prioridad: "media",    // alta | media | baja
     recordatorio: false,   // toggle general
   });
 
-  // recordatorio Slack (config avanzada)
-  const [slack, setSlack] = useState({ enable: false, channel: "#general", minutesBefore: 30 });
+  // recordatorio Slack
+  const [slack, setSlack] = useState({
+    enable: false,
+    channel: "#general",    // canal opcional
+    offsetValue: 15,        // valor numérico
+    offsetUnit: "min",      // "sec" | "min"
+    recipients: [],         // correos seleccionados para DM
+  });
   const [flowsOk, setFlowsOk] = useState(false);
 
   // edición
@@ -110,8 +120,9 @@ export default function Tareas() {
     return (clientes || [])
       .filter((c) => !!c.email)
       .map((c) => ({
-        value: c.id,
+        value: String(c.id),
         label: `${c.email}${c.nombre ? ` — ${c.nombre}` : ""}`,
+        email: c.email,
       }));
   }, [clientes]);
 
@@ -189,24 +200,39 @@ export default function Tareas() {
     try {
       const { data } = await api.post("/tareas", payload);
 
-      // Recordatorio Slack si corresponde (usa toggle general o el de Slack)
-      const shouldRemind = (form.recordatorio || slack.enable) && !!payload.vence_en;
-      if (shouldRemind && FLOWS_URL) {
-        try {
-          const created = data || payload;
-          await scheduleTaskReminder({
-            taskId: created.id || created.task_id,
-            title: payload.titulo,
-            dueISO: payload.vence_en,
-            channel: slack.channel,
-            minutesBefore: Number(slack.minutesBefore || 15),
-            assignee: payload.usuario_email,
-          });
-          toast.success("Recordatorio Slack agendado");
-        } catch (err) {
-          console.warn("No se pudo agendar Slack:", err);
-          toast.error("No pude agendar el recordatorio Slack");
-        }
+      // Recordatorio Slack si corresponde
+      const shouldRemind = (form.recordatorio || slack.enable) && !!payload.vence_en && FLOWS_URL;
+      if (shouldRemind) {
+        const created = data || payload;
+        // calcula offset en segundos
+        const offsetSec =
+          Number(slack.offsetValue || 0) * (slack.offsetUnit === "sec" ? 1 : 60);
+
+        // arma targets: canal + cada correo seleccionado como DM "@correo"
+        const targets = [];
+        const channel = (slack.channel || "").trim();
+        if (channel) targets.push(channel);
+        slack.recipients.forEach((email) => targets.push(`@${email}`));
+
+        if (targets.length === 0) targets.push("#general"); // fallback
+
+        const results = await Promise.allSettled(
+          targets.map((t) =>
+            scheduleTaskReminder({
+              target: t,
+              title: payload.titulo,
+              dueISO: payload.vence_en,
+              offsetSec,
+              assignee: payload.usuario_email,
+              taskId: created.id || created.task_id,
+            })
+          )
+        );
+
+        const ok = results.filter((r) => r.status === "fulfilled").length;
+        const fail = results.length - ok;
+        if (ok > 0) toast.success(`Recordatorio Slack agendado (${ok}/${results.length})`);
+        if (fail > 0) toast.error(`Algunos destinos fallaron (${fail})`);
       }
 
       // inserto sin esperar otro GET
@@ -220,7 +246,7 @@ export default function Tareas() {
         prioridad: "media",
         recordatorio: false,
       });
-      setSlack((s) => ({ ...s, enable: false }));
+      setSlack((s) => ({ ...s, enable: false, recipients: [] }));
       toast.success("Tarea creada");
     } catch (e) {
       console.error(e);
@@ -310,17 +336,32 @@ export default function Tareas() {
 
   // ---- Test Slack inmediato ----
   async function testSlack() {
-    if (!slack.channel) return toast.error("Definí un canal o @usuario");
+    const targets = [];
+    const channel = (slack.channel || "").trim();
+    if (channel) targets.push(channel);
+    slack.recipients.forEach((email) => targets.push(`@${email}`));
+    if (targets.length === 0) return toast.error("Definí un canal o elegí correos");
+
     try {
-      await flowsEmit("slack.message", {
-        channel: slack.channel,
-        text: `Test Slack desde VEX CRM (${new Date().toLocaleTimeString()})`,
-      });
-      toast.success("Enviado a Slack");
+      await Promise.all(
+        targets.map((t) =>
+          flowsEmit("slack.message", {
+            channel: t,
+            text: `Test Slack desde VEX CRM (${new Date().toLocaleTimeString()})`,
+          })
+        )
+      );
+      toast.success(`Enviado a ${targets.length} destino(s)`);
     } catch (e) {
       console.error(e);
       toast.error("No pude enviar a Slack");
     }
+  }
+
+  // Helper para multiselect
+  function onChangeMultiSelect(e) {
+    const values = Array.from(e.target.selectedOptions || []).map((o) => o.getAttribute("data-email") || o.value);
+    setSlack((s) => ({ ...s, recipients: values }));
   }
 
   return (
@@ -423,6 +464,7 @@ export default function Tareas() {
             </select>
           </div>
 
+          {/* Recordatorio simple toggle */}
           <div>
             <label className="label flex items-center gap-1">
               <Bell size={16} /> Recordatorio
@@ -434,7 +476,7 @@ export default function Tareas() {
               onChange={(e) => {
                 const enabled = e.target.checked;
                 setForm((f) => ({ ...f, recordatorio: enabled }));
-                setSlack((s) => ({ ...s, enable: enabled || s.enable })); // si lo prenden, habilita Slack también
+                setSlack((s) => ({ ...s, enable: enabled || s.enable }));
               }}
             />
             <p className="text-xs opacity-70 mt-1">
@@ -442,7 +484,7 @@ export default function Tareas() {
             </p>
           </div>
 
-          {/* Config avanzada de Slack */}
+          {/* Recordatorio por Slack (opcional avanzado) */}
           <div className="md:col-span-6">
             <fieldset className="border rounded p-3">
               <legend className="px-1 text-sm font-medium">Recordatorio por Slack (opcional)</legend>
@@ -454,36 +496,79 @@ export default function Tareas() {
                 <p className="text-xs text-amber-700">Flows no disponible. La tarea se creará sin recordatorio.</p>
               )}
 
-              <div className="mt-2 flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={!!slack.enable}
-                  onChange={(e) => setSlack((s) => ({ ...s, enable: e.target.checked }))}
-                  disabled={!form.vence_en || !FLOWS_URL}
-                />
-                <span className="text-sm">Activar recordatorio por Slack</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
+                <div>
+                  <label className="label">Canal (opcional)</label>
+                  <input
+                    className="input input-bordered w-full"
+                    placeholder="#canal o @usuario"
+                    value={slack.channel}
+                    onChange={(e) => setSlack((s) => ({ ...s, channel: e.target.value }))}
+                    disabled={!slack.enable}
+                  />
+                </div>
+
+                <div>
+                  <label className="label">Tiempo antes</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      className="input input-bordered w-full"
+                      placeholder="Valor"
+                      value={slack.offsetValue}
+                      onChange={(e) => setSlack((s) => ({ ...s, offsetValue: Number(e.target.value || 0) }))}
+                      disabled={!slack.enable}
+                    />
+                    <select
+                      className="select select-bordered"
+                      value={slack.offsetUnit}
+                      onChange={(e) => setSlack((s) => ({ ...s, offsetUnit: e.target.value }))}
+                      disabled={!slack.enable}
+                    >
+                      <option value="sec">segundos</option>
+                      <option value="min">minutos</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-end">
+                  <button type="button" className="btn btn-ghost w-full" onClick={testSlack} disabled={!FLOWS_URL}>
+                    PROBAR SLACK
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
-                <input
-                  className="input input-bordered w-full"
-                  placeholder="#canal o @usuario"
-                  value={slack.channel}
-                  onChange={(e) => setSlack((s) => ({ ...s, channel: e.target.value }))}
-                  disabled={!slack.enable}
-                />
-                <input
-                  type="number"
-                  min={1}
-                  className="input input-bordered w-full"
-                  placeholder="Minutos antes"
-                  value={slack.minutesBefore}
-                  onChange={(e) => setSlack((s) => ({ ...s, minutesBefore: Number(e.target.value || 0) }))}
-                  disabled={!slack.enable}
-                />
-                <button type="button" className="btn btn-ghost" onClick={testSlack} disabled={!FLOWS_URL}>
-                  Probar Slack
-                </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+                <div>
+                  <label className="label">Notificar a (correos cargados)</label>
+                  {correoOptions.length > 0 ? (
+                    <select
+                      multiple
+                      className="select select-bordered w-full"
+                      size={Math.min(6, correoOptions.length)}
+                      onChange={onChangeMultiSelect}
+                      disabled={!slack.enable}
+                    >
+                      {correoOptions.map((o) => (
+                        <option key={o.value} value={o.value} data-email={o.email}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      className="input input-bordered w-full"
+                      placeholder="No hay clientes con correo disponibles"
+                      disabled
+                    />
+                  )}
+                  {slack.recipients?.length > 0 && (
+                    <p className="text-xs opacity-70 mt-1">
+                      Se notificará a {slack.recipients.length} correo(s) vía DM de Slack.
+                    </p>
+                  )}
+                </div>
               </div>
             </fieldset>
           </div>
@@ -567,20 +652,16 @@ export default function Tareas() {
 
                       <td className="w-56">
                         {isEditing ? (
-                          correoOptions.length > 0 ? (
-                            <select
-                              className="select select-bordered select-sm w-full"
-                              value={draft.cliente_id}
-                              onChange={(e) => setDraft((d) => ({ ...d, cliente_id: e.target.value }))}
-                            >
-                              <option value="">(Sin cliente)</option>
-                              {correoOptions.map((o) => (
-                                <option key={o.value} value={o.value}>{o.label}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <span className="text-xs opacity-70">Sin correos disponibles</span>
-                          )
+                          <select
+                            className="select select-bordered select-sm w-full"
+                            value={draft.cliente_id}
+                            onChange={(e) => setDraft((d) => ({ ...d, cliente_id: e.target.value }))}
+                          >
+                            <option value="">(Sin cliente)</option>
+                            {correoOptions.map((o) => (
+                              <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                          </select>
                         ) : (
                           <div className="truncate">
                             {t.cliente_email || t.cliente_nombre || labelClienteById(t.cliente_id)}
@@ -628,7 +709,7 @@ export default function Tareas() {
                         {isEditing ? (
                           users.length > 0 ? (
                             <select
-                              className="select select-bordered select-sm w/full"
+                              className="select select-bordered select-sm w-full"
                               value={draft.usuario_email}
                               onChange={(e) => setDraft((d) => ({ ...d, usuario_email: e.target.value }))}
                             >
