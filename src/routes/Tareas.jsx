@@ -40,18 +40,18 @@ async function flowsEmit(trigger, payload) {
 }
 
 function scheduleTaskReminder({
-  target, // "#general" o "@correo"
+  channel,         // "#general" o "@usuario" (si quisieras en el futuro)
   title,
   dueISO,
-  offsetSec = 60, // segundos antes del vencimiento
+  offsetSec = 60,  // segundos antes del vencimiento
   assignee,
   taskId,
 }) {
   if (!dueISO) return Promise.reject(new Error("No hay fecha de vencimiento"));
   const whenMs = new Date(dueISO).getTime() - offsetSec * 1000;
-  const when = new Date(Math.max(whenMs, Date.now() + 1000)).toISOString(); // evita pasado
+  const when = new Date(Math.max(whenMs, Date.now() + 1000)).toISOString(); // evitar pasado
   const text = `⏰ Recordatorio: "${title}" asignada a ${assignee || "(sin asignar)"} vence ${new Date(dueISO).toLocaleString()}`;
-  const payload = { channel: target, text, schedule_at: when, meta: { taskId, dueISO, offsetSec, assignee, title } };
+  const payload = { channel: channel || "#general", text, schedule_at: when, meta: { taskId, dueISO, offsetSec, assignee, title } };
   return flowsEmit("task.reminder.slack", payload);
 }
 /* =========================== */
@@ -63,10 +63,8 @@ function EstadoBadge({ estado }) {
 
 function PrioridadBadge({ prioridad }) {
   const key = (prioridad || "media").toLowerCase();
-  const classes =
-    key === "alta" ? "badge-error" : key === "baja" ? "badge-success" : "badge-warning";
-  const label =
-    key === "alta" ? "Prioridad alta" : key === "baja" ? "Prioridad baja" : "Prioridad media";
+  const classes = key === "alta" ? "badge-error" : key === "baja" ? "badge-success" : "badge-warning";
+  const label = key === "alta" ? "Prioridad alta" : key === "baja" ? "Prioridad baja" : "Prioridad media";
   return <span className={`badge ${classes} badge-outline`}>{label}</span>;
 }
 
@@ -78,7 +76,7 @@ export default function Tareas() {
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
-  // clientes para seleccionar correo
+  // clientes (para select por correo)
   const [clientes, setClientes] = useState([]);
   const [loadingClientes, setLoadingClientes] = useState(false);
 
@@ -86,20 +84,19 @@ export default function Tareas() {
   const [form, setForm] = useState({
     titulo: "",
     descripcion: "",
-    cliente_id: "",        // desde select Correos
+    cliente_id: "",     // desde select Correos
     vence_en: "",
-    usuario_email: "",     // asignado a (usuario interno)
-    prioridad: "media",    // alta | media | baja
-    recordatorio: false,   // toggle general
+    usuario_email: "",  // asignado a
+    prioridad: "media",
+    recordatorio: false,
   });
 
-  // recordatorio Slack
+  // recordatorio Slack (sin "Notificar a")
   const [slack, setSlack] = useState({
     enable: false,
-    channel: "#general",    // canal opcional
-    offsetValue: 15,        // valor numérico
-    offsetUnit: "min",      // "sec" | "min"
-    recipients: [],         // correos seleccionados para DM
+    channel: "#general",
+    offsetValue: 15,
+    offsetUnit: "min", // "sec" | "min"
   });
   const [flowsOk, setFlowsOk] = useState(false);
 
@@ -116,15 +113,13 @@ export default function Tareas() {
   });
 
   // helpers
-  const correoOptions = useMemo(() => {
-    return (clientes || [])
-      .filter((c) => !!c.email)
-      .map((c) => ({
-        value: String(c.id),
-        label: `${c.email}${c.nombre ? ` — ${c.nombre}` : ""}`,
-        email: c.email,
-      }));
-  }, [clientes]);
+  const correoOptions = useMemo(
+    () =>
+      (clientes || [])
+        .filter((c) => !!c.email)
+        .map((c) => ({ value: String(c.id), label: `${c.email}${c.nombre ? ` — ${c.nombre}` : ""}` })),
+    [clientes]
+  );
 
   function labelClienteById(id) {
     const c = clientes.find((x) => x.id === (Number(id) || id));
@@ -165,7 +160,7 @@ export default function Tareas() {
       const { data } = await api.get("/clientes", { params: { org: 10 } });
       setClientes(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.warn("No pude cargar clientes (correos)", e);
+      console.warn("No pude cargar clientes", e);
       setClientes([]);
     } finally {
       setLoadingClientes(false);
@@ -200,42 +195,27 @@ export default function Tareas() {
     try {
       const { data } = await api.post("/tareas", payload);
 
-      // Recordatorio Slack si corresponde
+      // Recordatorio Slack (solo canal)
       const shouldRemind = (form.recordatorio || slack.enable) && !!payload.vence_en && FLOWS_URL;
       if (shouldRemind) {
-        const created = data || payload;
-        // calcula offset en segundos
-        const offsetSec =
-          Number(slack.offsetValue || 0) * (slack.offsetUnit === "sec" ? 1 : 60);
-
-        // arma targets: canal + cada correo seleccionado como DM "@correo"
-        const targets = [];
-        const channel = (slack.channel || "").trim();
-        if (channel) targets.push(channel);
-        slack.recipients.forEach((email) => targets.push(`@${email}`));
-
-        if (targets.length === 0) targets.push("#general"); // fallback
-
-        const results = await Promise.allSettled(
-          targets.map((t) =>
-            scheduleTaskReminder({
-              target: t,
-              title: payload.titulo,
-              dueISO: payload.vence_en,
-              offsetSec,
-              assignee: payload.usuario_email,
-              taskId: created.id || created.task_id,
-            })
-          )
-        );
-
-        const ok = results.filter((r) => r.status === "fulfilled").length;
-        const fail = results.length - ok;
-        if (ok > 0) toast.success(`Recordatorio Slack agendado (${ok}/${results.length})`);
-        if (fail > 0) toast.error(`Algunos destinos fallaron (${fail})`);
+        try {
+          const created = data || payload;
+          const offsetSec = Number(slack.offsetValue || 0) * (slack.offsetUnit === "sec" ? 1 : 60);
+          await scheduleTaskReminder({
+            channel: (slack.channel || "").trim() || "#general",
+            title: payload.titulo,
+            dueISO: payload.vence_en,
+            offsetSec,
+            assignee: payload.usuario_email,
+            taskId: created.id || created.task_id,
+          });
+          toast.success("Recordatorio Slack agendado");
+        } catch (err) {
+          console.warn("No se pudo agendar Slack:", err);
+          toast.error("No pude agendar el recordatorio Slack");
+        }
       }
 
-      // inserto sin esperar otro GET
       setItems((prev) => [{ ...(data ?? payload) }, ...prev]);
       setForm({
         titulo: "",
@@ -246,7 +226,7 @@ export default function Tareas() {
         prioridad: "media",
         recordatorio: false,
       });
-      setSlack((s) => ({ ...s, enable: false, recipients: [] }));
+      setSlack((s) => ({ ...s, enable: false }));
       toast.success("Tarea creada");
     } catch (e) {
       console.error(e);
@@ -334,34 +314,20 @@ export default function Tareas() {
     }
   }
 
-  // ---- Test Slack inmediato ----
+  // ---- Test Slack inmediato (solo canal)
   async function testSlack() {
-    const targets = [];
     const channel = (slack.channel || "").trim();
-    if (channel) targets.push(channel);
-    slack.recipients.forEach((email) => targets.push(`@${email}`));
-    if (targets.length === 0) return toast.error("Definí un canal o elegí correos");
-
+    if (!channel) return toast.error("Definí un canal (#general, por ejemplo)");
     try {
-      await Promise.all(
-        targets.map((t) =>
-          flowsEmit("slack.message", {
-            channel: t,
-            text: `Test Slack desde VEX CRM (${new Date().toLocaleTimeString()})`,
-          })
-        )
-      );
-      toast.success(`Enviado a ${targets.length} destino(s)`);
+      await flowsEmit("slack.message", {
+        channel,
+        text: `Test Slack desde VEX CRM (${new Date().toLocaleTimeString()})`,
+      });
+      toast.success("Enviado a Slack");
     } catch (e) {
       console.error(e);
       toast.error("No pude enviar a Slack");
     }
-  }
-
-  // Helper para multiselect
-  function onChangeMultiSelect(e) {
-    const values = Array.from(e.target.selectedOptions || []).map((o) => o.getAttribute("data-email") || o.value);
-    setSlack((s) => ({ ...s, recipients: values }));
   }
 
   return (
@@ -484,7 +450,7 @@ export default function Tareas() {
             </p>
           </div>
 
-          {/* Recordatorio por Slack (opcional avanzado) */}
+          {/* Recordatorio por Slack (opcional) */}
           <div className="md:col-span-6">
             <fieldset className="border rounded p-3">
               <legend className="px-1 text-sm font-medium">Recordatorio por Slack (opcional)</legend>
@@ -501,7 +467,7 @@ export default function Tareas() {
                   <label className="label">Canal (opcional)</label>
                   <input
                     className="input input-bordered w-full"
-                    placeholder="#canal o @usuario"
+                    placeholder="#canal"
                     value={slack.channel}
                     onChange={(e) => setSlack((s) => ({ ...s, channel: e.target.value }))}
                     disabled={!slack.enable}
@@ -536,38 +502,6 @@ export default function Tareas() {
                   <button type="button" className="btn btn-ghost w-full" onClick={testSlack} disabled={!FLOWS_URL}>
                     PROBAR SLACK
                   </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
-                <div>
-                  <label className="label">Notificar a (correos cargados)</label>
-                  {correoOptions.length > 0 ? (
-                    <select
-                      multiple
-                      className="select select-bordered w-full"
-                      size={Math.min(6, correoOptions.length)}
-                      onChange={onChangeMultiSelect}
-                      disabled={!slack.enable}
-                    >
-                      {correoOptions.map((o) => (
-                        <option key={o.value} value={o.value} data-email={o.email}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      className="input input-bordered w-full"
-                      placeholder="No hay clientes con correo disponibles"
-                      disabled
-                    />
-                  )}
-                  {slack.recipients?.length > 0 && (
-                    <p className="text-xs opacity-70 mt-1">
-                      Se notificará a {slack.recipients.length} correo(s) vía DM de Slack.
-                    </p>
-                  )}
                 </div>
               </div>
             </fieldset>
