@@ -4,7 +4,7 @@ import Sidebar from "./components/Sidebar.jsx";
 import { Toaster } from "react-hot-toast";
 import { useCrossTabLogout } from "./hooks/useCrossTabLogout.js";
 import { Menu } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 export default function App() {
   useCrossTabLogout();
@@ -21,6 +21,13 @@ export default function App() {
     closeDrawer();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search, location.hash]);
+
+  // Título contextual simple (solo se muestra en el topbar mobile)
+  const pageHint = useMemo(() => {
+    const p = location.pathname.toLowerCase();
+    if (p.startsWith("/facturacion")) return " · Facturación";
+    return "";
+  }, [location.pathname]);
 
   return (
     <div className="drawer lg:drawer-open bg-base-200 min-h-screen">
@@ -39,7 +46,9 @@ export default function App() {
             >
               <Menu size={18} />
             </label>
-            <div className="font-semibold">Vex CRM</div>
+            <div className="font-semibold">
+              Vex CRM<span className="opacity-70">{pageHint}</span>
+            </div>
           </div>
         </header>
 
