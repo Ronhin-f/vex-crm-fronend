@@ -1,0 +1,15 @@
+// src/router.jsx (ejemplo)
+import { createBrowserRouter } from "react-router-dom";
+import App from "./App.jsx";
+import BillingPage from "./features/billing/pages/BillingPage.jsx";
+
+export const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <App />,
+    children: [
+      // ...otras rutas
+      { path: "facturacion", element: <BillingPage /> },
+    ],
+  },
+]);

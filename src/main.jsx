@@ -15,6 +15,8 @@ const Tareas          = lazy(() => import("./routes/Tareas"));
 const Proveedores     = lazy(() => import("./routes/Proveedores"));
 const ProyectosKanban = lazy(() => import("./routes/ProyectosKanban"));
 const TareasKanban    = lazy(() => import("./routes/TareasKanban"));
+// NUEVO: Facturación (frontend Core)
+const BillingPage     = lazy(() => import("./features/billing/pages/BillingPage"));
 
 const PageLoader = () => (
   <div className="p-6">
@@ -112,6 +114,11 @@ const router = createHashRouter([
       // Kanban
       { path: "pipeline", element: withSuspense(<ProyectosKanban />) },
       { path: "kanban-tareas", element: withSuspense(<TareasKanban />) },
+
+      // NUEVO: Facturación
+      { path: "facturacion", element: withSuspense(<BillingPage />) },
+      // Alias opcional en inglés
+      { path: "billing", element: <Navigate to="/facturacion" replace /> },
 
       // Aliases/retrocompat
       { path: "kanban", element: <Navigate to="/kanban-tareas" replace /> },

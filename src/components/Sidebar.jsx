@@ -9,7 +9,7 @@ import {
   KanbanSquare,
   ListTodo,
   Building2,
-  Receipt,          // 👈 nuevo icono para Invoices
+  Receipt,          // icono para Facturación
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle.jsx";
 import LanguageToggle from "./LanguageToggle.jsx";
@@ -90,10 +90,10 @@ export default function Sidebar({ onNavigate = () => {} }) {
             {t("nav.section.ops", "Operaciones")}
           </li>
 
-          {/* 👇 antes era /compras (Purchases) */}
+          {/* Facturación */}
           <li className="mx-1">
-            <NavLink to="/invoices" onClick={onNavigate} className={linkClass}>
-              <Receipt size={18} /> {t("nav.invoices", "Invoices")}
+            <NavLink to="/facturacion" onClick={onNavigate} className={linkClass}>
+              <Receipt size={18} /> {t("nav.billing", "Facturación")}
             </NavLink>
           </li>
 
