@@ -40,7 +40,7 @@ async function flowsEmit(trigger, payload) {
 }
 
 function scheduleTaskReminder({
-  channel,         // "#general" o "@usuario" (si quisieras en el futuro)
+  channel,         // "#general"
   title,
   dueISO,
   offsetSec = 60,  // segundos antes del vencimiento
@@ -91,7 +91,7 @@ export default function Tareas() {
     recordatorio: false,
   });
 
-  // recordatorio Slack (sin "Notificar a")
+  // recordatorio Slack
   const [slack, setSlack] = useState({
     enable: false,
     channel: "#general",
@@ -271,7 +271,7 @@ export default function Tareas() {
       const { data } = await api.patch(`/tareas/${id}`, payload);
       setItems((prev) => prev.map((x) => (x.id === id ? { ...x, ...(data || payload) } : x)));
       setEditingId(null);
-      toast.success("Tarea actualizada");
+      toast.success("Tarea actualizado");
     } catch (e) {
       console.error(e);
       toast.error("No pude actualizar la tarea");
@@ -293,7 +293,7 @@ export default function Tareas() {
   async function reopen(id) {
     try {
       const { data } = await api.patch(`/tareas/${id}`, { completada: false, estado: "todo" });
-      setItems((prev) => prev.map((t) => (t.id === id ? { ...t, ...(data || { completada: false, estado: "todo" }) } : t)));
+    setItems((prev) => prev.map((t) => (t.id === id ? { ...t, ...(data || { completada: false, estado: "todo" }) } : t)));
       toast.success("Tarea reabierta");
     } catch (e) {
       console.error(e);
@@ -394,26 +394,32 @@ export default function Tareas() {
           <div>
             <label className="label flex items-center gap-1">
               <User2 size={16} /> Asignado a
-            </label>
-            {users.length > 0 ? (
-              <select
-                className="select select-bordered w-full"
-                value={form.usuario_email}
-                onChange={(e) => setForm((f) => ({ ...f, usuario_email: e.target.value }))}
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs ml-auto"
+                onClick={loadUsers}
+                title="Recargar usuarios"
               >
-                <option value="">(Sin asignar)</option>
-                {users.map((u) => (
-                  <option key={u.email} value={u.email}>{u.email}</option>
-                ))}
-              </select>
-            ) : (
-              <input
-                className="input input-bordered w-full"
-                placeholder="email@usuario (libre)"
-                value={form.usuario_email}
-                onChange={(e) => setForm((f) => ({ ...f, usuario_email: e.target.value }))}
-              />
-            )}
+                ↻
+              </button>
+            </label>
+
+            <select
+              className="select select-bordered w-full"
+              value={form.usuario_email}
+              onChange={(e) => setForm((f) => ({ ...f, usuario_email: e.target.value }))}
+              disabled={loadingUsers && users.length === 0}
+            >
+              <option value="">(Sin asignar)</option>
+              {users.map((u) => (
+                <option key={u.email} value={u.email}>
+                  {u.email}{u.rol ? ` — ${u.rol}` : ""}
+                </option>
+              ))}
+              {!loadingUsers && users.length === 0 && (
+                <option disabled>(Sin usuarios disponibles)</option>
+              )}
+            </select>
             {loadingUsers && <span className="text-xs opacity-70">Cargando usuarios…</span>}
           </div>
 
@@ -641,25 +647,20 @@ export default function Tareas() {
 
                       <td className="w-48">
                         {isEditing ? (
-                          users.length > 0 ? (
-                            <select
-                              className="select select-bordered select-sm w-full"
-                              value={draft.usuario_email}
-                              onChange={(e) => setDraft((d) => ({ ...d, usuario_email: e.target.value }))}
-                            >
-                              <option value="">(Sin asignar)</option>
-                              {users.map((u) => (
-                                <option key={u.email} value={u.email}>{u.email}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <input
-                              className="input input-bordered input-sm w-full"
-                              placeholder="email@usuario"
-                              value={draft.usuario_email}
-                              onChange={(e) => setDraft((d) => ({ ...d, usuario_email: e.target.value }))}
-                            />
-                          )
+                          <select
+                            className="select select-bordered select-sm w-full"
+                            value={draft.usuario_email}
+                            onChange={(e) => setDraft((d) => ({ ...d, usuario_email: e.target.value }))}
+                            disabled={loadingUsers && users.length === 0}
+                          >
+                            <option value="">(Sin asignar)</option>
+                            {users.map((u) => (
+                              <option key={u.email} value={u.email}>{u.email}</option>
+                            ))}
+                            {!loadingUsers && users.length === 0 && (
+                              <option disabled>(Sin usuarios disponibles)</option>
+                            )}
+                          </select>
                         ) : (
                           t.usuario_email || "—"
                         )}
