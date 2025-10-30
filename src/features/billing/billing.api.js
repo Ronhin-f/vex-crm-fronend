@@ -1,5 +1,5 @@
 // src/features/billing/services/billing.api.js
-import api from "../../../utils/api";
+import api from "../../../utils/api.js";
 
 // Listar facturas con filtros y paginación
 export async function listInvoices({ kind, q, qField, due, dueFrom, dueTo, type, page = 1, pageSize = 20 }) {

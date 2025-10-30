@@ -8,15 +8,15 @@ import App from "./App";
 import RutaProtegida from "./components/RutaPrivada";
 import { AuthProvider } from "./context/AuthContext";
 
-// ─── Lazy routes (code split) ────────────────────────────────────────────────
+// Lazy routes
 const DashboardCRM    = lazy(() => import("./routes/DashboardCRM"));
 const Clientes        = lazy(() => import("./routes/Clientes"));
 const Tareas          = lazy(() => import("./routes/Tareas"));
 const Proveedores     = lazy(() => import("./routes/Proveedores"));
 const ProyectosKanban = lazy(() => import("./routes/ProyectosKanban"));
 const TareasKanban    = lazy(() => import("./routes/TareasKanban"));
-// NUEVO: Facturación (frontend Core)
-const BillingPage     = lazy(() => import("./features/billing/pages/BillingPage"));
+// ✅ Facturación (ruta correcta, SIN punto extra)
+const BillingPage = lazy(() => import("./features/billing/pages/BillingPage.jsx"));
 
 const PageLoader = () => (
   <div className="p-6">
@@ -32,33 +32,25 @@ const ErrorFallback = () => (
   </div>
 );
 
-/* ──────────────────────────────────────────────────────────────
-   Login bridge (Core → CRM): soporta ?vex_token=&user= y hash #/?...
-   Guarda en localStorage ANTES de montar React y normaliza a /#/
-   ────────────────────────────────────────────────────────────── */
+/* Bridge Core → CRM */
 (() => {
   const paramsFrom = (str) => {
     if (!str) return new URLSearchParams();
     const i = str.indexOf("?");
     return new URLSearchParams(i >= 0 ? str.slice(i + 1) : "");
   };
-
   const qs = new URLSearchParams(window.location.search);
   const hs = paramsFrom(window.location.hash);
 
-  const vexToken =
-    qs.get("vex_token") || qs.get("token") ||
-    hs.get("vex_token") || hs.get("token");
-
+  const vexToken = qs.get("vex_token") || qs.get("token") || hs.get("vex_token") || hs.get("token");
   const userParam = qs.get("user") || hs.get("user");
   let changed = false;
 
   if (vexToken) {
     localStorage.setItem("token", vexToken);
-    localStorage.setItem("vex_token", vexToken); // compat
+    localStorage.setItem("vex_token", vexToken);
     changed = true;
   }
-
   if (userParam) {
     try {
       const u = JSON.parse(userParam);
@@ -77,17 +69,15 @@ const ErrorFallback = () => (
         if (orgId != null) localStorage.setItem("organizacion_id", String(orgId));
         localStorage.setItem("login-event", String(Date.now()));
         changed = true;
-      } catch { /* ignore */ }
+      } catch {}
     }
   }
-
   if (changed) {
     const target = (location.hash && location.hash.startsWith("#/")) ? location.hash : "#/";
     history.replaceState({}, document.title, "/" + target);
   }
 })();
 
-// ─── Router protegido ────────────────────────────────────────────────────────
 const withSuspense = (el) => <Suspense fallback={<PageLoader />}>{el}</Suspense>;
 
 const router = createHashRouter([
@@ -101,29 +91,28 @@ const router = createHashRouter([
     errorElement: <ErrorFallback />,
     children: [
       { index: true, element: withSuspense(<DashboardCRM />) },
-      { path: "dashboard", element: <Navigate to="/" replace /> }, // alias legacy
+      { path: "dashboard", element: <Navigate to="/" replace /> },
 
       // CRM
       { path: "clientes", element: withSuspense(<Clientes />) },
       { path: "tareas", element: withSuspense(<Tareas />) },
 
-      // Proveedores (reemplaza al viejo módulo de compras)
+      // Proveedores
       { path: "proveedores", element: withSuspense(<Proveedores />) },
-      { path: "compras", element: <Navigate to="/proveedores" replace /> }, // alias por compat
+      { path: "compras", element: <Navigate to="/proveedores" replace /> },
 
       // Kanban
       { path: "pipeline", element: withSuspense(<ProyectosKanban />) },
       { path: "kanban-tareas", element: withSuspense(<TareasKanban />) },
 
-      // NUEVO: Facturación
+      // Facturación
       { path: "facturacion", element: withSuspense(<BillingPage />) },
-      // Alias opcional en inglés
       { path: "billing", element: <Navigate to="/facturacion" replace /> },
 
-      // Aliases/retrocompat
+      // Aliases
       { path: "kanban", element: <Navigate to="/kanban-tareas" replace /> },
       { path: "pipeline-clientes", element: <Navigate to="/pipeline" replace /> },
-      { path: "proyectos", element: <Navigate to="/pipeline" replace /> }, // alias adicional
+      { path: "proyectos", element: <Navigate to="/pipeline" replace /> },
 
       // Catch-all
       { path: "*", element: <ErrorFallback /> },

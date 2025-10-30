@@ -1,10 +1,10 @@
 // src/features/billing/pages/BillingPage.jsx
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
-import InvoiceFilters from "../components/InvoiceFilters";
-import InvoiceList from "../components/InvoiceList";
-import CreateInvoiceDialog from "../components/CreateInvoiceDialog";
-import { listInvoices, createInvoice, markAsPaid, removeInvoice } from "../services/billing.api";
+import InvoiceFilters from "../components/InvoiceFilters.jsx";
+import InvoiceList from "../components/InvoiceList.jsx";
+import CreateInvoiceDialog from "../components/CreateInvoiceDialog.jsx";
+import { listInvoices, createInvoice, markAsPaid, removeInvoice } from "../services/billing.api.js";
 
 const DEFAULT_FILTERS = { q: "", qField: "number", due: "", dueFrom: "", dueTo: "", type: "" };
 
