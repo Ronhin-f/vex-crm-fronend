@@ -16,7 +16,7 @@ const Proveedores     = lazy(() => import("./routes/Proveedores"));
 const ProyectosKanban = lazy(() => import("./routes/ProyectosKanban"));
 const TareasKanban    = lazy(() => import("./routes/TareasKanban"));
 // ✅ Facturación (ruta correcta, SIN punto extra)
-const BillingPage = lazy(() => import("./features/billing/pages/BillingPage.jsx"));
+const BillingPage = lazy(() => import("./features/pages/BillingPage.jsx"));
 
 const PageLoader = () => (
   <div className="p-6">
