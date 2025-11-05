@@ -143,7 +143,7 @@ export default function Tareas() {
   async function loadUsers() {
     setLoadingUsers(true);
     try {
-      const { data } = await api.get("/users"); // <-- endpoint correcto
+      const { data } = await api.get("/users"); // endpoint principal
       const items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
       setUsers(items);
     } catch (e) {
@@ -157,7 +157,7 @@ export default function Tareas() {
   async function loadClientes() {
     setLoadingClientes(true);
     try {
-      const { data } = await api.get("/clientes"); // sin ?org= (va en token)
+      const { data } = await api.get("/clientes");
       setClientes(Array.isArray(data) ? data : []);
     } catch (e) {
       console.warn("No pude cargar clientes", e);
@@ -189,7 +189,7 @@ export default function Tareas() {
       vence_en: form.vence_en ? new Date(form.vence_en).toISOString() : null,
       estado: "todo",
       completada: false,
-      usuario_email: assignedEmail,            // compat
+      usuario_email: assignedEmail,               // compat
       assignee_email: assignedEmail || undefined, // alias aceptado por el BE
       prioridad: form.prioridad || "media",
       recordatorio: !!form.recordatorio,
@@ -212,10 +212,10 @@ export default function Tareas() {
             assignee: created.usuario_email || assignedEmail,
             taskId: created.id || created.task_id,
           });
-          toast.success("Recordatorio Slack agendado");
+          toast.success("Recordatorio de Slack agendado");
         } catch (err) {
           console.warn("No se pudo agendar Slack:", err);
-          toast.error("No pude agendar el recordatorio Slack");
+          toast.error("No pude agendar el recordatorio de Slack");
         }
       }
 
@@ -250,7 +250,7 @@ export default function Tareas() {
     });
   }
 
-  // util: arma payload PATCH sólo con campos presentes
+  // util: arma payload PATCH solo con campos presentes
   const clean = (obj) => {
     const out = {};
     Object.entries(obj).forEach(([k, v]) => {
@@ -310,7 +310,7 @@ export default function Tareas() {
     try {
       await api.delete(`/tareas/${id}`);
       setItems((prev) => prev.filter((x) => x.id !== id));
-      toast.success("Tarea eliminado");
+      toast.success("Tarea eliminada");
     } catch (e) {
       console.error(e);
       toast.error("No pude eliminar la tarea");
@@ -543,7 +543,7 @@ export default function Tareas() {
                 <th>Prioridad</th>
                 <th>
                   <div className="flex items-center gap-1">
-                    <User2 size={14} /> Asignada
+                    <User2 size={14} /> Asignado a
                   </div>
                 </th>
                 <th className="text-right">Acciones</th>
