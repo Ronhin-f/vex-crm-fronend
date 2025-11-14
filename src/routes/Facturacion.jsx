@@ -32,7 +32,7 @@ export default function Facturacion() {
   // Lista local de facturas (solo frontend por ahora)
   const [facturas, setFacturas] = useState([]);
 
-  // Modo del modal: crear / editar (dejamos "view" por si se usa después, pero sin botón)
+  // Modo del modal: crear / editar
   const [modalMode, setModalMode] = useState("create"); // "create" | "edit"
   const [selectedFactura, setSelectedFactura] = useState(null);
 
@@ -156,6 +156,13 @@ export default function Facturacion() {
   // (Opcional) todavía no filtramos la lista, pero dejamos el hook para después.
   const facturasFiltradas = facturas;
 
+  const handleVerFacturaDigital = (factura) => {
+    // Placeholder: después se cambia por abrir PDF / link real
+    alert(
+      `Ver factura digital\n\nNúmero: ${factura.numero}\nCliente: ${factura.cliente}`
+    );
+  };
+
   return (
     <div className="h-full w-full p-6 flex flex-col gap-4">
       {/* Header */}
@@ -259,13 +266,14 @@ export default function Facturacion() {
                 <th>Estado</th>
                 <th className="text-right">Total</th>
                 <th>Acciones</th>
+                <th>Factura digital</th>
               </tr>
             </thead>
             <tbody>
               {facturasFiltradas.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="text-center py-8 text-base-content/60"
                   >
                     Sin resultados
@@ -285,7 +293,6 @@ export default function Facturacion() {
                     </td>
                     <td>
                       <div className="flex gap-1">
-                        {/* VER eliminado, quedan solo editar y eliminar */}
                         <button
                           type="button"
                           className="btn btn-ghost btn-xs"
@@ -301,6 +308,15 @@ export default function Facturacion() {
                           ELIMINAR
                         </button>
                       </div>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs"
+                        onClick={() => handleVerFacturaDigital(f)}
+                      >
+                        Ver factura digital
+                      </button>
                     </td>
                   </tr>
                 ))
