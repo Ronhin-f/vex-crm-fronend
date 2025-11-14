@@ -2,6 +2,12 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 
+const formatFecha = (iso) => {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+};
+
 export default function Facturacion() {
   const [tab, setTab] = useState("enviadas");
   const [showModal, setShowModal] = useState(false);
@@ -14,6 +20,9 @@ export default function Facturacion() {
     fechaHasta: "",
     tipo: "",
   });
+
+  // 👉 Lista local de facturas (solo frontend)
+  const [facturas, setFacturas] = useState([]);
 
   const [form, setForm] = useState({
     tipo: "B",
@@ -33,12 +42,7 @@ export default function Facturacion() {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleCrearFactura = (e) => {
-    e.preventDefault();
-    // Acá después se conecta con el backend (POST factura).
-    console.log("Crear factura:", form);
-
-    // Por ahora solo cerramos y reseteamos.
+  const resetForm = () => {
     setForm({
       tipo: "B",
       numero: "",
@@ -46,6 +50,32 @@ export default function Facturacion() {
       vencimiento: "",
       cliente: "",
     });
+  };
+
+  const handleCrearFactura = (e) => {
+    e.preventDefault();
+
+    // Validación mínima
+    if (!form.numero || !form.fecha || !form.cliente) {
+      alert("Completá Número, Fecha y Cliente/Proveedor antes de crear.");
+      return;
+    }
+
+    const nueva = {
+      id: Date.now(), // ID temporal local
+      tipo: form.tipo,
+      numero: form.numero,
+      fecha: form.fecha,
+      vencimiento: form.vencimiento,
+      cliente: form.cliente,
+      estado: "Pendiente",
+      total: 0, // después Mauri decide cómo calcularlo
+    };
+
+    // Agregamos la nueva factura al inicio de la lista
+    setFacturas((prev) => [nueva, ...prev]);
+
+    resetForm();
     setShowModal(false);
   };
 
@@ -61,7 +91,7 @@ export default function Facturacion() {
           className="btn btn-primary flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
-          <span>Crear factura</span>
+          <span>CREAR FACTURA</span>
         </button>
       </div>
 
@@ -74,7 +104,7 @@ export default function Facturacion() {
             tab === "enviadas" ? "btn-primary" : "btn-ghost"
           }`}
         >
-          Enviadas
+          ENVIADAS
         </button>
         <button
           type="button"
@@ -83,7 +113,7 @@ export default function Facturacion() {
             tab === "recibidas" ? "btn-primary" : "btn-ghost"
           }`}
         >
-          Recibidas
+          RECIBIDAS
         </button>
       </div>
 
@@ -110,7 +140,7 @@ export default function Facturacion() {
           className="invoice-field"
         />
 
-        {/* Vencimiento: Todos / Vencidas / Al día */}
+        {/* Vencimiento */}
         <select
           value={filters.vencimiento}
           onChange={handleFilterChange("vencimiento")}
@@ -155,12 +185,33 @@ export default function Facturacion() {
               </tr>
             </thead>
             <tbody>
-              {/* Por ahora sin datos; después se mapea la lista real de facturas */}
-              <tr>
-                <td colSpan={8} className="text-center py-8 text-base-content/60">
-                  Sin resultados
-                </td>
-              </tr>
+              {facturas.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="text-center py-8 text-base-content/60"
+                  >
+                    Sin resultados
+                  </td>
+                </tr>
+              ) : (
+                facturas.map((f) => (
+                  <tr key={f.id}>
+                    <td>{formatFecha(f.fecha)}</td>
+                    <td>{f.numero}</td>
+                    <td>{f.cliente}</td>
+                    <td>{f.tipo}</td>
+                    <td>{formatFecha(f.vencimiento)}</td>
+                    <td>{f.estado}</td>
+                    <td className="text-right">
+                      {f.total != null ? f.total.toFixed(2) : "-"}
+                    </td>
+                    <td>
+                      <button className="btn btn-ghost btn-xs">Ver</button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -246,13 +297,16 @@ export default function Facturacion() {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    resetForm();
+                    setShowModal(false);
+                  }}
                   className="btn btn-ghost"
                 >
-                  Cancelar
+                  CANCELAR
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  Crear
+                  CREAR
                 </button>
               </div>
             </form>
