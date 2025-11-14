@@ -7,8 +7,7 @@ import { Plus, Edit2, Trash2, Check, X, Calendar, User2, Bell } from "lucide-rea
 /* ===========================
  * Helpers Vex Flows (frontend-only)
  * =========================== */
-const FLOWS_URL =
-  (import.meta.env.VITE_FLOWS_BASE_URL || "").replace(/\/$/, "") || "/flows";
+const FLOWS_URL = (import.meta.env.VITE_FLOWS_BASE_URL || "").replace(/\/$/, ""); // <- sin fallback
 
 async function flowsHealth() {
   if (!FLOWS_URL) return false;
@@ -40,16 +39,16 @@ async function flowsEmit(trigger, payload) {
 }
 
 function scheduleTaskReminder({
-  channel,         // "#general"
+  channel,
   title,
   dueISO,
-  offsetSec = 60,  // segundos antes del vencimiento
+  offsetSec = 60,
   assignee,
   taskId,
 }) {
   if (!dueISO) return Promise.reject(new Error("No hay fecha de vencimiento"));
   const whenMs = new Date(dueISO).getTime() - offsetSec * 1000;
-  const when = new Date(Math.max(whenMs, Date.now() + 1000)).toISOString(); // evitar pasado
+  const when = new Date(Math.max(whenMs, Date.now() + 1000)).toISOString();
   const text = `⏰ Recordatorio: "${title}" asignada a ${assignee || "(sin asignar)"} vence ${new Date(dueISO).toLocaleString()}`;
   const payload = { channel: channel || "#general", text, schedule_at: when, meta: { taskId, dueISO, offsetSec, assignee, title } };
   return flowsEmit("task.reminder.slack", payload);
@@ -84,9 +83,9 @@ export default function Tareas() {
   const [form, setForm] = useState({
     titulo: "",
     descripcion: "",
-    cliente_id: "",     // desde select Correos
+    cliente_id: "",
     vence_en: "",
-    usuario_email: "",  // asignado a
+    usuario_email: "",
     prioridad: "media",
     recordatorio: false,
   });
@@ -96,7 +95,7 @@ export default function Tareas() {
     enable: false,
     channel: "#general",
     offsetValue: 15,
-    offsetUnit: "min", // "sec" | "min"
+    offsetUnit: "min",
   });
   const [flowsOk, setFlowsOk] = useState(false);
 
@@ -144,8 +143,9 @@ export default function Tareas() {
   async function loadUsers() {
     setLoadingUsers(true);
     try {
-      const { data } = await api.get("/usuarios", { params: { org: 10 } });
-      setUsers(Array.isArray(data) ? data : []);
+      const { data } = await api.get("/users"); // endpoint principal
+      const items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+      setUsers(items);
     } catch (e) {
       console.warn("No pude cargar usuarios", e);
       setUsers([]);
@@ -157,7 +157,7 @@ export default function Tareas() {
   async function loadClientes() {
     setLoadingClientes(true);
     try {
-      const { data } = await api.get("/clientes", { params: { org: 10 } });
+      const { data } = await api.get("/clientes");
       setClientes(Array.isArray(data) ? data : []);
     } catch (e) {
       console.warn("No pude cargar clientes", e);
@@ -180,6 +180,8 @@ export default function Tareas() {
     const titulo = form.titulo?.trim();
     if (!titulo) return toast.error("Título requerido");
 
+    const assignedEmail = form.usuario_email || null;
+
     const payload = {
       titulo,
       descripcion: form.descripcion?.trim() || null,
@@ -187,7 +189,8 @@ export default function Tareas() {
       vence_en: form.vence_en ? new Date(form.vence_en).toISOString() : null,
       estado: "todo",
       completada: false,
-      usuario_email: form.usuario_email || null,
+      usuario_email: assignedEmail,               // compat
+      assignee_email: assignedEmail || undefined, // alias aceptado por el BE
       prioridad: form.prioridad || "media",
       recordatorio: !!form.recordatorio,
     };
@@ -196,7 +199,7 @@ export default function Tareas() {
       const { data } = await api.post("/tareas", payload);
 
       // Recordatorio Slack (solo canal)
-      const shouldRemind = (form.recordatorio || slack.enable) && !!payload.vence_en && FLOWS_URL;
+      const shouldRemind = (form.recordatorio || slack.enable) && !!payload.vence_en && FLOWS_URL && flowsOk;
       if (shouldRemind) {
         try {
           const created = data || payload;
@@ -206,13 +209,13 @@ export default function Tareas() {
             title: payload.titulo,
             dueISO: payload.vence_en,
             offsetSec,
-            assignee: payload.usuario_email,
+            assignee: created.usuario_email || assignedEmail,
             taskId: created.id || created.task_id,
           });
-          toast.success("Recordatorio Slack agendado");
+          toast.success("Recordatorio de Slack agendado");
         } catch (err) {
           console.warn("No se pudo agendar Slack:", err);
-          toast.error("No pude agendar el recordatorio Slack");
+          toast.error("No pude agendar el recordatorio de Slack");
         }
       }
 
@@ -247,7 +250,7 @@ export default function Tareas() {
     });
   }
 
-  // util: arma payload PATCH sólo con campos presentes
+  // util: arma payload PATCH solo con campos presentes
   const clean = (obj) => {
     const out = {};
     Object.entries(obj).forEach(([k, v]) => {
@@ -271,7 +274,7 @@ export default function Tareas() {
       const { data } = await api.patch(`/tareas/${id}`, payload);
       setItems((prev) => prev.map((x) => (x.id === id ? { ...x, ...(data || payload) } : x)));
       setEditingId(null);
-      toast.success("Tarea actualizado");
+      toast.success("Tarea actualizada");
     } catch (e) {
       console.error(e);
       toast.error("No pude actualizar la tarea");
@@ -293,7 +296,7 @@ export default function Tareas() {
   async function reopen(id) {
     try {
       const { data } = await api.patch(`/tareas/${id}`, { completada: false, estado: "todo" });
-    setItems((prev) => prev.map((t) => (t.id === id ? { ...t, ...(data || { completada: false, estado: "todo" }) } : t)));
+      setItems((prev) => prev.map((t) => (t.id === id ? { ...t, ...(data || { completada: false, estado: "todo" }) } : t)));
       toast.success("Tarea reabierta");
     } catch (e) {
       console.error(e);
@@ -316,6 +319,7 @@ export default function Tareas() {
 
   // ---- Test Slack inmediato (solo canal)
   async function testSlack() {
+    if (!FLOWS_URL || !flowsOk) return toast.error("Flows no disponible");
     const channel = (slack.channel || "").trim();
     if (!channel) return toast.error("Definí un canal (#general, por ejemplo)");
     try {
@@ -413,7 +417,7 @@ export default function Tareas() {
               <option value="">(Sin asignar)</option>
               {users.map((u) => (
                 <option key={u.email} value={u.email}>
-                  {u.email}{u.rol ? ` — ${u.rol}` : ""}
+                  {(u.name || u.nombre || u.full_name || u.email)}{u.rol ? ` — ${u.rol}` : ""}
                 </option>
               ))}
               {!loadingUsers && users.length === 0 && (
@@ -505,7 +509,7 @@ export default function Tareas() {
                 </div>
 
                 <div className="flex items-end">
-                  <button type="button" className="btn btn-ghost w-full" onClick={testSlack} disabled={!FLOWS_URL}>
+                  <button type="button" className="btn btn-ghost w-full" onClick={testSlack} disabled={!FLOWS_URL || !flowsOk}>
                     PROBAR SLACK
                   </button>
                 </div>
@@ -539,7 +543,7 @@ export default function Tareas() {
                 <th>Prioridad</th>
                 <th>
                   <div className="flex items-center gap-1">
-                    <User2 size={14} /> Asignada
+                    <User2 size={14} /> Asignado a
                   </div>
                 </th>
                 <th className="text-right">Acciones</th>
@@ -655,7 +659,9 @@ export default function Tareas() {
                           >
                             <option value="">(Sin asignar)</option>
                             {users.map((u) => (
-                              <option key={u.email} value={u.email}>{u.email}</option>
+                              <option key={u.email} value={u.email}>
+                                {(u.name || u.nombre || u.full_name || u.email)}
+                              </option>
                             ))}
                             {!loadingUsers && users.length === 0 && (
                               <option disabled>(Sin usuarios disponibles)</option>
