@@ -15,7 +15,7 @@ const Tareas          = lazy(() => import("./routes/Tareas"));
 const Proveedores     = lazy(() => import("./routes/Proveedores"));
 const ProyectosKanban = lazy(() => import("./routes/ProyectosKanban"));
 const TareasKanban    = lazy(() => import("./routes/TareasKanban"));
-const BillingPage     = lazy(() => import("./features/pages/BillingPage.jsx")); // ✅
+const Facturacion     = lazy(() => import("./routes/Facturacion.jsx")); // 🧾 nueva pantalla
 
 /* ========== UI helpers ========== */
 const PageLoader = () => (
@@ -113,7 +113,7 @@ const router = createHashRouter([
       { path: "kanban-tareas", element: withSuspense(<TareasKanban />) },
 
       // Facturación
-      { path: "facturacion", element: withSuspense(<BillingPage />) },
+      { path: "facturacion", element: withSuspense(<Facturacion />) },
       { path: "billing",     element: <Navigate to="/facturacion" replace /> },
 
       // Aliases útiles
