@@ -8,6 +8,15 @@ const formatFecha = (iso) => {
   return `${d}/${m}/${y}`;
 };
 
+// Opciones de ejemplo para el dropdown de Cliente/Proveedor.
+// Podés editar esta lista cuando quieras.
+const CLIENTES_SUGERIDOS = [
+  "Natalie Perez",
+  "Juan Pérez",
+  "Veterinaria Demo",
+  "Proveedor Genérico",
+];
+
 export default function Facturacion() {
   const [tab, setTab] = useState("enviadas");
   const [showModal, setShowModal] = useState(false);
@@ -21,8 +30,12 @@ export default function Facturacion() {
     tipo: "",
   });
 
-  // 👉 Lista local de facturas (solo frontend)
+  // Lista local de facturas (solo frontend por ahora)
   const [facturas, setFacturas] = useState([]);
+
+  // Modo del modal: crear / ver / editar
+  const [modalMode, setModalMode] = useState("create"); // "create" | "view" | "edit"
+  const [selectedFactura, setSelectedFactura] = useState(null);
 
   const [form, setForm] = useState({
     tipo: "B",
@@ -52,32 +65,98 @@ export default function Facturacion() {
     });
   };
 
-  const handleCrearFactura = (e) => {
+  const abrirModalCrear = () => {
+    setModalMode("create");
+    setSelectedFactura(null);
+    resetForm();
+    setShowModal(true);
+  };
+
+  const abrirModalVer = (factura) => {
+    setModalMode("view");
+    setSelectedFactura(factura);
+    setForm({
+      tipo: factura.tipo,
+      numero: factura.numero,
+      fecha: factura.fecha,
+      vencimiento: factura.vencimiento,
+      cliente: factura.cliente,
+    });
+    setShowModal(true);
+  };
+
+  const abrirModalEditar = (factura) => {
+    setModalMode("edit");
+    setSelectedFactura(factura);
+    setForm({
+      tipo: factura.tipo,
+      numero: factura.numero,
+      fecha: factura.fecha,
+      vencimiento: factura.vencimiento,
+      cliente: factura.cliente,
+    });
+    setShowModal(true);
+  };
+
+  const cerrarModal = () => {
+    setShowModal(false);
+    setSelectedFactura(null);
+    setModalMode("create");
+    resetForm();
+  };
+
+  const eliminarFactura = (id) => {
+    const ok = window.confirm("¿Seguro que querés eliminar esta factura?");
+    if (!ok) return;
+    setFacturas((prev) => prev.filter((f) => f.id !== id));
+  };
+
+  const handleSubmitFactura = (e) => {
     e.preventDefault();
 
     // Validación mínima
     if (!form.numero || !form.fecha || !form.cliente) {
-      alert("Completá Número, Fecha y Cliente/Proveedor antes de crear.");
+      alert("Completá Número, Fecha y Cliente/Proveedor antes de guardar.");
       return;
     }
 
-    const nueva = {
-      id: Date.now(), // ID temporal local
-      tipo: form.tipo,
-      numero: form.numero,
-      fecha: form.fecha,
-      vencimiento: form.vencimiento,
-      cliente: form.cliente,
-      estado: "Pendiente",
-      total: 0, // después Mauri decide cómo calcularlo
-    };
+    if (modalMode === "create") {
+      const nueva = {
+        id: Date.now(), // ID temporal local
+        tipo: form.tipo,
+        numero: form.numero,
+        fecha: form.fecha,
+        vencimiento: form.vencimiento,
+        cliente: form.cliente,
+        estado: "Pendiente",
+        total: 0,
+      };
 
-    // Agregamos la nueva factura al inicio de la lista
-    setFacturas((prev) => [nueva, ...prev]);
+      setFacturas((prev) => [nueva, ...prev]);
+    } else if (modalMode === "edit" && selectedFactura) {
+      setFacturas((prev) =>
+        prev.map((f) =>
+          f.id === selectedFactura.id
+            ? {
+                ...f,
+                tipo: form.tipo,
+                numero: form.numero,
+                fecha: form.fecha,
+                vencimiento: form.vencimiento,
+                cliente: form.cliente,
+              }
+            : f
+        )
+      );
+    }
 
-    resetForm();
-    setShowModal(false);
+    cerrarModal();
   };
+
+  const isReadOnly = modalMode === "view";
+
+  // (Opcional) todavía no filtramos la lista, pero dejamos el hook para después.
+  const facturasFiltradas = facturas;
 
   return (
     <div className="h-full w-full p-6 flex flex-col gap-4">
@@ -87,7 +166,7 @@ export default function Facturacion() {
 
         <button
           type="button"
-          onClick={() => setShowModal(true)}
+          onClick={abrirModalCrear}
           className="btn btn-primary flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
@@ -185,7 +264,7 @@ export default function Facturacion() {
               </tr>
             </thead>
             <tbody>
-              {facturas.length === 0 ? (
+              {facturasFiltradas.length === 0 ? (
                 <tr>
                   <td
                     colSpan={8}
@@ -195,7 +274,7 @@ export default function Facturacion() {
                   </td>
                 </tr>
               ) : (
-                facturas.map((f) => (
+                facturasFiltradas.map((f) => (
                   <tr key={f.id}>
                     <td>{formatFecha(f.fecha)}</td>
                     <td>{f.numero}</td>
@@ -207,7 +286,29 @@ export default function Facturacion() {
                       {f.total != null ? f.total.toFixed(2) : "-"}
                     </td>
                     <td>
-                      <button className="btn btn-ghost btn-xs">Ver</button>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs"
+                          onClick={() => abrirModalVer(f)}
+                        >
+                          Ver
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs"
+                          onClick={() => abrirModalEditar(f)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs text-error"
+                          onClick={() => eliminarFactura(f.id)}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -217,15 +318,19 @@ export default function Facturacion() {
         </div>
       </div>
 
-      {/* Modal Nueva factura */}
+      {/* Modal Nueva / Ver / Editar factura */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-base-100 rounded-xl p-6 shadow-xl invoice-modal w-full max-w-lg">
             <h3 className="invoice-modal-header text-lg font-semibold">
-              Nueva factura
+              {modalMode === "create"
+                ? "Nueva factura"
+                : modalMode === "edit"
+                ? "Editar factura"
+                : "Ver factura"}
             </h3>
 
-            <form onSubmit={handleCrearFactura} className="space-y-4">
+            <form onSubmit={handleSubmitFactura} className="space-y-4">
               <div className="invoice-modal-grid">
                 {/* Tipo */}
                 <div>
@@ -234,6 +339,7 @@ export default function Facturacion() {
                     value={form.tipo}
                     onChange={handleFormChange("tipo")}
                     className="invoice-field"
+                    disabled={isReadOnly}
                   >
                     <option value="A">A</option>
                     <option value="B">B</option>
@@ -251,6 +357,7 @@ export default function Facturacion() {
                     value={form.numero}
                     onChange={handleFormChange("numero")}
                     className="invoice-field"
+                    disabled={isReadOnly}
                   />
                 </div>
 
@@ -264,6 +371,7 @@ export default function Facturacion() {
                     value={form.fecha}
                     onChange={handleFormChange("fecha")}
                     className="invoice-field"
+                    disabled={isReadOnly}
                   />
                 </div>
 
@@ -277,6 +385,7 @@ export default function Facturacion() {
                     value={form.vencimiento}
                     onChange={handleFormChange("vencimiento")}
                     className="invoice-field"
+                    disabled={isReadOnly}
                   />
                 </div>
 
@@ -290,24 +399,32 @@ export default function Facturacion() {
                     value={form.cliente}
                     onChange={handleFormChange("cliente")}
                     className="invoice-field"
+                    disabled={isReadOnly}
+                    list="clientes-sugeridos"
+                    placeholder="Seleccionar o escribir nombre..."
                   />
+                  <datalist id="clientes-sugeridos">
+                    {CLIENTES_SUGERIDOS.map((nombre) => (
+                      <option key={nombre} value={nombre} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    resetForm();
-                    setShowModal(false);
-                  }}
+                  onClick={cerrarModal}
                   className="btn btn-ghost"
                 >
-                  CANCELAR
+                  {isReadOnly ? "CERRAR" : "CANCELAR"}
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  CREAR
-                </button>
+
+                {!isReadOnly && (
+                  <button type="submit" className="btn btn-primary">
+                    {modalMode === "edit" ? "GUARDAR" : "CREAR"}
+                  </button>
+                )}
               </div>
             </form>
           </div>
