@@ -1,4 +1,5 @@
-// frontend/src/routes/ProyectosKanban.jsx 
+// frontend/src/routes/ProyectosKanban.jsx
+import { useUsersOptions } from "../hooks/useUsersOptions";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { fetchProyectosKanban, moveProyecto } from "../utils/vexKanbanApi";
@@ -31,6 +32,20 @@ const PIPELINE = [
   "Bid/Estimate Sent",
   "Won",
   "Lost",
+];
+
+// Orígenes disponibles para el dropdown de "Origen"
+const SOURCE_OPTS = [
+  "Outreach",
+  "Building Connected",
+  "Building Connected ITB",
+  "Blue Book",
+  "Blue Book ITB",
+  "Gmail",
+  "Email",
+  "Website",
+  "Referral",
+  "Unknown",
 ];
 
 /* ─────────────── Utils ─────────────── */
@@ -302,6 +317,7 @@ function DetailModal({ open, onClose, item, onEdit }) {
 
 function CreateProjectModal({ open, onClose, onCreated, clients }) {
   const { t } = useTranslation();
+  const { options: userOpts } = useUsersOptions(); // ← opciones para "Responsable"
   const [form, setForm] = useState({
     nombre: "",
     cliente_id: "",
@@ -444,26 +460,34 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
           </label>
         </div>
 
-        {/* Source + Assignee */}
+        {/* Source + Assignee (Dropdowns) */}
         <div className="grid md:grid-cols-2 gap-3">
           <label className="form-control">
-            <span className="label-text">{t("common.source", "Source")}</span>
-            <input
-              className="input input-bordered"
+            <span className="label-text">{t("common.source", "Origen")}</span>
+            <select
+              className="select select-bordered"
               value={form.source}
               onChange={(e) => setForm({ ...form, source: e.target.value })}
-              placeholder="Outreach / Referral / ..."
-            />
+            >
+              <option value="">{t("common.none", "— Ninguno —")}</option>
+              {SOURCE_OPTS.map((s) => (
+                <option key={s} value={s}>{t(`common.sources.${s}`, s)}</option>
+              ))}
+            </select>
           </label>
 
           <label className="form-control">
-            <span className="label-text">{t("common.assignee", "Asignado a")}</span>
-            <input
-              className="input input-bordered"
+            <span className="label-text">{t("common.assignee", "Responsable")}</span>
+            <select
+              className="select select-bordered"
               value={form.assignee}
               onChange={(e) => setForm({ ...form, assignee: e.target.value })}
-              placeholder="email@empresa.com"
-            />
+            >
+              <option value="">{t("common.unassigned", "— Sin asignar —")}</option>
+              {userOpts.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
           </label>
         </div>
 
@@ -506,6 +530,7 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
 /* ========= Modal de Edición ========= */
 function EditProjectModal({ open, onClose, onSaved, item, clients }) {
   const { t } = useTranslation();
+  const { options: userOpts } = useUsersOptions(); // ← opciones para "Responsable"
   const [form, setForm] = useState({
     nombre: "",
     cliente_id: "",
@@ -649,22 +674,33 @@ function EditProjectModal({ open, onClose, onSaved, item, clients }) {
           </label>
         </div>
 
+        {/* Source + Assignee (Dropdowns) */}
         <div className="grid md:grid-cols-2 gap-3">
           <label className="form-control">
-            <span className="label-text">{t("projects.form.source", "Source")}</span>
-            <input
-              className="input input-bordered"
+            <span className="label-text">{t("projects.form.source", "Origen")}</span>
+            <select
+              className="select select-bordered"
               value={form.source}
               onChange={(e) => setForm({ ...form, source: e.target.value })}
-            />
+            >
+              <option value="">{t("common.none", "— Ninguno —")}</option>
+              {SOURCE_OPTS.map((s) => (
+                <option key={s} value={s}>{t(`common.sources.${s}`, s)}</option>
+              ))}
+            </select>
           </label>
           <label className="form-control">
-            <span className="label-text">{t("projects.form.assignee", "Asignado a")}</span>
-            <input
-              className="input input-bordered"
+            <span className="label-text">{t("projects.form.assignee", "Responsable")}</span>
+            <select
+              className="select select-bordered"
               value={form.assignee}
               onChange={(e) => setForm({ ...form, assignee: e.target.value })}
-            />
+            >
+              <option value="">{t("common.unassigned", "— Sin asignar —")}</option>
+              {userOpts.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
           </label>
         </div>
 
@@ -1045,7 +1081,7 @@ function Card({ item, onDragStart, onNext, isLast, onClick, compact }) {
         <div className="min-w-0">
           <div className={`font-medium truncate ${compact ? "text-sm" : ""}`}>{title}</div>
           {item.empresa && item.nombre && (
-            <div className="text-xs opacity-60 truncate flex items-center gap-1">
+            <div className="text-xs opacity-60 truncate flex itemscenter gap-1">
               <Building2 size={12} /> {item.empresa}
             </div>
           )}

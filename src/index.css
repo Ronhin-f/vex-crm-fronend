@@ -2,10 +2,95 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root { height: 100%; }
-body { margin: 0; background: none; }
+html, body, #root { 
+  height: 100%; 
+}
+
+body { 
+  margin: 0; 
+  background: none; 
+}
+
 :root {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+/* ================================
+   Facturación – estilos compartidos
+   ================================ */
+
+.invoice-filter-row {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1.5fr) 160px 160px 160px;
+  gap: 12px;
+  align-items: stretch;
+}
+
+/* Campo base para inputs, selects y datepickers */
+.invoice-field {
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  padding: 0 10px;
+  font-size: 0.9rem;
+  background-color: #ffffff;
+  color: #111827;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.invoice-field::placeholder {
+  color: #9ca3af;
+}
+
+/* Modal de nueva factura */
+.invoice-modal {
+  max-width: 520px;
+}
+
+.invoice-modal-header {
+  margin-bottom: 12px;
+}
+
+.invoice-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.invoice-modal-grid-full {
+  grid-column: 1 / -1;
+}
+
+/* ==========================================
+   MODO OSCURO – soporta .dark y data-theme
+   ========================================== */
+
+/* Filtros de facturación en tema oscuro */
+.dark .invoice-filter-row .invoice-field,
+[data-theme="dark"] .invoice-filter-row .invoice-field {
+  background-color: #020617; /* fondo oscuro */
+  border-color: #4b5563;
+  color: #e5e7eb;
+}
+
+.dark .invoice-filter-row .invoice-field::placeholder,
+[data-theme="dark"] .invoice-filter-row .invoice-field::placeholder {
+  color: #9ca3af;
+}
+
+/* Modal en tema oscuro: campos blancos y texto negro */
+.dark .invoice-modal .invoice-field,
+[data-theme="dark"] .invoice-modal .invoice-field {
+  background-color: #ffffff;
+  border-color: #d1d5db;
+  color: #111827;
+}
+
+.dark .invoice-modal .invoice-field::placeholder,
+[data-theme="dark"] .invoice-modal .invoice-field::placeholder {
+  color: #6b7280;
 }

@@ -8,16 +8,16 @@ import App from "./App";
 import RutaProtegida from "./components/RutaPrivada";
 import { AuthProvider } from "./context/AuthContext";
 
-// Lazy routes
+/* ========== Lazy routes ========== */
 const DashboardCRM    = lazy(() => import("./routes/DashboardCRM"));
 const Clientes        = lazy(() => import("./routes/Clientes"));
 const Tareas          = lazy(() => import("./routes/Tareas"));
 const Proveedores     = lazy(() => import("./routes/Proveedores"));
 const ProyectosKanban = lazy(() => import("./routes/ProyectosKanban"));
 const TareasKanban    = lazy(() => import("./routes/TareasKanban"));
-// ✅ Facturación (ruta correcta, SIN punto extra)
-const BillingPage = lazy(() => import("./features/pages/BillingPage.jsx"));
+const Facturacion     = lazy(() => import("./routes/Facturacion.jsx")); // 🧾 nueva pantalla
 
+/* ========== UI helpers ========== */
 const PageLoader = () => (
   <div className="p-6">
     <div className="skeleton h-8 w-48 mb-4" />
@@ -32,54 +32,61 @@ const ErrorFallback = () => (
   </div>
 );
 
-/* Bridge Core → CRM */
+const withSuspense = (el) => <Suspense fallback={<PageLoader />}>{el}</Suspense>;
+
+/* ========== Bridge Core → CRM ==========
+   Toma token y user desde ?vex_token/&user o #vex_token/#user y persiste en localStorage
+   Luego redirige a la raíz hash (#/). Robusto y sin loops. */
 (() => {
-  const paramsFrom = (str) => {
-    if (!str) return new URLSearchParams();
-    const i = str.indexOf("?");
-    return new URLSearchParams(i >= 0 ? str.slice(i + 1) : "");
-  };
-  const qs = new URLSearchParams(window.location.search);
-  const hs = paramsFrom(window.location.hash);
+  try {
+    const paramsFrom = (str) => {
+      if (!str) return new URLSearchParams();
+      const i = str.indexOf("?");
+      return new URLSearchParams(i >= 0 ? str.slice(i + 1) : "");
+    };
+    const qs = new URLSearchParams(window.location.search);
+    const hs = paramsFrom(window.location.hash);
 
-  const vexToken = qs.get("vex_token") || qs.get("token") || hs.get("vex_token") || hs.get("token");
-  const userParam = qs.get("user") || hs.get("user");
-  let changed = false;
+    const vexToken =
+      qs.get("vex_token") || qs.get("token") || hs.get("vex_token") || hs.get("token");
+    const userParam = qs.get("user") || hs.get("user");
 
-  if (vexToken) {
-    localStorage.setItem("token", vexToken);
-    localStorage.setItem("vex_token", vexToken);
-    changed = true;
-  }
-  if (userParam) {
-    try {
-      const u = JSON.parse(userParam);
-      localStorage.setItem("user", JSON.stringify(u));
-      if (u?.email) localStorage.setItem("usuario_email", u.email);
-      const orgId = u?.organizacion_id ?? u?.organization_id;
-      if (orgId != null) localStorage.setItem("organizacion_id", String(orgId));
-      localStorage.setItem("login-event", String(Date.now()));
+    let changed = false;
+
+    if (vexToken) {
+      localStorage.setItem("token", vexToken);
+      localStorage.setItem("vex_token", vexToken);
       changed = true;
-    } catch {
+    }
+
+    if (userParam) {
+      const tryParse = (s) => {
+        try { return JSON.parse(s); } catch { return JSON.parse(decodeURIComponent(s)); }
+      };
       try {
-        const u = JSON.parse(decodeURIComponent(userParam));
+        const u = tryParse(userParam);
         localStorage.setItem("user", JSON.stringify(u));
         if (u?.email) localStorage.setItem("usuario_email", u.email);
         const orgId = u?.organizacion_id ?? u?.organization_id;
         if (orgId != null) localStorage.setItem("organizacion_id", String(orgId));
         localStorage.setItem("login-event", String(Date.now()));
         changed = true;
-      } catch {}
+      } catch {
+        // no-op: si viene malformado, seguimos sin romper
+      }
     }
-  }
-  if (changed) {
-    const target = (location.hash && location.hash.startsWith("#/")) ? location.hash : "#/";
-    history.replaceState({}, document.title, "/" + target);
+
+    // Redirigir a raíz hash si hubo cambios (evita quedarse con querys)
+    if (changed) {
+      const target = (location.hash && location.hash.startsWith("#/")) ? location.hash : "#/";
+      history.replaceState({}, document.title, "/" + target);
+    }
+  } catch {
+    // Silencioso para evitar romper el arranque
   }
 })();
 
-const withSuspense = (el) => <Suspense fallback={<PageLoader />}>{el}</Suspense>;
-
+/* ========== Router ========== */
 const router = createHashRouter([
   {
     path: "/",
@@ -95,24 +102,24 @@ const router = createHashRouter([
 
       // CRM
       { path: "clientes", element: withSuspense(<Clientes />) },
-      { path: "tareas", element: withSuspense(<Tareas />) },
+      { path: "tareas",   element: withSuspense(<Tareas />) },
 
-      // Proveedores
+      // Proveedores / Compras
       { path: "proveedores", element: withSuspense(<Proveedores />) },
-      { path: "compras", element: <Navigate to="/proveedores" replace /> },
+      { path: "compras",     element: <Navigate to="/proveedores" replace /> },
 
       // Kanban
-      { path: "pipeline", element: withSuspense(<ProyectosKanban />) },
+      { path: "pipeline",      element: withSuspense(<ProyectosKanban />) },
       { path: "kanban-tareas", element: withSuspense(<TareasKanban />) },
 
       // Facturación
-      { path: "facturacion", element: withSuspense(<BillingPage />) },
-      { path: "billing", element: <Navigate to="/facturacion" replace /> },
+      { path: "facturacion", element: withSuspense(<Facturacion />) },
+      { path: "billing",     element: <Navigate to="/facturacion" replace /> },
 
-      // Aliases
-      { path: "kanban", element: <Navigate to="/kanban-tareas" replace /> },
-      { path: "pipeline-clientes", element: <Navigate to="/pipeline" replace /> },
-      { path: "proyectos", element: <Navigate to="/pipeline" replace /> },
+      // Aliases útiles
+      { path: "kanban",              element: <Navigate to="/kanban-tareas" replace /> },
+      { path: "pipeline-clientes",   element: <Navigate to="/pipeline" replace /> },
+      { path: "proyectos",           element: <Navigate to="/pipeline" replace /> },
 
       // Catch-all
       { path: "*", element: <ErrorFallback /> },
@@ -120,6 +127,7 @@ const router = createHashRouter([
   },
 ]);
 
+/* ========== Mount ========== */
 const rootEl = document.getElementById("root");
 if (rootEl) {
   ReactDOM.createRoot(rootEl).render(
