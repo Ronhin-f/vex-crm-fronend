@@ -1,4 +1,4 @@
-// src/routes/DashboardCRM.jsx
+// vex-crm-fronend/src/routes/DashboardCRM.jsx
 import { useEffect, useState } from "react";
 import {
   Users,
@@ -36,8 +36,8 @@ export default function DashboardCRM() {
   const [metrics, setMetrics] = useState({
     total_clientes: 0,
     total_tareas: 0,
-    proximos_7d: 0,       // compat
-    total_proyectos: 0,   // nuevo
+    proximos_7d: 0, // compat
+    total_proyectos: 0,
   });
 
   // KPIs de pipeline + próximos 7 días (derivados de /analytics/kpis)
@@ -105,11 +105,14 @@ export default function DashboardCRM() {
       if (isOk(dashRes)) {
         const d = dashRes.value.data ?? {};
         const m = d.metrics ?? {};
+        const proximos = Number(
+          m.proximos_7d ?? m.followups_7d ?? m.proximos7d ?? m.followups7d ?? 0
+        );
         setMetrics((prev) => ({
           ...prev,
           total_clientes: Number(m.total_clientes ?? prev.total_clientes ?? 0),
           total_tareas: Number(m.total_tareas ?? prev.total_tareas ?? 0),
-          proximos_7d: Number(m.proximos_7d ?? prev.proximos_7d ?? 0),
+          proximos_7d: Number.isFinite(proximos) ? proximos : prev.proximos_7d ?? 0,
           total_proyectos: Number(m.total_proyectos ?? prev.total_proyectos ?? 0),
         }));
         setTop(Array.isArray(d.topClientes) ? d.topClientes : []);
@@ -307,7 +310,7 @@ export default function DashboardCRM() {
       <div className="max-w-6xl mx-auto p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold mb-1">{t("dashboard.title", "Vex CRM — Dashboard")}</h1>
+            <h1 className="text-3xl font-bold mb-1">{t("dashboard.title", "Vex CRM - Dashboard")}</h1>
             <p className="text-sm text-base-content/70 mb-4">{t("dashboard.hello", { email: usuario?.email || "" })}</p>
           </div>
 
@@ -509,7 +512,7 @@ export default function DashboardCRM() {
               <PauseCircle size={20} />
             </div>
             <div className="stat-title">
-              {t("analytics.stalledIncoming", "Estancados en Incoming ≥ {{d}} días", {
+              {t("analytics.stalledIncoming", "Estancados en Incoming (+{{d}} días)", {
                 d: analytics.qualification.stalled_in_incoming.days,
               })}
             </div>
@@ -521,11 +524,9 @@ export default function DashboardCRM() {
           {/* Top clientes recientes */}
           <section className="card bg-base-100 shadow">
             <div className="card-body">
-              <h2 className="card-title">🆕 {t("cards.topRecentClients", "Clientes recientes")}</h2>
+              <h2 className="card-title">{t("cards.topRecentClients", "Clientes recientes")}</h2>
               {top.length === 0 ? (
-                <p className="text-sm text-base-content/60">
-                  {t("cards.noRecentClients", "No hay clientes recientes.")}
-                </p>
+                <p className="text-sm text-base-content/60">{t("cards.noRecentClients", "No hay clientes recientes.")}</p>
               ) : (
                 <ul className="menu bg-base-100 rounded-box w-full">
                   {top.map((c) => (
@@ -535,7 +536,7 @@ export default function DashboardCRM() {
                         <div className="flex-1">
                           <div className="font-medium leading-5">{c.nombre}</div>
                           <div className="text-xs text-base-content/60">
-                            {(c.email || "—")} • {(c.telefono || "—")}
+                            {(c.email || "-")} · {(c.telefono || "-")}
                           </div>
                         </div>
                       </div>
@@ -549,7 +550,7 @@ export default function DashboardCRM() {
           {/* Próximos 7 días (tareas) */}
           <section className="card bg-base-100 shadow">
             <div className="card-body">
-              <h2 className="card-title">⏰ {t("cards.upcoming7d", "Próximos 7 días")}</h2>
+              <h2 className="card-title">{t("cards.upcoming7d", "Próximos 7 días")}</h2>
               {seg.length === 0 ? (
                 <p className="text-sm text-base-content/60">{t("cards.noUpcoming", "No hay tareas próximas.")}</p>
               ) : (
@@ -562,11 +563,10 @@ export default function DashboardCRM() {
                       <li key={s.id} className="py-3 flex items-start justify-between gap-3">
                         <div>
                           <div className="font-medium">{s.titulo}</div>
-                          <div className="text-xs text-base-content/60">{s.cliente_nombre || "—"}</div>
+                          <div className="text-xs text-base-content/60">{s.cliente_nombre || "-"}</div>
                         </div>
                         <span className={`badge ${tone} badge-outline flex items-center gap-1`}>
-                          {t("cards.dueAt", "Vence")}{" "}
-                          {due.toLocaleString(i18n.language || undefined)}
+                          {t("cards.dueAt", "Vence")} {due.toLocaleString(i18n.language || undefined)}
                         </span>
                       </li>
                     );
