@@ -14,11 +14,14 @@ function qs(params = {}) {
 }
 
 /** Orden genérico por due_date (o la key que pases) y fallback created_at */
+function pickDue(item, dueKey) {
+  return item?.[dueKey] ?? item?.vence_en ?? item?.due_date ?? item?.dueDate ?? null;
+}
 function sortByDue(items = [], dueKey = "due_date") {
   const arr = [...items];
   arr.sort((a, b) => {
-    const da = a[dueKey] ? new Date(a[dueKey]).getTime() : Infinity;
-    const db = b[dueKey] ? new Date(b[dueKey]).getTime() : Infinity;
+    const da = pickDue(a, dueKey) ? new Date(pickDue(a, dueKey)).getTime() : Infinity;
+    const db = pickDue(b, dueKey) ? new Date(pickDue(b, dueKey)).getTime() : Infinity;
     if (da !== db) return da - db;
     const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
     const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -27,7 +30,7 @@ function sortByDue(items = [], dueKey = "due_date") {
   return arr;
 }
 
-// ─────────────────── Pipeline por defecto ───────────────────
+// ───────────────── Pipeline por defecto ─────────────────
 const DEFAULT_PIPELINE = [
   "Incoming Leads",
   "Unqualified",
@@ -38,7 +41,7 @@ const DEFAULT_PIPELINE = [
   "Lost",
 ];
 
-// ─────────────────── Clientes: Kanban ───────────────────
+// ───────────────── Clientes: Kanban ─────────────────
 // Soporta filtros: q, source, assignee, only_due
 export async function fetchClientesKanban(filters = {}) {
   // Preferimos /clientes/kanban (BE nuevo) -> /kanban/clientes (legacy) -> /clientes (lista)
@@ -64,7 +67,7 @@ export async function fetchClientesKanban(filters = {}) {
   }
 }
 
-// ─────────────────── Proyectos: Kanban ───────────────────
+// ───────────────── Proyectos: Kanban ─────────────────
 export async function fetchProyectosKanban(filters = {}) {
   // Preferimos /proyectos/kanban (BE nuevo) -> /kanban/proyectos (legacy) -> /proyectos (lista)
   try {
@@ -118,7 +121,7 @@ function normalizeKanban(raw) {
   return { order, columns };
 }
 
-// ─────────────────── Moves (drag & drop) ───────────────────
+// ───────────────── Moves (drag & drop) ─────────────────
 export async function moveCliente(id, stage, orden) {
   // BE nuevo
   try {
@@ -151,7 +154,11 @@ export async function moveProyecto(id, stage, orden) {
   }
 }
 
-// ─────────────────── Tareas: Kanban ───────────────────
+// ───────────────── Tareas: Kanban ─────────────────
+const mapTasks = (arr = []) => (arr || []).map((it) => ({
+  ...it,
+  due_date: it?.due_date || it?.vence_en || it?.dueDate || null,
+}));
 export async function fetchTareasKanban(filters = {}) {
   // Preferimos /tareas/kanban -> /kanban/tareas -> /tareas
   try {
@@ -167,7 +174,7 @@ export async function fetchTareasKanban(filters = {}) {
       (Array.isArray(lista) ? lista : []).forEach((t) => {
         const key = t.estado || "todo";
         if (!byEstado.has(key)) byEstado.set(key, []);
-        byEstado.get(key).push(t);
+        byEstado.get(key).push({ ...t, due_date: t.vence_en || t.due_date || null });
       });
       const defaultOrder = ["todo", "doing", "waiting", "done"];
       const order = byEstado.size ? Array.from(byEstado.keys()) : defaultOrder;
@@ -182,18 +189,17 @@ export async function fetchTareasKanban(filters = {}) {
 
 function normalizeTasks(data) {
   if (Array.isArray(data?.columns)) {
-    const columns = data.columns.map((c) => ({
-      ...c,
-      items: sortByDue(c.items || [], "due_date"),
-      count: (c.items || []).length,
-    }));
+    const columns = data.columns.map((c) => {
+      const items = sortByDue(mapTasks(c.items || []), "due_date");
+      return { ...c, items, count: (c.items || []).length };
+    });
     const order = data.order?.length ? data.order : columns.map((c) => c.key || c.title);
     return { columns, order };
   }
   if (data?.columns && typeof data.columns === "object") {
     const order = data.order?.length ? data.order : Object.keys(data.columns);
     const columns = order.map((k) => {
-      const items = sortByDue(data.columns[k] || [], "due_date");
+      const items = sortByDue(mapTasks(data.columns[k] || []), "due_date");
       return { key: k, title: k, items, count: items.length };
     });
     return { columns, order };
@@ -216,7 +222,7 @@ export async function moveTarea(id, estado, orden) {
   }
 }
 
-// ─────────────────── KPIs (Dashboard) ───────────────────
+// ───────────────── KPIs (Dashboard) ─────────────────
 export async function fetchKpis(params = {}) {
   // Cache-buster para evitar 304/CDN
   const { data } = await api.get(`/analytics/kpis${qs({ ...params, t: Date.now() })}`);
