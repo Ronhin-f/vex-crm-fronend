@@ -228,3 +228,4 @@ export async function fetchKpis(params = {}) {
   const { data } = await api.get(`/analytics/kpis${qs({ ...params, t: Date.now() })}`);
   return data;
 }
+
