@@ -2,10 +2,9 @@
 import axios from "axios";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "";
-const DEFAULT_ORG = 10;
 
 export const api = axios.create({
-  baseURL: BASE_URL || "/api",
+  baseURL: BASE_URL || "",
   withCredentials: false,
 });
 
@@ -15,11 +14,15 @@ api.interceptors.request.use((config) => {
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   }
-  // asegura ?org=10 si no vino en token ni en params
-  const hasOrgInUrl = /([?&])org=\d+/.test(config.url || "");
+  // Adjunta org solo si tenemos una guardada; no hardcodear.
+  const storedOrg = localStorage.getItem("vex_org_id") || localStorage.getItem("organizacion_id");
   const hasOrgInParams = !!config.params?.org;
-  if (!hasOrgInUrl && !hasOrgInParams) {
-    config.params = { ...(config.params || {}), org: DEFAULT_ORG };
+  if (storedOrg && !hasOrgInParams) {
+    config.params = { ...(config.params || {}), org: storedOrg };
+  }
+  if (storedOrg) {
+    config.headers = config.headers || {};
+    config.headers["X-Org-Id"] = storedOrg;
   }
   return config;
 });
