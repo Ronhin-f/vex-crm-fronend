@@ -271,6 +271,31 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
   );
 }
 
+/* ---------------- Badge + dropdown de estado ---------------- */
+function StatusBadge({ status, onChange }) {
+  const map = {
+    active: { cls: "badge-success", label: "Activo" },
+    bid: { cls: "badge-warning", label: "BID" },
+    inactive: { cls: "badge-ghost", label: "Inactivo" },
+  };
+  const { cls, label } = map[status] || map.active;
+
+  return (
+    <div className="dropdown dropdown-end">
+      <label tabIndex={0} className={`badge ${cls} badge-sm cursor-pointer`}>{label}</label>
+      <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40">
+        {Object.entries(map).map(([key, v]) => (
+          <li key={key}>
+            <button onClick={() => onChange(key)} className="justify-between">
+              {v.label} {key === status ? "✓" : ""}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /* ---------------- Página Clientes ---------------- */
 export default function Clientes() {
   const { t } = useTranslation();
