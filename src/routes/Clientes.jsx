@@ -72,7 +72,7 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
   );
 }
 
-// ✅ COMPONENTE ContactFormInline MODIFICADO
+// ✅ COMPONENTE ContactFormInline CORREGIDO (acentos + textos limpios)
 function ContactFormInline({ initial, onCancel, onSave, saving }) {
   const [f, setF] = useState({
     nombre: initial?.nombre || "",
@@ -97,26 +97,26 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
   });
 
   const preguntasImportantes = [
-    "\u00bfEst\u00e1 bajo tratamiento m\u00e9dico?",
-    "\u00bfSufre alguna enfermedad?",
-    "\u00bfEst\u00e1 tomando alg\u00fan medicamento?",
-    "\u00bfEs al\u00e9rgico a alguna droga, medicamentos, comida?",
-    "Problemas cardiacos",
+    "¿Está bajo tratamiento médico?",
+    "¿Sufre alguna enfermedad?",
+    "¿Está tomando algún medicamento?",
+    "¿Es alérgico a alguna droga, medicamentos, comida?",
+    "Problemas cardíacos",
     "Diabetes",
     "Hepatitis",
-    "Alteraciones en la presi\u00f3n sangu\u00ednea",
-    "Enfermedades neurol\u00f3gicas",
+    "Alteraciones en la presión sanguínea",
+    "Enfermedades neurológicas",
     "Enfermedades respiratorias",
     "Anemia",
     "Convulsiones",
-    "Portador de enf (HIV, SIDA, HPV)",
-    "Patolog\u00eda psiqui\u00e1trica",
+    "Portador de enfermedad (HIV, SIDA, HPV)",
+    "Patología psiquiátrica",
     "Hemorragias en heridas",
     "Ronca o respira por boca",
-    "Fuma (cant y tipo)",
+    "Fuma (cantidad y tipo)",
     "Embarazada",
-    "Antecedentes de c\u00e1ncer",
-    "Disfunci\u00f3n ATM",
+    "Antecedentes de cáncer",
+    "Disfunción ATM",
   ];
 
   const onChange = (e) => {
@@ -156,7 +156,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
           <input name="email" type="email" className="input input-bordered input-sm" value={f.email} onChange={onChange} />
         </label>
         <label className="form-control">
-          <span className="label-text">Tel\u00e9fono</span>
+          <span className="label-text">Teléfono</span>
           <input name="telefono" className="input input-bordered input-sm" value={f.telefono} onChange={onChange} />
         </label>
         <label className="form-control">
@@ -176,7 +176,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
           <input name="plan" className="input input-bordered input-sm" value={f.plan} onChange={onChange} />
         </label>
         <label className="form-control">
-          <span className="label-text">N\u00b0 de Afiliado</span>
+          <span className="label-text">N° de Afiliado</span>
           <input name="numero_afiliado" className="input input-bordered input-sm" value={f.numero_afiliado} onChange={onChange} />
         </label>
       </div>
@@ -196,7 +196,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
                     checked={f.preguntas[p] === "si"}
                     onChange={onChange}
                   />
-                  S\u00ed
+                  Sí
                 </label>
                 <label className="flex items-center gap-1">
                   <input
@@ -220,7 +220,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
           <input name="motivo_consulta" className="input input-bordered input-sm" value={f.motivo_consulta} onChange={onChange} />
         </label>
         <label className="form-control">
-          <span className="label-text">\u00daltima consulta odontol\u00f3gica</span>
+          <span className="label-text">Última consulta odontológica</span>
           <input name="ultima_consulta" className="input input-bordered input-sm" value={f.ultima_consulta} onChange={onChange} />
         </label>
         <label className="form-control">
@@ -228,23 +228,23 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
           <input name="cepillados_diarios" className="input input-bordered input-sm" value={f.cepillados_diarios} onChange={onChange} />
         </label>
         <label className="form-control">
-          <span className="label-text">\u00a1Tiene sangrado?</span>
+          <span className="label-text">¿Tiene sangrado?</span>
           <input name="sangrado" className="input input-bordered input-sm" value={f.sangrado} onChange={onChange} />
         </label>
         <label className="form-control">
-          <span className="label-text">Momentos de az\u00facar</span>
+          <span className="label-text">Momentos de azúcar</span>
           <input name="momentos_azucar" className="input input-bordered input-sm" value={f.momentos_azucar} onChange={onChange} />
         </label>
         <label className="form-control">
-          <span className="label-text">\u00bfHa tenido dolor?</span>
+          <span className="label-text">¿Ha tenido dolor?</span>
           <input name="dolor" className="input input-bordered input-sm" value={f.dolor} onChange={onChange} />
         </label>
         <label className="form-control">
-          <span className="label-text">\u00bfSufri\u00f3 alg\u00fan golpe?</span>
+          <span className="label-text">¿Sufrió algún golpe?</span>
           <input name="golpe" className="input input-bordered input-sm" value={f.golpe} onChange={onChange} />
         </label>
         <label className="form-control">
-          <span className="label-text">\u00bfTiene dificultad para hablar, masticar o deglutir?</span>
+          <span className="label-text">¿Tiene dificultad para hablar, masticar o deglutir?</span>
           <input name="dificultad" className="input input-bordered input-sm" value={f.dificultad} onChange={onChange} />
         </label>
       </div>
@@ -268,31 +268,6 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
         </button>
       </div>
     </form>
-  );
-}
-
-/* ---------------- Badge + dropdown de estado ---------------- */
-function StatusBadge({ status, onChange }) {
-  const map = {
-    active: { cls: "badge-success", label: "Activo" },
-    bid: { cls: "badge-warning", label: "BID" },
-    inactive: { cls: "badge-ghost", label: "Inactivo" },
-  };
-  const { cls, label } = map[status] || map.active;
-
-  return (
-    <div className="dropdown dropdown-end">
-      <label tabIndex={0} className={`badge ${cls} badge-sm cursor-pointer`}>{label}</label>
-      <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40">
-        {Object.entries(map).map(([key, v]) => (
-          <li key={key}>
-            <button onClick={() => onChange(key)} className="justify-between">
-              {v.label} {key === status ? "✓" : ""}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 
