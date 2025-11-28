@@ -72,7 +72,7 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
   );
 }
 
-/* ---------------- Form de contacto inline ---------------- */
+// ✅ COMPONENTE ContactFormInline MODIFICADO
 function ContactFormInline({ initial, onCancel, onSave, saving }) {
   const [f, setF] = useState({
     nombre: initial?.nombre || "",
@@ -80,27 +80,63 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
     telefono: initial?.telefono || "",
     cargo: initial?.cargo || "",
     rol: initial?.rol || "",
+    obra_social: initial?.obra_social || "",
+    plan: initial?.plan || "",
+    numero_afiliado: initial?.numero_afiliado || "",
+    preguntas: initial?.preguntas || {},
+    motivo_consulta: initial?.motivo_consulta || "",
+    ultima_consulta: initial?.ultima_consulta || "",
+    cepillados_diarios: initial?.cepillados_diarios || "",
+    sangrado: initial?.sangrado || "",
+    momentos_azucar: initial?.momentos_azucar || "",
+    dolor: initial?.dolor || "",
+    golpe: initial?.golpe || "",
+    dificultad: initial?.dificultad || "",
     notas: initial?.notas || "",
     es_principal: !!initial?.es_principal,
   });
 
-  useEffect(() => {
-    setF({
-      nombre: initial?.nombre || "",
-      email: initial?.email || "",
-      telefono: initial?.telefono || "",
-      cargo: initial?.cargo || "",
-      rol: initial?.rol || "",
-      notas: initial?.notas || "",
-      es_principal: !!initial?.es_principal,
-    });
-  }, [initial]);
+  const preguntasImportantes = [
+    "\u00bfEst\u00e1 bajo tratamiento m\u00e9dico?",
+    "\u00bfSufre alguna enfermedad?",
+    "\u00bfEst\u00e1 tomando alg\u00fan medicamento?",
+    "\u00bfEs al\u00e9rgico a alguna droga, medicamentos, comida?",
+    "Problemas cardiacos",
+    "Diabetes",
+    "Hepatitis",
+    "Alteraciones en la presi\u00f3n sangu\u00ednea",
+    "Enfermedades neurol\u00f3gicas",
+    "Enfermedades respiratorias",
+    "Anemia",
+    "Convulsiones",
+    "Portador de enf (HIV, SIDA, HPV)",
+    "Patolog\u00eda psiqui\u00e1trica",
+    "Hemorragias en heridas",
+    "Ronca o respira por boca",
+    "Fuma (cant y tipo)",
+    "Embarazada",
+    "Antecedentes de c\u00e1ncer",
+    "Disfunci\u00f3n ATM",
+  ];
 
-  const onChange = (e) =>
-    setF((p) => ({
-      ...p,
-      [e.target.name]: e.target.type === "checkbox" ? e.target.checked : e.target.value,
-    }));
+  const onChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    if (name.startsWith("pregunta_")) {
+      const key = name.replace("pregunta_", "");
+      setF((p) => ({
+        ...p,
+        preguntas: {
+          ...p.preguntas,
+          [key]: value,
+        },
+      }));
+    } else {
+      setF((p) => ({
+        ...p,
+        [name]: type === "checkbox" ? checked : value,
+      }));
+    }
+  };
 
   return (
     <form
@@ -120,7 +156,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
           <input name="email" type="email" className="input input-bordered input-sm" value={f.email} onChange={onChange} />
         </label>
         <label className="form-control">
-          <span className="label-text">Teléfono</span>
+          <span className="label-text">Tel\u00e9fono</span>
           <input name="telefono" className="input input-bordered input-sm" value={f.telefono} onChange={onChange} />
         </label>
         <label className="form-control">
@@ -130,6 +166,86 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
         <label className="form-control">
           <span className="label-text">Rol</span>
           <input name="rol" className="input input-bordered input-sm" value={f.rol} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">Obra Social</span>
+          <input name="obra_social" className="input input-bordered input-sm" value={f.obra_social} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">Plan</span>
+          <input name="plan" className="input input-bordered input-sm" value={f.plan} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">N\u00b0 de Afiliado</span>
+          <input name="numero_afiliado" className="input input-bordered input-sm" value={f.numero_afiliado} onChange={onChange} />
+        </label>
+      </div>
+
+      <div className="mt-4">
+        <h4 className="font-semibold mb-2">Preguntas Importantes</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {preguntasImportantes.map((p) => (
+            <div key={p} className="flex flex-col">
+              <span className="text-sm">{p}</span>
+              <div className="flex gap-4 mt-1">
+                <label className="flex items-center gap-1">
+                  <input
+                    type="radio"
+                    name={`pregunta_${p}`}
+                    value="si"
+                    checked={f.preguntas[p] === "si"}
+                    onChange={onChange}
+                  />
+                  S\u00ed
+                </label>
+                <label className="flex items-center gap-1">
+                  <input
+                    type="radio"
+                    name={`pregunta_${p}`}
+                    value="no"
+                    checked={f.preguntas[p] === "no"}
+                    onChange={onChange}
+                  />
+                  No
+                </label>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+        <label className="form-control">
+          <span className="label-text">Motivo de consulta</span>
+          <input name="motivo_consulta" className="input input-bordered input-sm" value={f.motivo_consulta} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">\u00daltima consulta odontol\u00f3gica</span>
+          <input name="ultima_consulta" className="input input-bordered input-sm" value={f.ultima_consulta} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">Cepillados diarios</span>
+          <input name="cepillados_diarios" className="input input-bordered input-sm" value={f.cepillados_diarios} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">\u00a1Tiene sangrado?</span>
+          <input name="sangrado" className="input input-bordered input-sm" value={f.sangrado} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">Momentos de az\u00facar</span>
+          <input name="momentos_azucar" className="input input-bordered input-sm" value={f.momentos_azucar} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">\u00bfHa tenido dolor?</span>
+          <input name="dolor" className="input input-bordered input-sm" value={f.dolor} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">\u00bfSufri\u00f3 alg\u00fan golpe?</span>
+          <input name="golpe" className="input input-bordered input-sm" value={f.golpe} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">\u00bfTiene dificultad para hablar, masticar o deglutir?</span>
+          <input name="dificultad" className="input input-bordered input-sm" value={f.dificultad} onChange={onChange} />
         </label>
       </div>
 
