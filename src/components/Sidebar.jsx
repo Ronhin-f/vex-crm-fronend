@@ -1,4 +1,5 @@
 // src/components/Sidebar.jsx
+import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
