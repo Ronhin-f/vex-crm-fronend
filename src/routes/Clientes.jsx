@@ -1,11 +1,11 @@
-// src/routes/Clientes.jsx — Clientes con contactos múltiples + Activo/BID/Inactivo + edición rápida de estado
-import { useEffect, useMemo, useState } from "react";
+﻿// src/routes/Clientes.jsx — Clientes/Pacientes con contactos e historias clinicas
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import api from "../utils/api";
-import { Plus, X, Mail, Phone, Pencil, Trash2, Star } from "lucide-react";
+import { Plus, X, Mail, Phone, Pencil, Trash2, Star, HeartPulse } from "lucide-react";
+import { useArea } from "../context/AreaContext";
 
-/* ---------------- SlideOver genérico ---------------- */
 function SlideOver({ open, onClose, title, children, widthClass = "w-full sm:w-[540px] md:w-[760px]" }) {
   return (
     <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none select-none"}`}>
@@ -27,8 +27,7 @@ function SlideOver({ open, onClose, title, children, widthClass = "w-full sm:w-[
   );
 }
 
-/* ---------------- Contacto: fila ---------------- */
-function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
+function ContactRow({ c, onEdit, onDelete, onMakePrimary, contactLabel }) {
   return (
     <div className="flex items-start justify-between gap-3 p-3 border rounded-xl bg-base-100">
       <div className="min-w-0">
@@ -36,7 +35,7 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
           <div className="font-medium truncate">{c.nombre || c.email || c.telefono || "—"}</div>
           {c.es_principal ? (
             <span className="badge badge-primary badge-sm">
-              <Star className="w-3 h-3 mr-1" /> Principal
+              <Star className="w-3 h-3 mr-1" /> {contactLabel || "Principal"}
             </span>
           ) : null}
         </div>
@@ -58,7 +57,7 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
       <div className="flex-shrink-0 flex items-center gap-1">
         {!c.es_principal && (
           <button className="btn btn-ghost btn-xs" onClick={() => onMakePrimary(c)}>
-            <Star className="w-4 h-4" /> Hacer principal
+            <Star className="w-4 h-4" /> Principal
           </button>
         )}
         <button className="btn btn-ghost btn-xs" onClick={() => onEdit(c)}>
@@ -72,7 +71,6 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
   );
 }
 
-// ✅ COMPONENTE ContactFormInline CORREGIDO (acentos + textos limpios)
 function ContactFormInline({ initial, onCancel, onSave, saving }) {
   const [f, setF] = useState({
     nombre: initial?.nombre || "",
@@ -80,62 +78,16 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
     telefono: initial?.telefono || "",
     cargo: initial?.cargo || "",
     rol: initial?.rol || "",
-    obra_social: initial?.obra_social || "",
-    plan: initial?.plan || "",
-    numero_afiliado: initial?.numero_afiliado || "",
-    preguntas: initial?.preguntas || {},
-    motivo_consulta: initial?.motivo_consulta || "",
-    ultima_consulta: initial?.ultima_consulta || "",
-    cepillados_diarios: initial?.cepillados_diarios || "",
-    sangrado: initial?.sangrado || "",
-    momentos_azucar: initial?.momentos_azucar || "",
-    dolor: initial?.dolor || "",
-    golpe: initial?.golpe || "",
-    dificultad: initial?.dificultad || "",
     notas: initial?.notas || "",
     es_principal: !!initial?.es_principal,
   });
 
-  const preguntasImportantes = [
-    "¿Está bajo tratamiento médico?",
-    "¿Sufre alguna enfermedad?",
-    "¿Está tomando algún medicamento?",
-    "¿Es alérgico a alguna droga, medicamentos, comida?",
-    "Problemas cardíacos",
-    "Diabetes",
-    "Hepatitis",
-    "Alteraciones en la presión sanguínea",
-    "Enfermedades neurológicas",
-    "Enfermedades respiratorias",
-    "Anemia",
-    "Convulsiones",
-    "Portador de enfermedad (HIV, SIDA, HPV)",
-    "Patología psiquiátrica",
-    "Hemorragias en heridas",
-    "Ronca o respira por boca",
-    "Fuma (cantidad y tipo)",
-    "Embarazada",
-    "Antecedentes de cáncer",
-    "Disfunción ATM",
-  ];
-
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
-    if (name.startsWith("pregunta_")) {
-      const key = name.replace("pregunta_", "");
-      setF((p) => ({
-        ...p,
-        preguntas: {
-          ...p.preguntas,
-          [key]: value,
-        },
-      }));
-    } else {
-      setF((p) => ({
-        ...p,
-        [name]: type === "checkbox" ? checked : value,
-      }));
-    }
+    setF((p) => ({
+      ...p,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
   return (
@@ -156,7 +108,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
           <input name="email" type="email" className="input input-bordered input-sm" value={f.email} onChange={onChange} />
         </label>
         <label className="form-control">
-          <span className="label-text">Teléfono</span>
+          <span className="label-text">Telefono</span>
           <input name="telefono" className="input input-bordered input-sm" value={f.telefono} onChange={onChange} />
         </label>
         <label className="form-control">
@@ -166,86 +118,6 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
         <label className="form-control">
           <span className="label-text">Rol</span>
           <input name="rol" className="input input-bordered input-sm" value={f.rol} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Obra Social</span>
-          <input name="obra_social" className="input input-bordered input-sm" value={f.obra_social} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Plan</span>
-          <input name="plan" className="input input-bordered input-sm" value={f.plan} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">N° de Afiliado</span>
-          <input name="numero_afiliado" className="input input-bordered input-sm" value={f.numero_afiliado} onChange={onChange} />
-        </label>
-      </div>
-
-      <div className="mt-4">
-        <h4 className="font-semibold mb-2">Preguntas Importantes</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {preguntasImportantes.map((p) => (
-            <div key={p} className="flex flex-col">
-              <span className="text-sm">{p}</span>
-              <div className="flex gap-4 mt-1">
-                <label className="flex items-center gap-1">
-                  <input
-                    type="radio"
-                    name={`pregunta_${p}`}
-                    value="si"
-                    checked={f.preguntas[p] === "si"}
-                    onChange={onChange}
-                  />
-                  Sí
-                </label>
-                <label className="flex items-center gap-1">
-                  <input
-                    type="radio"
-                    name={`pregunta_${p}`}
-                    value="no"
-                    checked={f.preguntas[p] === "no"}
-                    onChange={onChange}
-                  />
-                  No
-                </label>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-        <label className="form-control">
-          <span className="label-text">Motivo de consulta</span>
-          <input name="motivo_consulta" className="input input-bordered input-sm" value={f.motivo_consulta} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Última consulta odontológica</span>
-          <input name="ultima_consulta" className="input input-bordered input-sm" value={f.ultima_consulta} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Cepillados diarios</span>
-          <input name="cepillados_diarios" className="input input-bordered input-sm" value={f.cepillados_diarios} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">¿Tiene sangrado?</span>
-          <input name="sangrado" className="input input-bordered input-sm" value={f.sangrado} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Momentos de azúcar</span>
-          <input name="momentos_azucar" className="input input-bordered input-sm" value={f.momentos_azucar} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">¿Ha tenido dolor?</span>
-          <input name="dolor" className="input input-bordered input-sm" value={f.dolor} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">¿Sufrió algún golpe?</span>
-          <input name="golpe" className="input input-bordered input-sm" value={f.golpe} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">¿Tiene dificultad para hablar, masticar o deglutir?</span>
-          <input name="dificultad" className="input input-bordered input-sm" value={f.dificultad} onChange={onChange} />
         </label>
       </div>
 
@@ -271,7 +143,6 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
   );
 }
 
-/* ---------------- Badge + dropdown de estado ---------------- */
 function StatusBadge({ status, onChange }) {
   const map = {
     active: { cls: "badge-success", label: "Activo" },
@@ -296,14 +167,45 @@ function StatusBadge({ status, onChange }) {
   );
 }
 
-/* ---------------- Página Clientes ---------------- */
+const FALLBACK_HISTORY_FIELDS = [
+  { name: "motivo", label: "Motivo de consulta", type: "text" },
+  { name: "diagnostico", label: "Diagnostico", type: "textarea" },
+  { name: "tratamiento", label: "Plan / Tratamiento", type: "textarea" },
+  { name: "indicaciones", label: "Indicaciones", type: "textarea" },
+  { name: "notas", label: "Notas", type: "textarea" },
+];
+const FALLBACK_VITALS = [];
+
+function buildHistoryForm(fields, vitalSigns) {
+  const base = {};
+  (fields || []).forEach((f) => {
+    base[f.name] = "";
+  });
+  const vitals = {};
+  (vitalSigns || []).forEach((k) => {
+    vitals[k] = "";
+  });
+  return { ...base, signos_vitales: vitals };
+}
+
 export default function Clientes() {
   const { t } = useTranslation();
+  const { vocab, features, forms } = useArea();
+
+  const clientsLabel = vocab?.clients || t("clients.title", "Clientes");
+  const clientLabel = vocab?.client || t("clients.form.name", "Cliente");
+  const contactLabel = vocab?.contact || t("clients.form.contactName", "Contacto");
+  const contactsLabel = vocab?.contacts || "Contactos";
+  const historyLabel = vocab?.clinicalHistory || "Historia clinica";
+  const historyListLabel = vocab?.clinicalHistoryList || "Historias clinicas";
+
+  const historyFields = forms?.clinicalHistory?.fields || FALLBACK_HISTORY_FIELDS;
+  const vitalSigns = forms?.clinicalHistory?.vitalSigns || FALLBACK_VITALS;
+
   const [isLoading, setIsLoading] = useState(true);
   const [items, setItems] = useState([]);
-  const [q, setQ] = useState("");
+  const [qtext, setQtext] = useState("");
 
-  // ✅ tabs: active | bid | inactive (default: active)
   const [statusTab, setStatusTab] = useState("active");
 
   const [openForm, setOpenForm] = useState(false);
@@ -317,14 +219,22 @@ export default function Clientes() {
     observacion: "",
   });
 
-  // Estado de contactos (solo en edición)
   const [contacts, setContacts] = useState([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   const [savingContact, setSavingContact] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
 
-  const load = async () => {
+  const [historyEntries, setHistoryEntries] = useState([]);
+  const [historyForm, setHistoryForm] = useState(() => buildHistoryForm(historyFields, vitalSigns));
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [savingHistory, setSavingHistory] = useState(false);
+
+  useEffect(() => {
+    setHistoryForm(buildHistoryForm(historyFields, vitalSigns));
+  }, [historyFields, vitalSigns, features?.clinicalHistory]);
+
+  const load = useCallback(async () => {
     setIsLoading(true);
     try {
       const { data } = await api.get("/clientes", { params: { status: statusTab } });
@@ -334,11 +244,11 @@ export default function Clientes() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [statusTab, t]);
 
   useEffect(() => {
-    load(); // eslint-disable-next-line
-  }, [statusTab]);
+    load();
+  }, [load]);
 
   const reset = () =>
     setForm({ nombre: "", contacto_nombre: "", email: "", telefono: "", direccion: "", observacion: "" });
@@ -347,6 +257,7 @@ export default function Clientes() {
     setEditing(null);
     reset();
     setContacts([]);
+    setHistoryEntries([]);
     setOpenForm(true);
     setShowAddContact(false);
     setEditingContact(null);
@@ -364,6 +275,20 @@ export default function Clientes() {
     }
   }
 
+  async function fetchHistory(clienteId) {
+    if (!features?.clinicalHistory) return;
+    setLoadingHistory(true);
+    try {
+      const { data } = await api.get("/historias", { params: { cliente_id: clienteId } });
+      setHistoryEntries(Array.isArray(data) ? data : []);
+    } catch {
+      setHistoryEntries([]);
+      toast.error("No pude cargar historias clinicas");
+    } finally {
+      setLoadingHistory(false);
+    }
+  }
+
   async function openEdit(cli) {
     setEditing(cli);
     setForm({
@@ -378,11 +303,16 @@ export default function Clientes() {
     setShowAddContact(false);
     setEditingContact(null);
     await fetchContacts(cli.id);
+    if (features?.clinicalHistory) {
+      fetchHistory(cli.id);
+    } else {
+      setHistoryEntries([]);
+    }
   }
 
   async function onSubmit(e) {
     e?.preventDefault?.();
-    if (!form.nombre.trim()) return toast.error(t("clients.form.name"));
+    if (!form.nombre.trim()) return toast.error(`${clientLabel}: requerido`);
 
     const un = toast.loading(t("actions.sending"));
     try {
@@ -392,6 +322,7 @@ export default function Clientes() {
         setItems((prev) => prev.map((c) => (c.id === editing.id ? { ...c, ...resp.data } : c)));
         toast.success(t("clients.toasts.updated"));
         fetchContacts(editing.id);
+        if (features?.clinicalHistory) fetchHistory(editing.id);
       } else {
         const payload =
           statusTab === "bid"
@@ -407,7 +338,7 @@ export default function Clientes() {
       setEditing(null);
       reset();
       setContacts([]);
-      load();
+      setHistoryEntries([]);
     } catch {
       toast.error(editing?.id ? t("clients.toasts.updateError") : t("clients.toasts.cannotCreate"));
     } finally {
@@ -416,7 +347,7 @@ export default function Clientes() {
   }
 
   async function remove(id) {
-    if (!confirm(t("actions.confirmDelete", "¿Eliminar cliente?"))) return;
+    if (!confirm(t("actions.confirmDelete", `Eliminar ${clientLabel.toLowerCase()}?`))) return;
     try {
       await api.delete(`/clientes/${id}`);
       setItems((prev) => prev.filter((x) => x.id !== id));
@@ -431,7 +362,7 @@ export default function Clientes() {
   const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
   const list = useMemo(() => {
-    const term = q.trim().toLowerCase();
+    const term = qtext.trim().toLowerCase();
     let arr = [...items];
     if (term) {
       arr = arr.filter((c) =>
@@ -442,9 +373,8 @@ export default function Clientes() {
     }
     arr.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
     return arr;
-  }, [items, q]);
+  }, [items, qtext]);
 
-  /* ------- acciones contactos ------- */
   async function createContact(clienteId, data) {
     setSavingContact(true);
     try {
@@ -474,7 +404,7 @@ export default function Clientes() {
   }
 
   async function deleteContact(c) {
-    if (!confirm("¿Eliminar este contacto?")) return;
+    if (!confirm(`Eliminar este ${contactLabel.toLowerCase()}?`)) return;
     try {
       await api.delete(`/contactos/${c.id}`);
       setContacts((prev) => prev.filter((x) => x.id !== c.id));
@@ -498,7 +428,6 @@ export default function Clientes() {
     }
   }
 
-  // 🔁 cambio rápido de estado (dropdown)
   async function updateStatus(id, next) {
     try {
       await api.patch(`/clientes/${id}`, { status: next });
@@ -506,10 +435,8 @@ export default function Clientes() {
         `Estado: ${next === "active" ? "Activo" : next === "bid" ? "BID" : "Inactivo"}`
       );
       if (next !== statusTab) {
-        // si el estado cambió de pestaña, sacamos el registro
         setItems((prev) => prev.filter((c) => c.id !== id));
       } else {
-        // si quedó en la misma pestaña, refrescamos para ver el badge correcto
         load();
       }
     } catch {
@@ -517,21 +444,154 @@ export default function Clientes() {
     }
   }
 
-  // Acción rápida para BID → Activo
   async function convertirAActivo(id) {
     await updateStatus(id, "active");
   }
 
+  function onChangeHistory(e) {
+    const { name, value } = e.target;
+    if (name.startsWith("vital__")) {
+      const key = name.replace("vital__", "");
+      setHistoryForm((p) => ({
+        ...p,
+        signos_vitales: { ...(p.signos_vitales || {}), [key]: value },
+      }));
+    } else {
+      setHistoryForm((p) => ({ ...p, [name]: value }));
+    }
+  }
+
+  async function addHistoryEntry() {
+    if (!editing?.id) return;
+    setSavingHistory(true);
+    try {
+      const payload = { ...historyForm, cliente_id: editing.id };
+      const { signos_vitales, ...rest } = payload;
+      const extras = {};
+      const allowed = new Set(["motivo", "diagnostico", "tratamiento", "indicaciones", "notas", "sintomas", "animal", "vacunas"]);
+      for (const f of historyFields) {
+        if (!allowed.has(f.name)) {
+          extras[f.name] = payload[f.name];
+        }
+      }
+      const finalPayload = {
+        ...rest,
+        signos_vitales,
+        extras,
+      };
+      const { data } = await api.post("/historias", finalPayload);
+      setHistoryEntries((prev) => [data, ...prev]);
+      setHistoryForm(buildHistoryForm(historyFields, vitalSigns));
+      toast.success("Historia guardada");
+    } catch (e) {
+      if (e?.response?.status === 403) {
+        toast.error("Historias clinicas no habilitadas para esta organizacion");
+      } else {
+        toast.error("No pude guardar la historia");
+      }
+    } finally {
+      setSavingHistory(false);
+    }
+  }
+
+  const renderHistoryFields = () => (
+    <div className="space-y-3">
+      {historyFields.map((f) => (
+        <label key={f.name} className="form-control">
+          <span className="label-text">{f.label}</span>
+          {f.type === "textarea" ? (
+            <textarea
+              name={f.name}
+              className="textarea textarea-bordered textarea-sm"
+              value={historyForm[f.name] || ""}
+              onChange={onChangeHistory}
+            />
+          ) : (
+            <input
+              name={f.name}
+              className="input input-bordered input-sm"
+              value={historyForm[f.name] || ""}
+              onChange={onChangeHistory}
+            />
+          )}
+        </label>
+      ))}
+
+      {vitalSigns.length ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {vitalSigns.map((v) => (
+            <label key={v} className="form-control">
+              <span className="label-text">Signo vital: {v}</span>
+              <input
+                name={`vital__${v}`}
+                className="input input-bordered input-sm"
+                value={historyForm.signos_vitales?.[v] || ""}
+                onChange={onChangeHistory}
+              />
+            </label>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const renderHistoryList = () => {
+    if (loadingHistory) {
+      return (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="skeleton h-16 w-full rounded-xl" />
+          ))}
+        </div>
+      );
+    }
+    if (!historyEntries.length) return <div className="text-sm opacity-70">Sin registros todavia.</div>;
+    return (
+      <div className="space-y-3">
+        {historyEntries.map((h) => (
+          <div key={h.id} className="border rounded-xl p-3 bg-base-100">
+            <div className="flex items-center justify-between text-xs opacity-70">
+              <span>{new Date(h.created_at || h.updated_at || Date.now()).toLocaleString()}</span>
+              <span>{h.creado_por || "—"}</span>
+            </div>
+            <div className="mt-2 space-y-1 text-sm">
+              {h.motivo && <p><strong>Motivo:</strong> {h.motivo}</p>}
+              {h.diagnostico && <p><strong>Diagnostico:</strong> {h.diagnostico}</p>}
+              {h.tratamiento && <p><strong>Tratamiento:</strong> {h.tratamiento}</p>}
+              {h.indicaciones && <p><strong>Indicaciones:</strong> {h.indicaciones}</p>}
+              {h.notas && <p><strong>Notas:</strong> {h.notas}</p>}
+              {h.signos_vitales && Object.keys(h.signos_vitales).length ? (
+                <p>
+                  <strong>Signos vitales:</strong>{" "}
+                  {Object.entries(h.signos_vitales)
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join(" · ")}
+                </p>
+              ) : null}
+              {h.extras && Object.keys(h.extras).length ? (
+                <p>
+                  <strong>Datos extra:</strong>{" "}
+                  {Object.entries(h.extras)
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join(" · ")}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">{t("clients.title", "Clientes")}</h1>
+        <h1 className="text-2xl font-bold">{clientsLabel}</h1>
         <button className="btn btn-primary btn-sm" onClick={openCreate}>
           <Plus className="w-4 h-4 mr-1" /> {t("actions.add")}
         </button>
       </div>
 
-      {/* Tabs Activo/BID/Inactivo */}
       <div className="flex items-center gap-3">
         <div className="join rounded-xl border border-base-300 overflow-hidden">
           <button
@@ -557,23 +617,22 @@ export default function Clientes() {
         <input
           className="input input-bordered input-sm w-full max-w-md"
           placeholder={t("common.search", "Buscar...")}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
+          value={qtext}
+          onChange={(e) => setQtext(e.target.value)}
         />
       </div>
 
-      {/* ---- Tabla compacta ---- */}
       <section className="card bg-base-100 shadow">
         <div className="card-body p-0">
           <div className="overflow-x-auto">
             <table className="table table-zebra table-sm w-full">
               <thead>
                 <tr>
-                  <th className="px-3 py-2">{t("clients.form.name")}</th>
-                  <th className="hidden md:table-cell px-3 py-2">{t("clients.form.contactName", "Contacto")}</th>
+                  <th className="px-3 py-2">{clientLabel}</th>
+                  <th className="hidden md:table-cell px-3 py-2">{contactLabel}</th>
                   <th className="px-3 py-2">Email</th>
                   <th className="px-3 py-2">{t("common.phone")}</th>
-                  <th className="hidden lg:table-cell px-3 py-2">{t("clients.form.address", "Dirección")}</th>
+                  <th className="hidden lg:table-cell px-3 py-2">{t("clients.form.address", "Direccion")}</th>
                   <th className="px-3 py-2">Estado</th>
                   <th className="text-right pr-5 px-3 py-2">{t("actions.update")}</th>
                 </tr>
@@ -640,28 +699,28 @@ export default function Clientes() {
         </div>
       </section>
 
-      {/* SlideOver: Crear/Editar cliente + panel Contactos */}
       <SlideOver
         open={openForm}
         onClose={() => {
           setOpenForm(false);
           setEditing(null);
           setContacts([]);
+          setHistoryEntries([]);
           setEditingContact(null);
           setShowAddContact(false);
+          setHistoryForm(buildHistoryForm(historyFields, vitalSigns));
         }}
         title={editing ? t("actions.update") : t("actions.add")}
       >
-        {/* -------- Form Cliente -------- */}
         <form onSubmit={onSubmit} className="space-y-3 mb-6">
           <div>
-            <label className="label">{t("clients.form.name")}</label>
+            <label className="label">{clientLabel}</label>
             <input className="input input-bordered w-full" name="nombre" value={form.nombre} onChange={onChange} required />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="label">{t("clients.form.contactName", "Contacto")}</label>
+              <label className="label">{contactLabel}</label>
               <input className="input input-bordered w-full" name="contacto_nombre" value={form.contacto_nombre} onChange={onChange} />
             </div>
             <div>
@@ -676,13 +735,13 @@ export default function Clientes() {
               <input className="input input-bordered w-full" name="telefono" value={form.telefono} onChange={onChange} />
             </div>
             <div>
-              <label className="label">{t("clients.form.address", "Dirección")}</label>
+              <label className="label">{t("clients.form.address", "Direccion")}</label>
               <input className="input input-bordered w-full" name="direccion" value={form.direccion} onChange={onChange} />
             </div>
           </div>
 
           <div>
-            <label className="label">{t("clients.form.notes", "Observación")}</label>
+            <label className="label">{t("clients.form.notes", "Observacion")}</label>
             <textarea className="textarea textarea-bordered w-full" name="observacion" value={form.observacion} onChange={onChange} />
           </div>
 
@@ -694,8 +753,10 @@ export default function Clientes() {
                 setOpenForm(false);
                 setEditing(null);
                 setContacts([]);
+                setHistoryEntries([]);
                 setEditingContact(null);
                 setShowAddContact(false);
+                setHistoryForm(buildHistoryForm(historyFields, vitalSigns));
               }}
             >
               {t("actions.cancel")}
@@ -706,14 +767,13 @@ export default function Clientes() {
           </div>
         </form>
 
-        {/* -------- Panel Contactos (solo en edición) -------- */}
         {editing?.id ? (
-          <section>
+          <section className="mb-6">
             <div className="flex items-center justify-between mb-2">
-              <h4 className="font-semibold">Contactos</h4>
+              <h4 className="font-semibold">{contactsLabel}</h4>
               {!showAddContact ? (
                 <button className="btn btn-sm" onClick={() => { setShowAddContact(true); setEditingContact(null); }}>
-                  <Plus className="w-4 h-4 mr-1" /> Añadir contacto
+                  <Plus className="w-4 h-4 mr-1" /> Anadir {contactLabel.toLowerCase()}
                 </button>
               ) : null}
             </div>
@@ -736,7 +796,7 @@ export default function Clientes() {
                 ))}
               </div>
             ) : contacts.length === 0 ? (
-              <div className="text-sm opacity-70">Sin contactos aún.</div>
+              <div className="text-sm opacity-70">Sin {contactsLabel.toLowerCase()} aun.</div>
             ) : (
               <div className="space-y-2">
                 {contacts.map((c) =>
@@ -752,6 +812,7 @@ export default function Clientes() {
                     <ContactRow
                       key={c.id}
                       c={c}
+                      contactLabel={contactLabel}
                       onEdit={(ci) => setEditingContact(ci)}
                       onDelete={deleteContact}
                       onMakePrimary={makePrimary}
@@ -760,6 +821,27 @@ export default function Clientes() {
                 )}
               </div>
             )}
+          </section>
+        ) : null}
+
+        {editing?.id && features?.clinicalHistory ? (
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <HeartPulse className="w-5 h-5 text-primary" />
+              <h4 className="font-semibold">{historyListLabel}</h4>
+            </div>
+            <div className="rounded-xl border border-base-200 p-3 bg-base-100 space-y-3">
+              {renderHistoryFields()}
+              <div className="flex justify-end gap-2">
+                <button className="btn btn-ghost btn-sm" onClick={() => setHistoryForm(buildHistoryForm(historyFields, vitalSigns))}>
+                  Limpiar
+                </button>
+                <button className={`btn btn-primary btn-sm ${savingHistory ? "btn-disabled" : ""}`} onClick={addHistoryEntry}>
+                  Guardar {historyLabel.toLowerCase()}
+                </button>
+              </div>
+            </div>
+            {renderHistoryList()}
           </section>
         ) : null}
       </SlideOver>

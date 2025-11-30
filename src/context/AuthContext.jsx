@@ -44,9 +44,10 @@ export function AuthProvider({ children }) {
       login: auth?.login,
       logout: auth?.logout,
       refresh: auth?.refresh,
-    };
-  // Importante: incluimos funciones por si cambian de identidad en el hook
-  }, [auth?.usuario, auth?.token, auth?.rol, auth?.loading, auth?.login, auth?.logout, auth?.refresh]);
+      mergeUser: auth?.mergeUser,
+  };
+// Importante: incluimos funciones por si cambian de identidad en el hook
+  }, [auth?.usuario, auth?.token, auth?.rol, auth?.loading, auth?.login, auth?.logout, auth?.refresh, auth?.mergeUser]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

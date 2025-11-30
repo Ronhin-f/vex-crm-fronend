@@ -9,29 +9,53 @@ import {
   KanbanSquare,
   ListTodo,
   Building2,
-  Receipt,          // icono para Facturación
+  Receipt,
+  Sliders,
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle.jsx";
 import LanguageToggle from "./LanguageToggle.jsx";
+import PerfilModal from "./perfil/PerfilModal";
+import { usePerfilUsuario } from "../hooks/usePerfilUsuario";
 import { useTranslation } from "react-i18next";
+import { useArea } from "../context/AreaContext";
 
 const linkBase =
   "rounded-xl px-3 py-2.5 flex items-center gap-2 text-sm transition border border-transparent";
 const linkActive = "bg-base-200 text-primary border-base-300";
 const linkHover = "hover:bg-base-100/60";
 
-/** onNavigate se usa para cerrar el drawer en mobile */
 export default function Sidebar({ onNavigate = () => {} }) {
   const { usuario, logout } = useAuth();
+  const { perfil } = usePerfilUsuario();
+  const [openPerfil, setOpenPerfil] = React.useState(false);
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { vocab } = useArea();
 
   const linkClass = ({ isActive }) =>
     `${linkBase} ${isActive ? linkActive : linkHover}`;
 
+  const labels = {
+    dashboard: t("nav.dashboard", "Dashboard"),
+    clients: vocab?.clients || t("nav.clients", "Clientes"),
+    projects: vocab?.projects || t("nav.projects", "Proyectos"),
+    providers: vocab?.providers || t("nav.providers", "Subcontratistas"),
+    tasks: vocab?.tasks || t("nav.tasks", "Tareas"),
+    billing: vocab?.billing || t("nav.billing", "Facturacion"),
+    kanbanTasks: t("nav.kanbanTasks", "Kanban de tareas"),
+    area: "Area/Vertical",
+  };
+
+  const displayName =
+    perfil?.nombre_completo ||
+    perfil?.nombre ||
+    usuario?.nombre ||
+    usuario?.email?.split("@")?.[0] ||
+    usuario?.email ||
+    "Usuario";
+
   return (
     <aside className="w-64 bg-base-100 border-r border-base-200 h-screen flex flex-col">
-      {/* Brand */}
       <div
         className="p-5 border-b border-base-200 flex items-center gap-3 cursor-pointer select-none"
         onClick={() => {
@@ -46,12 +70,11 @@ export default function Sidebar({ onNavigate = () => {} }) {
             {t("app.brand", "Vex CRM")}
           </div>
           <div className="text-xs text-base-content/60 truncate">
-            {usuario?.email}
+            {displayName}
           </div>
         </div>
       </div>
 
-      {/* Nav */}
       <div className="px-4 py-4 flex-1 overflow-y-auto">
         <ul className="menu gap-2">
           <li className="menu-title px-1 uppercase tracking-wide text-xs text-base-content/60">
@@ -59,7 +82,7 @@ export default function Sidebar({ onNavigate = () => {} }) {
           </li>
           <li className="mx-1">
             <NavLink to="/" end onClick={onNavigate} className={linkClass}>
-              <Home size={18} /> {t("nav.dashboard", "Dashboard")}
+              <Home size={18} /> {labels.dashboard}
             </NavLink>
           </li>
 
@@ -68,21 +91,19 @@ export default function Sidebar({ onNavigate = () => {} }) {
           </li>
           <li className="mx-1">
             <NavLink to="/clientes" onClick={onNavigate} className={linkClass}>
-              <Users size={18} /> {t("nav.clients", "Clientes")}
+              <Users size={18} /> {labels.clients}
             </NavLink>
           </li>
 
-          {/* Proyectos (pipeline basado en oportunidades) */}
           <li className="mx-1">
             <NavLink to="/pipeline" onClick={onNavigate} className={linkClass}>
-              <KanbanSquare size={18} /> {t("nav.projects", "Proyectos")}
+              <KanbanSquare size={18} /> {labels.projects}
             </NavLink>
           </li>
 
-          {/* Subcontratistas */}
           <li className="mx-1">
             <NavLink to="/proveedores" onClick={onNavigate} className={linkClass}>
-              <Building2 size={18} /> {t("nav.providers", "Subcontratistas")}
+              <Building2 size={18} /> {labels.providers}
             </NavLink>
           </li>
 
@@ -90,36 +111,48 @@ export default function Sidebar({ onNavigate = () => {} }) {
             {t("nav.section.ops", "Operaciones")}
           </li>
 
-          {/* Facturación */}
           <li className="mx-1">
             <NavLink to="/facturacion" onClick={onNavigate} className={linkClass}>
-              <Receipt size={18} /> {t("nav.billing", "Facturación")}
+              <Receipt size={18} /> {labels.billing}
+            </NavLink>
+          </li>
+
+          <li className="mx-1">
+            <NavLink to="/area" onClick={onNavigate} className={linkClass}>
+              <Sliders size={18} /> {labels.area}
             </NavLink>
           </li>
 
           <li className="mx-1">
             <NavLink to="/tareas" onClick={onNavigate} className={linkClass}>
-              <FileText size={18} /> {t("nav.tasks", "Tareas")}
+              <FileText size={18} /> {labels.tasks}
             </NavLink>
           </li>
 
-          {/* Kanban de tareas */}
           <li className="mx-1">
             <NavLink
               to="/kanban-tareas"
               onClick={onNavigate}
               className={linkClass}
             >
-              <ListTodo size={18} /> {t("nav.kanbanTasks", "Kanban de tareas")}
+              <ListTodo size={18} /> {labels.kanbanTasks}
             </NavLink>
           </li>
         </ul>
       </div>
 
-      {/* Footer del sidebar */}
       <div className="mt-auto bg-base-100 border-t border-base-200 p-4">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <button
+            onClick={() => setOpenPerfil(true)}
+            className="btn btn-outline btn-sm w-full justify-center"
+            title="Ver mi perfil"
+          >
+            Perfil
+          </button>
           <LanguageToggle />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
           <ThemeToggle />
           <button
             onClick={() => {
@@ -135,6 +168,7 @@ export default function Sidebar({ onNavigate = () => {} }) {
           </button>
         </div>
       </div>
+      <PerfilModal open={openPerfil} onClose={() => setOpenPerfil(false)} />
     </aside>
   );
 }

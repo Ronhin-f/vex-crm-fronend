@@ -133,6 +133,19 @@ export function useAuth() {
     return Promise.resolve(null);
   }, [token, fetchMe]);
 
+  // Actualiza parcialmente el usuario en memoria + localStorage (ej. nombre/avatar desde perfil)
+  const mergeUser = useCallback((updates) => {
+    if (!updates) return;
+    setUsuario((prev) => {
+      const next = { ...(prev || {}), ...updates };
+      try {
+        localStorage.setItem(USER_KEY, JSON.stringify(next));
+        localStorage.setItem("login-event", String(Date.now()));
+      } catch {}
+      return next;
+    });
+  }, []);
+
   const logout = useCallback(() => {
     writeToken(null);
     writeUser(null);
@@ -152,6 +165,7 @@ export function useAuth() {
     login,
     logout,
     refresh,
+    mergeUser,
   };
 }
 
