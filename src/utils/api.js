@@ -88,7 +88,16 @@ function getUserEmail() {
 
 function broadcastLogout() {
   try {
-    const keys = ["vex_token", "token", "user", "vex_user", "vex_org_id", "organizacion_id", "usuario_email"];
+    const keys = [
+      "vex_token",
+      "token",
+      "user",
+      "vex_user",
+      "vex_org_id",
+      "organizacion_id",
+      "usuario_email",
+      "vex_area_vertical",
+    ];
     keys.forEach((k) => localStorage.removeItem(k));
     localStorage.setItem("logout-event", String(Date.now())); // cross-tab
     console.warn("[api] logout broadcast");

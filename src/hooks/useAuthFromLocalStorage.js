@@ -8,6 +8,37 @@ import { coreApi } from "../utils/api";
 
 const TOKEN_KEY = "vex_token";
 const USER_KEY = "user";
+const ALLOWED_AREAS = ["general", "salud", "construccion", "veterinaria"];
+
+const normalizeArea = (a) => {
+  if (!a) return null;
+  const v = String(a).trim().toLowerCase();
+  return ALLOWED_AREAS.includes(v) ? v : null;
+};
+
+function normalizeUser(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const org =
+    raw.organizacion_id ??
+    raw.organization_id ??
+    raw.org_id ??
+    null;
+  if (!org) return null;
+
+  const cleanOrg = String(org);
+  const email = typeof raw.email === "string" ? raw.email.trim() : null;
+  const rol = typeof raw.rol === "string" ? raw.rol : raw.role;
+  const area = normalizeArea(raw.area_vertical || raw.area);
+
+  const safe = {
+    organizacion_id: cleanOrg,
+    organization_id: cleanOrg,
+  };
+  if (email) safe.email = email;
+  if (rol) safe.rol = rol;
+  if (area) safe.area_vertical = area;
+  return safe;
+}
 
 function getCoreLoginUrl(nextUrl) {
   const base =
@@ -30,7 +61,7 @@ export function useAuth() {
   const [usuario, setUsuario] = useState(() => {
     try {
       const raw = localStorage.getItem(USER_KEY);
-      return raw ? JSON.parse(raw) : null;
+      return raw ? normalizeUser(JSON.parse(raw)) : null;
     } catch {
       localStorage.removeItem(USER_KEY);
       return null;
@@ -41,11 +72,21 @@ export function useAuth() {
 
   // ---- helpers de almacenamiento ----
   const writeUser = useCallback((u) => {
+    const normalized = normalizeUser(u);
     try {
-      if (u) localStorage.setItem(USER_KEY, JSON.stringify(u));
-      else localStorage.removeItem(USER_KEY);
+      if (normalized) {
+        localStorage.setItem(USER_KEY, JSON.stringify(normalized));
+        if (normalized.area_vertical) {
+          localStorage.setItem("vex_area_vertical", normalized.area_vertical);
+        } else {
+          localStorage.removeItem("vex_area_vertical");
+        }
+      } else {
+        localStorage.removeItem(USER_KEY);
+        localStorage.removeItem("vex_area_vertical");
+      }
     } catch {}
-    setUsuario(u || null);
+    setUsuario(normalized || null);
   }, []);
 
   const writeToken = useCallback((t) => {
@@ -137,9 +178,17 @@ export function useAuth() {
   const mergeUser = useCallback((updates) => {
     if (!updates) return;
     setUsuario((prev) => {
-      const next = { ...(prev || {}), ...updates };
+      const next = normalizeUser({ ...(prev || {}), ...(updates || {}) });
       try {
-        localStorage.setItem(USER_KEY, JSON.stringify(next));
+        if (next) {
+          localStorage.setItem(USER_KEY, JSON.stringify(next));
+          if (next.area_vertical) {
+            localStorage.setItem("vex_area_vertical", next.area_vertical);
+          }
+        } else {
+          localStorage.removeItem(USER_KEY);
+          localStorage.removeItem("vex_area_vertical");
+        }
         localStorage.setItem("login-event", String(Date.now()));
       } catch {}
       return next;

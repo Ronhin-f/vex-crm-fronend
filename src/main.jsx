@@ -18,6 +18,8 @@ const TareasKanban = lazy(() => import("./routes/TareasKanban"));
 const Facturacion = lazy(() => import("./routes/Facturacion.jsx"));
 const AreaConfig = lazy(() => import("./routes/AreaConfig.jsx"));
 
+const ALLOWED_AREAS = ["general", "salud", "construccion", "veterinaria"];
+
 const PageLoader = () => (
   <div className="p-6">
     <div className="skeleton h-8 w-48 mb-4" />
@@ -34,6 +36,12 @@ const ErrorFallback = () => (
 
 const withSuspense = (el) => <Suspense fallback={<PageLoader />}>{el}</Suspense>;
 
+const normalizeArea = (a) => {
+  if (!a) return null;
+  const v = String(a).trim().toLowerCase();
+  return ALLOWED_AREAS.includes(v) ? v : null;
+};
+
 (() => {
   try {
     const paramsFrom = (str) => {
@@ -48,6 +56,43 @@ const withSuspense = (el) => <Suspense fallback={<PageLoader />}>{el}</Suspense>
       qs.get("vex_token") || qs.get("token") || hs.get("vex_token") || hs.get("token");
     const userParam = qs.get("user") || hs.get("user");
 
+    const parseUserParam = (raw) => {
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch {
+        try {
+          return JSON.parse(decodeURIComponent(raw));
+        } catch {
+          return null;
+        }
+      }
+    };
+
+    const sanitizeUser = (candidate) => {
+      if (!candidate || typeof candidate !== "object") return null;
+      const org =
+        candidate.organizacion_id ??
+        candidate.organization_id ??
+        candidate.org_id ??
+        null;
+      if (!org) return null;
+
+      const email = typeof candidate.email === "string" ? candidate.email.trim() : null;
+      const rol = typeof candidate.rol === "string" ? candidate.rol : null;
+      const area = normalizeArea(candidate.area_vertical || candidate.area);
+
+      const cleanOrg = String(org);
+      const safeUser = {
+        organizacion_id: cleanOrg,
+        organization_id: cleanOrg,
+      };
+      if (email) safeUser.email = email;
+      if (rol) safeUser.rol = rol;
+      if (area) safeUser.area_vertical = area;
+      return safeUser;
+    };
+
     let changed = false;
 
     if (vexToken) {
@@ -57,23 +102,23 @@ const withSuspense = (el) => <Suspense fallback={<PageLoader />}>{el}</Suspense>
     }
 
     if (userParam) {
-      const tryParse = (s) => {
-        try {
-          return JSON.parse(s);
-        } catch {
-          return JSON.parse(decodeURIComponent(s));
+      const parsed = parseUserParam(userParam);
+      const safeUser = sanitizeUser(parsed);
+      if (safeUser) {
+        localStorage.setItem("user", JSON.stringify(safeUser));
+        if (safeUser.email) {
+          localStorage.setItem("usuario_email", safeUser.email);
+          localStorage.setItem("vex_user", safeUser.email);
         }
-      };
-      try {
-        const u = tryParse(userParam);
-        localStorage.setItem("user", JSON.stringify(u));
-        if (u?.email) localStorage.setItem("usuario_email", u.email);
-        const orgId = u?.organizacion_id ?? u?.organization_id;
-        if (orgId != null) localStorage.setItem("organizacion_id", String(orgId));
+        if (safeUser.organizacion_id) {
+          localStorage.setItem("organizacion_id", safeUser.organizacion_id);
+          localStorage.setItem("vex_org_id", safeUser.organizacion_id);
+        }
+        if (safeUser.area_vertical) {
+          localStorage.setItem("vex_area_vertical", safeUser.area_vertical);
+        }
         localStorage.setItem("login-event", String(Date.now()));
         changed = true;
-      } catch {
-        // no-op
       }
     }
 
