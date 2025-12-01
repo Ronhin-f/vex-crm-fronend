@@ -1,37 +1,22 @@
 ﻿// src/routes/AreaConfig.jsx
-import { useEffect, useState } from "react";
-import { toast } from "react-hot-toast";
-import api from "../utils/api";
+import { useMemo } from "react";
 import { useArea } from "../context/AreaContext";
-import { Sliders, RefreshCcw } from "lucide-react";
+import { Sliders, RefreshCcw, ExternalLink } from "lucide-react";
+
+const CORE_ADMIN_URL =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_CORE_APP_URL) ||
+  "https://vex-core-frontend.vercel.app/#/admin";
 
 export default function AreaConfig() {
   const { area, features, availableAreas, refresh } = useArea();
-  const [form, setForm] = useState({ area, clinicalHistory: features?.clinicalHistory || false });
-  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    setForm({ area, clinicalHistory: features?.clinicalHistory || false });
-  }, [area, features?.clinicalHistory]);
-
-  const onSubmit = async (e) => {
-    e?.preventDefault?.();
-    setSaving(true);
-    const t = toast.loading("Guardando...");
-    try {
-      await api.put("/area/perfil", {
-        area: form.area,
-        features: { clinicalHistory: form.clinicalHistory },
-      });
-      toast.success("Perfil guardado");
-      refresh();
-    } catch {
-      toast.error("No se pudo guardar el perfil");
-    } finally {
-      toast.dismiss(t);
-      setSaving(false);
-    }
-  };
+  const selected = useMemo(
+    () => ({
+      area: area || "general",
+      clinicalHistory: !!features?.clinicalHistory,
+    }),
+    [area, features?.clinicalHistory]
+  );
 
   return (
     <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
@@ -45,15 +30,15 @@ export default function AreaConfig() {
         </div>
       </div>
 
-      <form onSubmit={onSubmit} className="card bg-base-100 shadow">
+      <div className="card bg-base-100 shadow">
         <div className="card-body space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label className="form-control">
               <span className="label-text">Area</span>
               <select
                 className="select select-bordered"
-                value={form.area}
-                onChange={(e) => setForm((f) => ({ ...f, area: e.target.value }))}
+                value={selected.area}
+                disabled
               >
                 {(availableAreas || ["general", "salud", "construccion", "veterinaria"]).map((a) => (
                   <option key={a} value={a}>
@@ -69,8 +54,9 @@ export default function AreaConfig() {
                 <input
                   type="checkbox"
                   className="toggle"
-                  checked={form.clinicalHistory}
-                  onChange={(e) => setForm((f) => ({ ...f, clinicalHistory: e.target.checked }))}
+                  checked={selected.clinicalHistory}
+                  readOnly
+                  disabled
                 />
                 <span className="text-sm text-base-content/70">Habilitar registro de historias clinicas</span>
               </div>
@@ -81,17 +67,20 @@ export default function AreaConfig() {
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => refresh()}>
               <RefreshCcw className="w-4 h-4" /> Refrescar
             </button>
-            <button type="submit" className={`btn btn-primary ${saving ? "btn-disabled" : ""}`}>
-              Guardar
-            </button>
+            <a href={CORE_ADMIN_URL} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">
+              Editar en Core <ExternalLink className="w-4 h-4" />
+            </a>
           </div>
         </div>
-      </form>
+      </div>
 
       <div className="alert alert-info">
         <div>
           <p className="font-semibold">Nota</p>
-          <p className="text-sm">Los cambios aplican a toda la organizacion. El frontend ya toma el perfil para labels y para habilitar historias clinicas.</p>
+          <p className="text-sm">
+            Lectura desde Core. Para cambiar el area/vertical o habilitar historias clinicas, editá el perfil de la
+            organizacion en Vex Core.
+          </p>
         </div>
       </div>
     </div>

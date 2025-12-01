@@ -1,6 +1,6 @@
 // src/context/AreaContext.jsx — vocabulario/config por area
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import api from "../utils/api";
+import { coreApi } from "../utils/api";
 import { useAuth } from "./AuthContext";
 
 const BASE_PROFILE = {
@@ -60,13 +60,17 @@ export function AreaProvider({ children }) {
     }
     setLoading(true);
     try {
-      const { data } = await api.get("/area/perfil");
+      const { data } = await coreApi.get("/perfil/organizacion");
+      const p = data?.perfil || {};
       const merged = {
-        area: data?.area || BASE_PROFILE.area,
+        area: p.area_vertical || BASE_PROFILE.area,
         vocab: { ...BASE_PROFILE.vocab, ...(data?.vocab || {}) },
-        features: { ...BASE_PROFILE.features, ...(data?.features || {}) },
-        forms: deepMerge(BASE_PROFILE.forms, data?.forms || {}),
-        availableAreas: data?.availableAreas || BASE_PROFILE.availableAreas,
+        features: {
+          ...BASE_PROFILE.features,
+          clinicalHistory: !!p.habilita_historias_clinicas,
+        },
+        forms: BASE_PROFILE.forms,
+        availableAreas: BASE_PROFILE.availableAreas,
       };
       setProfile(merged);
     } catch {
