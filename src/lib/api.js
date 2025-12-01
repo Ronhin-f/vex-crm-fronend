@@ -2,7 +2,6 @@
 import axios from "axios";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "";
-const DEFAULT_ORG = 10;
 
 export const api = axios.create({
   baseURL: BASE_URL || "/api",
@@ -15,11 +14,15 @@ api.interceptors.request.use((config) => {
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   }
-  // asegura ?org=10 si no vino en token ni en params
-  const hasOrgInUrl = /([?&])org=\d+/.test(config.url || "");
-  const hasOrgInParams = !!config.params?.org;
-  if (!hasOrgInUrl && !hasOrgInParams) {
-    config.params = { ...(config.params || {}), org: DEFAULT_ORG };
+  // Propaga organizacion_id desde localStorage si no vino en params
+  const orgFromLs = localStorage.getItem("organizacion_id");
+  if (orgFromLs) {
+    config.params = {
+      ...(config.params || {}),
+      organizacion_id: config.params?.organizacion_id ?? orgFromLs,
+    };
+    config.headers = config.headers || {};
+    config.headers["X-Org-Id"] = orgFromLs;
   }
   return config;
 });

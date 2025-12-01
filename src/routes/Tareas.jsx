@@ -1,8 +1,9 @@
-// src/routes/Tareas.jsx
+﻿// src/routes/Tareas.jsx
 import { useEffect, useMemo, useState } from "react";
 import api from "../utils/api";
 import { toast } from "react-hot-toast";
 import { Plus, Edit2, Trash2, Check, X, Calendar, User2, Bell } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 /* ===========================
  * Helpers Vex Flows (frontend-only)
@@ -49,7 +50,7 @@ function scheduleTaskReminder({
   if (!dueISO) return Promise.reject(new Error("No hay fecha de vencimiento"));
   const whenMs = new Date(dueISO).getTime() - offsetSec * 1000;
   const when = new Date(Math.max(whenMs, Date.now() + 1000)).toISOString();
-  const text = `⏰ Recordatorio: "${title}" asignada a ${assignee || "(sin asignar)"} vence ${new Date(
+  const text = `â° Recordatorio: "${title}" asignada a ${assignee || "(sin asignar)"} vence ${new Date(
     dueISO
   ).toLocaleString()}`;
   const payload = {
@@ -120,8 +121,17 @@ export default function Tareas() {
     offsetUnit: "min",
   });
   const [flowsOk, setFlowsOk] = useState(false);
+  const { orgId: authOrgId } = useAuth();
+  const orgId = useMemo(() => {
+    if (authOrgId) return authOrgId;
+    try {
+      return localStorage.getItem("organizacion_id") || null;
+    } catch {
+      return null;
+    }
+  }, [authOrgId]);
 
-  // edición
+  // ediciÃ³n
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({
     titulo: "",
@@ -140,14 +150,14 @@ export default function Tareas() {
         .filter((c) => !!c.email)
         .map((c) => ({
           value: String(c.id),
-          label: `${c.email}${c.nombre ? ` — ${c.nombre}` : ""}`,
+          label: `${c.email}${c.nombre ? ` â€” ${c.nombre}` : ""}`,
         })),
     [clientes]
   );
 
   function labelClienteById(id) {
     const c = clientes.find((x) => x.id === (Number(id) || id));
-    if (!c) return id ? `#${id}` : "—";
+    if (!c) return id ? `#${id}` : "â€”";
     return c.email || c.nombre || `#${id}`;
   }
 
@@ -155,7 +165,11 @@ export default function Tareas() {
   async function load() {
     setLoading(true);
     try {
-      const { data } = await api.get("/tareas");
+      if (!orgId) {
+        setItems([]);
+        return;
+      }
+      const { data } = await api.get("/tareas", { params: { organizacion_id: orgId } });
       setItems(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
@@ -168,7 +182,8 @@ export default function Tareas() {
   async function loadUsers() {
     setLoadingUsers(true);
     try {
-      const { data } = await api.get("/users"); // endpoint principal
+      if (!orgId) return setUsers([]);
+      const { data } = await api.get("/users", { params: { organizacion_id: orgId } }); // endpoint principal
       const items = Array.isArray(data?.items)
         ? data.items
         : Array.isArray(data)
@@ -186,7 +201,8 @@ export default function Tareas() {
   async function loadClientes() {
     setLoadingClientes(true);
     try {
-      const { data } = await api.get("/clientes");
+      if (!orgId) return setClientes([]);
+      const { data } = await api.get("/clientes", { params: { organizacion_id: orgId } });
       setClientes(Array.isArray(data) ? data : []);
     } catch (e) {
       console.warn("No pude cargar clientes", e);
@@ -201,13 +217,14 @@ export default function Tareas() {
     loadUsers();
     loadClientes();
     (async () => setFlowsOk(await flowsHealth()))();
-  }, []);
+  }, [orgId]);
 
   // ---- Alta ----
   async function onAdd(e) {
     e?.preventDefault?.();
+    if (!orgId) return toast.error("organizacion_id requerido");
     const titulo = form.titulo?.trim();
-    if (!titulo) return toast.error("Título requerido");
+    if (!titulo) return toast.error("TÃ­tulo requerido");
 
     const assignedEmail = form.usuario_email || null;
 
@@ -225,6 +242,7 @@ export default function Tareas() {
       assignee_email: assignedEmail || undefined, // alias aceptado por el BE
       prioridad: form.prioridad || "media",
       recordatorio: !!form.recordatorio,
+      organizacion_id: orgId,
     };
 
     try {
@@ -294,13 +312,18 @@ export default function Tareas() {
   const clean = (obj) => {
     const out = {};
     Object.entries(obj).forEach(([k, v]) => {
-      if (v === "" || v === undefined) return;
+      if (v === undefined) return;
+      if (v === "") {
+        out[k] = null;
+        return;
+      }
       out[k] = v === null ? null : v;
     });
     return out;
   };
 
   async function saveEdit(id) {
+    if (!orgId) return toast.error("organizacion_id requerido");
     const payload = clean({
       titulo: draft.titulo?.trim(),
       descripcion: draft.descripcion?.trim(),
@@ -312,6 +335,7 @@ export default function Tareas() {
       usuario_email: draft.usuario_email || null,
       prioridad: draft.prioridad || "media",
       recordatorio: !!draft.recordatorio,
+      organizacion_id: orgId,
     });
     try {
       const { data } = await api.patch(`/tareas/${id}`, payload);
@@ -328,10 +352,12 @@ export default function Tareas() {
 
   // ---- Completar / Reabrir ----
   async function markDone(id) {
+    if (!orgId) return toast.error("organizacion_id requerido");
     try {
       const { data } = await api.patch(`/tareas/${id}`, {
         completada: true,
         estado: "done",
+        organizacion_id: orgId,
       });
       setItems((prev) =>
         prev.map((t) =>
@@ -348,10 +374,12 @@ export default function Tareas() {
   }
 
   async function reopen(id) {
+    if (!orgId) return toast.error("organizacion_id requerido");
     try {
       const { data } = await api.patch(`/tareas/${id}`, {
         completada: false,
         estado: "todo",
+        organizacion_id: orgId,
       });
       setItems((prev) =>
         prev.map((t) =>
@@ -369,9 +397,10 @@ export default function Tareas() {
 
   // ---- Eliminar ----
   async function remove(id) {
-    if (!confirm("¿Eliminar tarea?")) return;
+    if (!orgId) return toast.error("organizacion_id requerido");
+    if (!confirm("Eliminar tarea?")) return;
     try {
-      await api.delete(`/tareas/${id}`);
+      await api.delete(`/tareas/${id}`, { params: orgId ? { organizacion_id: orgId } : {} });
       setItems((prev) => prev.filter((x) => x.id !== id));
       toast.success("Tarea eliminada");
     } catch (e) {
@@ -379,12 +408,11 @@ export default function Tareas() {
       toast.error("No pude eliminar la tarea");
     }
   }
-
   // ---- Test Slack inmediato (solo canal)
   async function testSlack() {
     if (!FLOWS_URL || !flowsOk) return toast.error("Flows no disponible");
     const channel = (slack.channel || "").trim();
-    if (!channel) return toast.error("Definí un canal (#general, por ejemplo)");
+    if (!channel) return toast.error("DefinÃ­ un canal (#general, por ejemplo)");
     try {
       await flowsEmit("slack.message", {
         channel,
@@ -401,11 +429,11 @@ export default function Tareas() {
     <div className="max-w-6xl mx-auto p-4 md:p-6">
       <h1 className="text-2xl font-bold mb-4">Tareas</h1>
 
-      {/* Alta rápida */}
+      {/* Alta rÃ¡pida */}
       <form onSubmit={onAdd} className="card bg-base-100 shadow mb-6">
         <div className="card-body grid grid-cols-1 md:grid-cols-6 gap-3">
           <div className="md:col-span-3">
-            <label className="label">Título *</label>
+            <label className="label">TÃ­tulo *</label>
             <input
               className="input input-bordered w-full"
               value={form.titulo}
@@ -417,7 +445,7 @@ export default function Tareas() {
           </div>
 
           <div className="md:col-span-3">
-            <label className="label">Descripción</label>
+            <label className="label">DescripciÃ³n</label>
             <input
               className="input input-bordered w-full"
               value={form.descripcion}
@@ -449,12 +477,12 @@ export default function Tareas() {
               <>
                 <input
                   className="input input-bordered w-full"
-                  placeholder="No encuentro clientes con correo — creá el cliente primero"
+                  placeholder="No encuentro clientes con correo â€” creÃ¡ el cliente primero"
                   disabled
                 />
                 {loadingClientes && (
                   <span className="text-xs opacity-70">
-                    Cargando correos…
+                    Cargando correosâ€¦
                   </span>
                 )}
               </>
@@ -482,7 +510,7 @@ export default function Tareas() {
                 onClick={loadUsers}
                 title="Recargar usuarios"
               >
-                ↻
+                â†»
               </button>
             </label>
 
@@ -498,7 +526,7 @@ export default function Tareas() {
               {users.map((u) => (
                 <option key={u.email} value={u.email}>
                   {u.name || u.nombre || u.full_name || u.email}
-                  {u.rol ? ` — ${u.rol}` : ""}
+                  {u.rol ? ` â€” ${u.rol}` : ""}
                 </option>
               ))}
               {!loadingUsers && users.length === 0 && (
@@ -506,7 +534,7 @@ export default function Tareas() {
               )}
             </select>
             {loadingUsers && (
-              <span className="text-xs opacity-70">Cargando usuarios…</span>
+              <span className="text-xs opacity-70">Cargando usuariosâ€¦</span>
             )}
           </div>
 
@@ -541,7 +569,7 @@ export default function Tareas() {
               }}
             />
             <p className="text-xs opacity-70 mt-1">
-              Si está activado y hay “Vence en”, se agenda aviso por Slack.
+              Si estÃ¡ activado y hay â€œVence enâ€, se agenda aviso por Slack.
             </p>
           </div>
 
@@ -553,13 +581,13 @@ export default function Tareas() {
               </legend>
               {!FLOWS_URL ? (
                 <p className="text-xs text-amber-700">
-                  No configurado (agregá VITE_FLOWS_BASE_URL)
+                  No configurado (agregÃ¡ VITE_FLOWS_BASE_URL)
                 </p>
               ) : flowsOk ? (
-                <p className="text-xs text-green-700">Flows online ✅</p>
+                <p className="text-xs text-green-700">Flows online âœ…</p>
               ) : (
                 <p className="text-xs text-amber-700">
-                  Flows no disponible. La tarea se creará sin recordatorio.
+                  Flows no disponible. La tarea se crearÃ¡ sin recordatorio.
                 </p>
               )}
 
@@ -637,7 +665,7 @@ export default function Tareas() {
           <table className="table table-zebra">
             <thead>
               <tr>
-                <th>Título</th>
+                <th>TÃ­tulo</th>
                 <th>Cliente</th>
                 <th>
                   <div className="flex items-center gap-1">
@@ -701,10 +729,10 @@ export default function Tareas() {
                                   descripcion: e.target.value,
                                 }))
                               }
-                              placeholder="Descripción"
+                              placeholder="DescripciÃ³n"
                             />
                           ) : (
-                            t.descripcion || "—"
+                            t.descripcion || "â€”"
                           )}
                         </div>
                       </td>
@@ -754,7 +782,7 @@ export default function Tareas() {
                         ) : due ? (
                           due.toLocaleString()
                         ) : (
-                          "—"
+                          "â€”"
                         )}
                       </td>
 
@@ -812,7 +840,7 @@ export default function Tareas() {
                             )}
                           </select>
                         ) : (
-                          t.usuario_email || "—"
+                          t.usuario_email || "â€”"
                         )}
                       </td>
 

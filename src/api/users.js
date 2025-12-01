@@ -1,3 +1,3 @@
 import { api, unwrap } from "../lib/api";
-export const getUsuarios = (org = 10) =>
-  unwrap(api.get("/api/usuarios", { params: { org } }));
+export const getUsuarios = (org) =>
+  unwrap(api.get("/api/usuarios", { params: org ? { organizacion_id: org } : {} }));
