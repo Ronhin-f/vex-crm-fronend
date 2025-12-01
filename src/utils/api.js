@@ -7,7 +7,7 @@
 
 import axios from "axios";
 
-/* ────────────────────────── Base URLs (env) ────────────────────────── */
+/* Base URLs (env) */
 const ENV_CORE = (import.meta.env.VITE_API_CORE_URL || "https://vex-core-backend-production.up.railway.app").replace(/\/+$/, "");
 const ENV_CRM  = (import.meta.env.VITE_API_CRM_URL  || (import.meta.env.VITE_API_URL || "http://localhost:3000")).replace(/\/+$/, "");
 
@@ -32,7 +32,7 @@ if (typeof window !== "undefined") {
   window.__VEX_SET_CORE__ = (u) => { coreApi.defaults.baseURL = String(u || ENV_CORE).replace(/\/+$/, ""); console.info("[api] core base =", coreApi.defaults.baseURL); };
 }
 
-/* ────────────────────────── Utils ────────────────────────── */
+/* Utils */
 function decodeJwt(token) {
   try {
     const b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -95,7 +95,7 @@ function broadcastLogout() {
   } catch {}
 }
 
-function setupInterceptor(apiInstance, name) {
+function setupInterceptor(apiInstance, name, { sendOrgHeader = true } = {}) {
   // Request: Authorization + validación de exp
   apiInstance.interceptors.request.use((config) => {
     if (isPublicEndpoint(config)) return config;
@@ -117,13 +117,13 @@ function setupInterceptor(apiInstance, name) {
     // Contexto opcional (no requerido, pero útil para auditoría/routers passthrough)
     const orgId = getOrgId();
     const uEmail = getUserEmail();
-    if (orgId)   config.headers["X-Org-Id"] = orgId;
-    if (uEmail)  config.headers["X-User-Email"] = uEmail;
+    if (sendOrgHeader && orgId)   config.headers["X-Org-Id"] = orgId;
+    if (sendOrgHeader && uEmail)  config.headers["X-User-Email"] = uEmail;
 
     return config;
   });
 
-  // Response: si backend dice 401/403 → cerrar sesión
+  // Response: si backend dice 401/403 -> cerrar sesión
   apiInstance.interceptors.response.use(
     (res) => res,
     (error) => {
@@ -137,8 +137,8 @@ function setupInterceptor(apiInstance, name) {
   );
 }
 
-setupInterceptor(coreApi, "Core");
-setupInterceptor(crmApi, "CRM");
+setupInterceptor(coreApi, "Core", { sendOrgHeader: false });
+setupInterceptor(crmApi, "CRM", { sendOrgHeader: true });
 
 /* Reaplicar overrides si el SSO bridge escribe en localStorage después del boot */
 if (typeof window !== "undefined") {
