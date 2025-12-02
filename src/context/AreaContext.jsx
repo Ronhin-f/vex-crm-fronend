@@ -80,7 +80,6 @@ export function AreaProvider({ children }) {
         forms: BASE_PROFILE.forms,
         availableAreas: BASE_PROFILE.availableAreas,
       };
-      setProfile(merged);
 
       if (merged.area) {
         try {
@@ -88,14 +87,30 @@ export function AreaProvider({ children }) {
         } catch {}
       }
 
-      crmApi
-        .post("/area/sync", {
+      let nextProfile = merged;
+
+      try {
+        const { data: sync } = await crmApi.post("/area/sync", {
           area: merged.area,
           features: { clinicalHistory: !!p.habilita_historias_clinicas },
-        })
-        .catch(() => {});
+        });
+        const perfil = sync?.perfil;
+        if (perfil) {
+          nextProfile = {
+            area: perfil.area || merged.area,
+            vocab: { ...merged.vocab, ...(perfil.vocab || {}) },
+            features: { ...merged.features, ...(perfil.features || {}) },
+            forms: merged.forms,
+            availableAreas: merged.availableAreas,
+          };
+        }
+      } catch {
+        // best-effort; seguimos con merged
+      }
 
-      return merged;
+      setProfile(nextProfile);
+
+      return nextProfile;
     } catch {
       setProfile((prev) => ({
         ...prev,
