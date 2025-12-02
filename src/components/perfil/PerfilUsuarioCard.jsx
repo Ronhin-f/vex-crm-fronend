@@ -1,5 +1,6 @@
 // src/components/perfil/PerfilUsuarioCard.jsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { coreApi } from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
@@ -12,6 +13,7 @@ export default function PerfilUsuarioCard() {
   const { perfil, loading, refresh, setPerfil } = usePerfilUsuario();
   const [form, setForm] = useState(baseState);
   const [saving, setSaving] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (perfil) {
@@ -117,6 +119,13 @@ export default function PerfilUsuarioCard() {
         </button>
         <button type="button" onClick={refresh} className="btn btn-ghost btn-sm" disabled={loading || saving}>
           Recargar
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate("/area")}
+          className="btn btn-outline btn-sm md:btn-md gap-2"
+        >
+          Configurar area/vertical
         </button>
         {perfil?.updated_at && (
           <span className="text-xs text-base-content/60">

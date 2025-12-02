@@ -139,25 +139,14 @@ export default function Sidebar({ onNavigate = () => {} }) {
         <div className="grid grid-cols-2 gap-2 mb-2">
           <button
             onClick={() => setOpenPerfil(true)}
-            className="btn btn-outline btn-sm w-full justify-center"
+            className="btn btn-outline btn-sm w-full justify-center gap-2 whitespace-nowrap"
             title="Ver mi perfil"
           >
             Perfil
           </button>
-          <button
-            onClick={() => {
-              onNavigate();
-              navigate("/area");
-            }}
-            className="btn btn-outline btn-sm w-full justify-center"
-            title="Area / Vertical"
-          >
-            <Sliders size={16} />
-            <span className="hidden sm:inline">Area/Vertical</span>
-          </button>
+          <LanguageToggle />
         </div>
         <div className="grid grid-cols-2 gap-2 mb-2">
-          <LanguageToggle />
           <ThemeToggle />
         </div>
         <div className="grid grid-cols-2 gap-2">
