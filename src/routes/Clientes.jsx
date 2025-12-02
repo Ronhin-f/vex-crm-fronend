@@ -10,6 +10,7 @@ function SlideOver({
   open,
   onClose,
   title,
+  headerButtons,
   children,
   widthClass = "w-full sm:w-[540px] md:w-[760px]",
 }) {
@@ -31,17 +32,27 @@ function SlideOver({
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-base-200">
-          <h3 className="font-semibold">{title}</h3>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <X className="w-4 h-4" />
-          </button>
+        {/* Encabezado: título + botones debajo */}
+        <div className="border-b border-base-200 px-4 py-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-semibold">{title}</h3>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {headerButtons ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {headerButtons}
+            </div>
+          ) : null}
         </div>
-        <div className="p-4 overflow-y-auto h-[calc(100%-3.25rem)]">
+
+        {/* Cuerpo scrollable */}
+        <div className="p-4 overflow-y-auto h-[calc(100%-4.5rem)]">
           {children}
         </div>
       </div>
@@ -112,7 +123,7 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
   );
 }
 
-// ✅ COMPONENTE ContactFormInline CORREGIDO (acentos + textos limpios)
+// ✅ COMPONENTE ContactFormInline
 function ContactFormInline({ initial, onCancel, onSave, saving }) {
   const [f, setF] = useState({
     nombre: initial?.nombre || "",
@@ -414,39 +425,34 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
   );
 }
 
-/* ---------------- Badge + dropdown de estado ---------------- */
+/* ---------------- Badge de estado: botón simple ---------------- */
 function StatusBadge({ status, onChange }) {
   const map = {
-    active: { cls: "badge-success", label: "Activo" },
-    bid: { cls: "badge-warning", label: "BID" },
-    inactive: { cls: "badge-ghost", label: "Inactivo" },
+    active: { cls: "btn-success", label: "Activo" },
+    bid: { cls: "btn-warning", label: "BID" },
+    inactive: { cls: "btn-ghost", label: "Inactivo" },
   };
-  const { cls, label } = map[status] || map.active;
+
+  const current = status || "active";
+  const { cls, label } = map[current] || map.active;
+
+  const order = ["active", "bid", "inactive"];
+
+  const handleClick = () => {
+    const idx = order.indexOf(current);
+    const next = order[(idx + 1) % order.length];
+    if (onChange) onChange(next);
+  };
 
   return (
-    <div className="dropdown dropdown-end">
-      <label
-        tabIndex={0}
-        className={`badge ${cls} badge-sm cursor-pointer`}
-      >
-        {label}
-      </label>
-      <ul
-        tabIndex={0}
-        className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40"
-      >
-        {Object.entries(map).map(([key, v]) => (
-          <li key={key}>
-            <button
-              onClick={() => onChange(key)}
-              className="justify-between"
-            >
-              {v.label} {key === status ? "✓" : ""}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <button
+      type="button"
+      className={`btn btn-xs ${cls}`}
+      onClick={handleClick}
+      title="Click para cambiar estado"
+    >
+      {label}
+    </button>
   );
 }
 
@@ -457,7 +463,6 @@ export default function Clientes() {
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
 
-  // ✅ tabs: active | bid | inactive (default: active)
   const [statusTab, setStatusTab] = useState("active");
 
   const [openForm, setOpenForm] = useState(false);
@@ -471,7 +476,6 @@ export default function Clientes() {
     observacion: "",
   });
 
-  // Estado de contactos (solo en edición)
   const [contacts, setContacts] = useState([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
@@ -694,7 +698,7 @@ export default function Clientes() {
     }
   }
 
-  // 🔁 cambio rápido de estado (dropdown)
+  // 🔁 cambio rápido de estado usando el botón simple
   async function updateStatus(id, next) {
     try {
       await api.patch(`/clientes/${id}`, { status: next });
@@ -708,10 +712,8 @@ export default function Clientes() {
         }`
       );
       if (next !== statusTab) {
-        // si el estado cambió de pestaña, sacamos el registro
         setItems((prev) => prev.filter((c) => c.id !== id));
       } else {
-        // si quedó en la misma pestaña, refrescamos para ver el badge correcto
         load();
       }
     } catch {
@@ -719,7 +721,6 @@ export default function Clientes() {
     }
   }
 
-  // Acción rápida para BID → Activo
   async function convertirAActivo(id) {
     await updateStatus(id, "active");
   }
@@ -890,20 +891,29 @@ export default function Clientes() {
           setShowAddContact(false);
         }}
         title={editing ? t("actions.update") : t("actions.add")}
+        headerButtons={
+          <>
+            <button
+              type="button"
+              className="btn btn-outline btn-xs sm:btn-sm"
+            >
+              DATOS DEL CLIENTE
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline btn-xs sm:btn-sm"
+            >
+              DATOS DEL PACIENTE
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline btn-xs sm:btn-sm"
+            >
+              COMPLETAR FORMULARIO OBLIGATORIO
+            </button>
+          </>
+        }
       >
-        {/* ---- Botones dentro del SlideOver ---- */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <button type="button" className="btn btn-outline btn-xs sm:btn-sm">
-            DATOS DEL CLIENTE
-          </button>
-          <button type="button" className="btn btn-outline btn-xs sm:btn-sm">
-            DATOS DEL PACIENTE
-          </button>
-          <button type="button" className="btn btn-outline btn-xs sm:btn-sm">
-            COMPLETAR FORMULARIO OBLIGATORIO
-          </button>
-        </div>
-
         {/* -------- Form Cliente -------- */}
         <form onSubmit={onSubmit} className="space-y-3 mb-6">
           <div>
@@ -979,7 +989,7 @@ export default function Clientes() {
           <div className="pt-2 flex gap-2 justify-end">
             <button
               type="button"
-              className="btn btn-ghost"
+              className="btn.btn-ghost"
               onClick={() => {
                 setOpenForm(false);
                 setEditing(null);
