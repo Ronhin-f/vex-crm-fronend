@@ -67,7 +67,7 @@ export function AreaProvider({ children }) {
     const fallbackArea = areaHint || BASE_PROFILE.area;
     try {
       const { data } = await coreApi.get("/perfil/organizacion", {
-        headers: { "X-Org-Id": orgId },
+        params: { organizacion_id: orgId },
       });
       const p = data?.perfil || {};
       const merged = {
