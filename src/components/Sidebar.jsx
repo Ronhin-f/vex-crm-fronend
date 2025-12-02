@@ -44,7 +44,6 @@ export default function Sidebar({ onNavigate = () => {} }) {
     tasks: vocab?.tasks || t("nav.tasks", "Tareas"),
     billing: vocab?.billing || t("nav.billing", "Facturacion"),
     kanbanTasks: t("nav.kanbanTasks", "Kanban de tareas"),
-    area: "Area/Vertical",
   };
 
   const displayName =
@@ -119,12 +118,6 @@ export default function Sidebar({ onNavigate = () => {} }) {
           </li>
 
           <li className="mx-1">
-            <NavLink to="/area" onClick={onNavigate} className={linkClass}>
-              <Sliders size={18} /> {labels.area}
-            </NavLink>
-          </li>
-
-          <li className="mx-1">
             <NavLink to="/tareas" onClick={onNavigate} className={linkClass}>
               <FileText size={18} /> {labels.tasks}
             </NavLink>
@@ -143,7 +136,7 @@ export default function Sidebar({ onNavigate = () => {} }) {
       </div>
 
       <div className="mt-auto bg-base-100 border-t border-base-200 p-4">
-        <div className="grid grid-cols-2 gap-2 mb-3">
+        <div className="grid grid-cols-2 gap-2 mb-2">
           <button
             onClick={() => setOpenPerfil(true)}
             className="btn btn-outline btn-sm w-full justify-center"
@@ -151,10 +144,23 @@ export default function Sidebar({ onNavigate = () => {} }) {
           >
             Perfil
           </button>
+          <button
+            onClick={() => {
+              onNavigate();
+              navigate("/area");
+            }}
+            className="btn btn-outline btn-sm w-full justify-center"
+            title="Area / Vertical"
+          >
+            <Sliders size={16} />
+            <span className="hidden sm:inline">Area/Vertical</span>
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mb-2">
           <LanguageToggle />
+          <ThemeToggle />
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <ThemeToggle />
           <button
             onClick={() => {
               logout();
@@ -167,6 +173,7 @@ export default function Sidebar({ onNavigate = () => {} }) {
             <LogOut size={16} />
             <span className="hidden sm:inline">{t("actions.logout", "Salir")}</span>
           </button>
+          <div aria-hidden />
         </div>
       </div>
       <PerfilModal open={openPerfil} onClose={() => setOpenPerfil(false)} />
