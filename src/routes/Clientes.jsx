@@ -9,11 +9,17 @@ import { Plus, X, Mail, Phone, Pencil, Trash2, Star } from "lucide-react";
 function SlideOver({ open, onClose, title, children, widthClass = "w-full sm:w-[540px] md:w-[760px]" }) {
   return (
     <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none select-none"}`}>
-      <div className={`absolute inset-0 bg-black/40 transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
+      <div
+        className={`absolute inset-0 bg-black/40 transition-opacity ${
+          open ? "opacity-100" : "opacity-0"
+        }`}
+        onClick={onClose}
+      />
       <div
         className={`absolute right-0 top-0 h-full bg-base-100 shadow-xl border-l border-base-200 ${widthClass}
                       transition-transform ${open ? "translate-x-0" : "translate-x-full"}`}
-        role="dialog" aria-modal="true"
+        role="dialog"
+        aria-modal="true"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-base-200">
           <h3 className="font-semibold">{title}</h3>
@@ -33,7 +39,9 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
     <div className="flex items-start justify-between gap-3 p-3 border rounded-xl bg-base-100">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <div className="font-medium truncate">{c.nombre || c.email || c.telefono || "—"}</div>
+          <div className="font-medium truncate">
+            {c.nombre || c.email || c.telefono || "—"}
+          </div>
           {c.es_principal ? (
             <span className="badge badge-primary badge-sm">
               <Star className="w-3 h-3 mr-1" /> Principal
@@ -51,8 +59,14 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
               <Phone className="w-3 h-3" /> <span className="truncate">{c.telefono}</span>
             </div>
           ) : null}
-          {(c.cargo || c.rol) && <div className="text-xs opacity-70">{[c.cargo, c.rol].filter(Boolean).join(" · ")}</div>}
-          {c.notas ? <div className="text-xs opacity-70 whitespace-pre-wrap">{c.notas}</div> : null}
+          {(c.cargo || c.rol) && (
+            <div className="text-xs opacity-70">
+              {[c.cargo, c.rol].filter(Boolean).join(" · ")}
+            </div>
+          )}
+          {c.notas ? (
+            <div className="text-xs opacity-70 whitespace-pre-wrap">{c.notas}</div>
+          ) : null}
         </div>
       </div>
       <div className="flex-shrink-0 flex items-center gap-1">
@@ -64,7 +78,10 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
         <button className="btn btn-ghost btn-xs" onClick={() => onEdit(c)}>
           <Pencil className="w-4 h-4" /> Editar
         </button>
-        <button className="btn btn-ghost btn-xs text-error" onClick={() => onDelete(c)}>
+        <button
+          className="btn btn-ghost btn-xs text-error"
+          onClick={() => onDelete(c)}
+        >
           <Trash2 className="w-4 h-4" /> Borrar
         </button>
       </div>
@@ -149,35 +166,76 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <label className="form-control">
           <span className="label-text">Nombre</span>
-          <input name="nombre" className="input input-bordered input-sm" value={f.nombre} onChange={onChange} />
+          <input
+            name="nombre"
+            className="input input-bordered input-sm"
+            value={f.nombre}
+            onChange={onChange}
+          />
         </label>
         <label className="form-control">
           <span className="label-text">Email</span>
-          <input name="email" type="email" className="input input-bordered input-sm" value={f.email} onChange={onChange} />
+          <input
+            name="email"
+            type="email"
+            className="input input-bordered input-sm"
+            value={f.email}
+            onChange={onChange}
+          />
         </label>
         <label className="form-control">
           <span className="label-text">Teléfono</span>
-          <input name="telefono" className="input input-bordered input-sm" value={f.telefono} onChange={onChange} />
+          <input
+            name="telefono"
+            className="input input-bordered input-sm"
+            value={f.telefono}
+            onChange={onChange}
+          />
         </label>
         <label className="form-control">
           <span className="label-text">Cargo</span>
-          <input name="cargo" className="input input-bordered input-sm" value={f.cargo} onChange={onChange} />
+          <input
+            name="cargo"
+            className="input input-bordered input-sm"
+            value={f.cargo}
+            onChange={onChange}
+          />
         </label>
         <label className="form-control">
           <span className="label-text">Rol</span>
-          <input name="rol" className="input input-bordered input-sm" value={f.rol} onChange={onChange} />
+          <input
+            name="rol"
+            className="input input-bordered input-sm"
+            value={f.rol}
+            onChange={onChange}
+          />
         </label>
         <label className="form-control">
           <span className="label-text">Obra Social</span>
-          <input name="obra_social" className="input input-bordered input-sm" value={f.obra_social} onChange={onChange} />
+          <input
+            name="obra_social"
+            className="input input-bordered input-sm"
+            value={f.obra_social}
+            onChange={onChange}
+          />
         </label>
         <label className="form-control">
           <span className="label-text">Plan</span>
-          <input name="plan" className="input input-bordered input-sm" value={f.plan} onChange={onChange} />
+          <input
+            name="plan"
+            className="input input-bordered input-sm"
+            value={f.plan}
+            onChange={onChange}
+          />
         </label>
         <label className="form-control">
           <span className="label-text">N° de Afiliado</span>
-          <input name="numero_afiliado" className="input input-bordered input-sm" value={f.numero_afiliado} onChange={onChange} />
+          <input
+            name="numero_afiliado"
+            className="input input-bordered input-sm"
+            value={f.numero_afiliado}
+            onChange={onChange}
+          />
         </label>
       </div>
 
@@ -217,53 +275,113 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
         <label className="form-control">
           <span className="label-text">Motivo de consulta</span>
-          <input name="motivo_consulta" className="input input-bordered input-sm" value={f.motivo_consulta} onChange={onChange} />
+          <input
+            name="motivo_consulta"
+            className="input input-bordered input-sm"
+            value={f.motivo_consulta}
+            onChange={onChange}
+          />
         </label>
         <label className="form-control">
           <span className="label-text">Última consulta odontológica</span>
-          <input name="ultima_consulta" className="input input-bordered input-sm" value={f.ultima_consulta} onChange={onChange} />
+          <input
+            name="ultima_consulta"
+            className="input input-bordered input-sm"
+            value={f.ultima_consulta}
+            onChange={onChange}
+          />
         </label>
         <label className="form-control">
           <span className="label-text">Cepillados diarios</span>
-          <input name="cepillados_diarios" className="input input-bordered input-sm" value={f.cepillados_diarios} onChange={onChange} />
+          <input
+            name="cepillados_diarios"
+            className="input input-bordered input-sm"
+            value={f.cepillados_diarios}
+            onChange={onChange}
+          />
         </label>
         <label className="form-control">
           <span className="label-text">¿Tiene sangrado?</span>
-          <input name="sangrado" className="input input-bordered input-sm" value={f.sangrado} onChange={onChange} />
+          <input
+            name="sangrado"
+            className="input input-bordered input-sm"
+            value={f.sangrado}
+            onChange={onChange}
+          />
         </label>
         <label className="form-control">
           <span className="label-text">Momentos de azúcar</span>
-          <input name="momentos_azucar" className="input input-bordered input-sm" value={f.momentos_azucar} onChange={onChange} />
+          <input
+            name="momentos_azucar"
+            className="input input-bordered input-sm"
+            value={f.momentos_azucar}
+            onChange={onChange}
+          />
         </label>
         <label className="form-control">
           <span className="label-text">¿Ha tenido dolor?</span>
-          <input name="dolor" className="input input-bordered input-sm" value={f.dolor} onChange={onChange} />
+          <input
+            name="dolor"
+            className="input input-bordered input-sm"
+            value={f.dolor}
+            onChange={onChange}
+          />
         </label>
         <label className="form-control">
           <span className="label-text">¿Sufrió algún golpe?</span>
-          <input name="golpe" className="input input-bordered input-sm" value={f.golpe} onChange={onChange} />
+          <input
+            name="golpe"
+            className="input input-bordered input-sm"
+            value={f.golpe}
+            onChange={onChange}
+          />
         </label>
         <label className="form-control">
-          <span className="label-text">¿Tiene dificultad para hablar, masticar o deglutir?</span>
-          <input name="dificultad" className="input input-bordered input-sm" value={f.dificultad} onChange={onChange} />
+          <span className="label-text">
+            ¿Tiene dificultad para hablar, masticar o deglutir?
+          </span>
+          <input
+            name="dificultad"
+            className="input input-bordered input-sm"
+            value={f.dificultad}
+            onChange={onChange}
+          />
         </label>
       </div>
 
       <label className="form-control">
         <span className="label-text">Notas</span>
-        <textarea name="notas" className="textarea textarea-bordered textarea-sm" value={f.notas} onChange={onChange} />
+        <textarea
+          name="notas"
+          className="textarea textarea-bordered textarea-sm"
+          value={f.notas}
+          onChange={onChange}
+        />
       </label>
 
       <label className="label cursor-pointer w-fit gap-2">
-        <input type="checkbox" className="toggle toggle-sm" name="es_principal" checked={f.es_principal} onChange={onChange} />
+        <input
+          type="checkbox"
+          className="toggle toggle-sm"
+          name="es_principal"
+          checked={f.es_principal}
+          onChange={onChange}
+        />
         <span className="label-text">Marcar como principal</span>
       </label>
 
       <div className="flex justify-end gap-2 pt-1">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={onCancel}
+        >
           Cancelar
         </button>
-        <button type="submit" className={`btn btn-primary btn-sm ${saving ? "btn-disabled" : ""}`}>
+        <button
+          type="submit"
+          className={`btn btn-primary btn-sm ${saving ? "btn-disabled" : ""}`}
+        >
           Guardar
         </button>
       </div>
@@ -282,8 +400,13 @@ function StatusBadge({ status, onChange }) {
 
   return (
     <div className="dropdown dropdown-end">
-      <label tabIndex={0} className={`badge ${cls} badge-sm cursor-pointer`}>{label}</label>
-      <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40">
+      <label
+        tabIndex={0}
+        className={`badge ${cls} badge-sm cursor-pointer`}
+      >
+        {label}
+      </label>
+      <ul className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40">
         {Object.entries(map).map(([key, v]) => (
           <li key={key}>
             <button onClick={() => onChange(key)} className="justify-between">
@@ -341,7 +464,14 @@ export default function Clientes() {
   }, [statusTab]);
 
   const reset = () =>
-    setForm({ nombre: "", contacto_nombre: "", email: "", telefono: "", direccion: "", observacion: "" });
+    setForm({
+      nombre: "",
+      contacto_nombre: "",
+      email: "",
+      telefono: "",
+      direccion: "",
+      observacion: "",
+    });
 
   function openCreate() {
     setEditing(null);
@@ -389,7 +519,9 @@ export default function Clientes() {
       let resp;
       if (editing?.id) {
         resp = await api.patch(`/clientes/${editing.id}`, form);
-        setItems((prev) => prev.map((c) => (c.id === editing.id ? { ...c, ...resp.data } : c)));
+        setItems((prev) =>
+          prev.map((c) => (c.id === editing.id ? { ...c, ...resp.data } : c))
+        );
         toast.success(t("clients.toasts.updated"));
         fetchContacts(editing.id);
       } else {
@@ -409,7 +541,11 @@ export default function Clientes() {
       setContacts([]);
       load();
     } catch {
-      toast.error(editing?.id ? t("clients.toasts.updateError") : t("clients.toasts.cannotCreate"));
+      toast.error(
+        editing?.id
+          ? t("clients.toasts.updateError")
+          : t("clients.toasts.cannotCreate")
+      );
     } finally {
       toast.dismiss(un);
     }
@@ -423,12 +559,22 @@ export default function Clientes() {
       toast.success(t("actions.deleted", "Eliminado"));
     } catch (e) {
       const status = e?.response?.status;
-      if (status === 409) toast.error(t("clients.toasts.hasProjects", "No se puede borrar: tiene proyectos"));
+      if (status === 409)
+        toast.error(
+          t(
+            "clients.toasts.hasProjects",
+            "No se puede borrar: tiene proyectos"
+          )
+        );
       else toast.error(t("clients.toasts.updateError"));
     }
   }
 
-  const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const onChange = (e) =>
+    setForm((f) => ({
+      ...f,
+      [e.target.name]: e.target.value,
+    }));
 
   const list = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -440,7 +586,9 @@ export default function Clientes() {
           .some((v) => String(v).toLowerCase().includes(term))
       );
     }
-    arr.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    arr.sort(
+      (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+    );
     return arr;
   }, [items, q]);
 
@@ -448,7 +596,10 @@ export default function Clientes() {
   async function createContact(clienteId, data) {
     setSavingContact(true);
     try {
-      const { data: created } = await api.post(`/clientes/${clienteId}/contactos`, data);
+      const { data: created } = await api.post(
+        `/clientes/${clienteId}/contactos`,
+        data
+      );
       setContacts((prev) => [created, ...prev]);
       toast.success("Contacto creado");
       setShowAddContact(false);
@@ -462,8 +613,13 @@ export default function Clientes() {
   async function updateContact(contactId, data) {
     setSavingContact(true);
     try {
-      const { data: updated } = await api.patch(`/contactos/${contactId}`, data);
-      setContacts((prev) => prev.map((c) => (c.id === contactId ? updated : c)));
+      const { data: updated } = await api.patch(
+        `/contactos/${contactId}`,
+        data
+      );
+      setContacts((prev) =>
+        prev.map((c) => (c.id === contactId ? updated : c))
+      );
       toast.success("Contacto actualizado");
       setEditingContact(null);
     } catch {
@@ -486,11 +642,18 @@ export default function Clientes() {
 
   async function makePrimary(c) {
     try {
-      const { data: updated } = await api.patch(`/contactos/${c.id}`, { es_principal: true });
+      const { data: updated } = await api.patch(`/contactos/${c.id}`, {
+        es_principal: true,
+      });
       setContacts((prev) =>
         prev
-          .map((x) => (x.id === updated.id ? updated : { ...x, es_principal: false }))
-          .sort((a, b) => Number(b.es_principal) - Number(a.es_principal) || b.id - a.id)
+          .map((x) =>
+            x.id === updated.id ? updated : { ...x, es_principal: false }
+          )
+          .sort(
+            (a, b) =>
+              Number(b.es_principal) - Number(a.es_principal) || b.id - a.id
+          )
       );
       toast.success("Marcado como principal");
     } catch {
@@ -503,7 +666,13 @@ export default function Clientes() {
     try {
       await api.patch(`/clientes/${id}`, { status: next });
       toast.success(
-        `Estado: ${next === "active" ? "Activo" : next === "bid" ? "BID" : "Inactivo"}`
+        `Estado: ${
+          next === "active"
+            ? "Activo"
+            : next === "bid"
+            ? "BID"
+            : "Inactivo"
+        }`
       );
       if (next !== statusTab) {
         // si el estado cambió de pestaña, sacamos el registro
@@ -524,30 +693,50 @@ export default function Clientes() {
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">{t("clients.title", "Clientes")}</h1>
-        <button className="btn btn-primary btn-sm" onClick={openCreate}>
-          <Plus className="w-4 h-4 mr-1" /> {t("actions.add")}
-        </button>
+      {/* Header + botones */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-2xl font-bold">
+          {t("clients.title", "Clientes")}
+        </h1>
+        <div className="flex flex-wrap gap-2 justify-end">
+          <button className="btn btn-primary btn-sm" onClick={openCreate}>
+            <Plus className="w-4 h-4 mr-1" /> {t("actions.add")}
+          </button>
+          <button className="btn btn-outline btn-sm" onClick={openCreate}>
+            DATOS DEL CLIENTE
+          </button>
+          <button className="btn btn-outline btn-sm" onClick={openCreate}>
+            DATOS DEL PACIENTE
+          </button>
+          <button className="btn btn-outline btn-sm" onClick={openCreate}>
+            COMPLETAR FORMULARIO OBLIGATORIO
+          </button>
+        </div>
       </div>
 
       {/* Tabs Activo/BID/Inactivo */}
       <div className="flex items-center gap-3">
         <div className="join rounded-xl border border-base-300 overflow-hidden">
           <button
-            className={`join-item btn btn-sm ${statusTab === "active" ? "btn-primary" : "btn-ghost"}`}
+            className={`join-item btn btn-sm ${
+              statusTab === "active" ? "btn-primary" : "btn-ghost"
+            }`}
             onClick={() => setStatusTab("active")}
           >
             Activos
           </button>
           <button
-            className={`join-item btn btn-sm ${statusTab === "bid" ? "btn-primary" : "btn-ghost"}`}
+            className={`join-item btn btn-sm ${
+              statusTab === "bid" ? "btn-primary" : "btn-ghost"
+            }`}
             onClick={() => setStatusTab("bid")}
           >
             BID
           </button>
           <button
-            className={`join-item btn btn-sm ${statusTab === "inactive" ? "btn-primary" : "btn-ghost"}`}
+            className={`join-item btn btn-sm ${
+              statusTab === "inactive" ? "btn-primary" : "btn-ghost"
+            }`}
             onClick={() => setStatusTab("inactive")}
           >
             Inactivos
@@ -570,12 +759,18 @@ export default function Clientes() {
               <thead>
                 <tr>
                   <th className="px-3 py-2">{t("clients.form.name")}</th>
-                  <th className="hidden md:table-cell px-3 py-2">{t("clients.form.contactName", "Contacto")}</th>
+                  <th className="hidden md:table-cell px-3 py-2">
+                    {t("clients.form.contactName", "Contacto")}
+                  </th>
                   <th className="px-3 py-2">Email</th>
                   <th className="px-3 py-2">{t("common.phone")}</th>
-                  <th className="hidden lg:table-cell px-3 py-2">{t("clients.form.address", "Dirección")}</th>
+                  <th className="hidden lg:table-cell px-3 py-2">
+                    {t("clients.form.address", "Dirección")}
+                  </th>
                   <th className="px-3 py-2">Estado</th>
-                  <th className="text-right pr-5 px-3 py-2">{t("actions.update")}</th>
+                  <th className="text-right pr-5 px-3 py-2">
+                    {t("actions.update")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -589,24 +784,43 @@ export default function Clientes() {
                   ))
                 ) : list.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center opacity-70 py-6">
+                    <td
+                      colSpan={7}
+                      className="text-center opacity-70 py-6"
+                    >
                       {t("clients.list.none")}
                     </td>
                   </tr>
                 ) : (
                   list.map((c) => (
                     <tr key={c.id} className="align-top">
-                      <td onClick={() => openEdit(c)} className="cursor-pointer px-3 py-2">
+                      <td
+                        onClick={() => openEdit(c)}
+                        className="cursor-pointer px-3 py-2"
+                      >
                         <div className="font-medium">{c.nombre}</div>
-                        <div className="text-xs opacity-70">{c.observacion || "—"}</div>
+                        <div className="text-xs opacity-70">
+                          {c.observacion || "—"}
+                        </div>
                       </td>
-                      <td className="hidden md:table-cell px-3 py-2">{c.contacto_nombre || "—"}</td>
+                      <td className="hidden md:table-cell px-3 py-2">
+                        {c.contacto_nombre || "—"}
+                      </td>
                       <td className="px-3 py-2">{c.email || "—"}</td>
                       <td className="px-3 py-2">{c.telefono || "—"}</td>
-                      <td className="hidden lg:table-cell px-3 py-2">{c.direccion || "—"}</td>
+                      <td className="hidden lg:table-cell px-3 py-2">
+                        {c.direccion || "—"}
+                      </td>
                       <td className="px-3 py-2">
                         <StatusBadge
-                          status={c.status || (statusTab === "bid" ? "bid" : statusTab === "inactive" ? "inactive" : "active")}
+                          status={
+                            c.status ||
+                            (statusTab === "bid"
+                              ? "bid"
+                              : statusTab === "inactive"
+                              ? "inactive"
+                              : "active")
+                          }
                           onChange={(next) => updateStatus(c.id, next)}
                         />
                       </td>
@@ -620,7 +834,10 @@ export default function Clientes() {
                               Convertir a Activo
                             </button>
                           ) : null}
-                          <button className="btn btn-ghost btn-xs" onClick={() => openEdit(c)}>
+                          <button
+                            className="btn btn-ghost btn-xs"
+                            onClick={() => openEdit(c)}
+                          >
                             {t("actions.update")}
                           </button>
                           <button
@@ -656,34 +873,72 @@ export default function Clientes() {
         <form onSubmit={onSubmit} className="space-y-3 mb-6">
           <div>
             <label className="label">{t("clients.form.name")}</label>
-            <input className="input input-bordered w-full" name="nombre" value={form.nombre} onChange={onChange} required />
+            <input
+              className="input input-bordered w-full"
+              name="nombre"
+              value={form.nombre}
+              onChange={onChange}
+              required
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="label">{t("clients.form.contactName", "Contacto")}</label>
-              <input className="input input-bordered w-full" name="contacto_nombre" value={form.contacto_nombre} onChange={onChange} />
+              <label className="label">
+                {t("clients.form.contactName", "Contacto")}
+              </label>
+              <input
+                className="input input-bordered w-full"
+                name="contacto_nombre"
+                value={form.contacto_nombre}
+                onChange={onChange}
+              />
             </div>
             <div>
               <label className="label">Email</label>
-              <input type="email" className="input input-bordered w-full" name="email" value={form.email} onChange={onChange} />
+              <input
+                type="email"
+                className="input input-bordered w-full"
+                name="email"
+                value={form.email}
+                onChange={onChange}
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label">{t("clients.form.phone")}</label>
-              <input className="input input-bordered w-full" name="telefono" value={form.telefono} onChange={onChange} />
+              <input
+                className="input input-bordered w-full"
+                name="telefono"
+                value={form.telefono}
+                onChange={onChange}
+              />
             </div>
             <div>
-              <label className="label">{t("clients.form.address", "Dirección")}</label>
-              <input className="input input-bordered w-full" name="direccion" value={form.direccion} onChange={onChange} />
+              <label className="label">
+                {t("clients.form.address", "Dirección")}
+              </label>
+              <input
+                className="input input-bordered w-full"
+                name="direccion"
+                value={form.direccion}
+                onChange={onChange}
+              />
             </div>
           </div>
 
           <div>
-            <label className="label">{t("clients.form.notes", "Observación")}</label>
-            <textarea className="textarea textarea-bordered w-full" name="observacion" value={form.observacion} onChange={onChange} />
+            <label className="label">
+              {t("clients.form.notes", "Observación")}
+            </label>
+            <textarea
+              className="textarea textarea-bordered w-full"
+              name="observacion"
+              value={form.observacion}
+              onChange={onChange}
+            />
           </div>
 
           <div className="pt-2 flex gap-2 justify-end">
@@ -712,7 +967,13 @@ export default function Clientes() {
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-semibold">Contactos</h4>
               {!showAddContact ? (
-                <button className="btn btn-sm" onClick={() => { setShowAddContact(true); setEditingContact(null); }}>
+                <button
+                  className="btn btn-sm"
+                  onClick={() => {
+                    setShowAddContact(true);
+                    setEditingContact(null);
+                  }}
+                >
                   <Plus className="w-4 h-4 mr-1" /> Añadir contacto
                 </button>
               ) : null}
