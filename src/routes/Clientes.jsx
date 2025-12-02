@@ -391,6 +391,7 @@ export default function Clientes() {
   const [qtext, setQtext] = useState("");
 
   const [statusTab, setStatusTab] = useState("active");
+  const [activeTab, setActiveTab] = useState("cliente");
 
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -450,6 +451,7 @@ export default function Clientes() {
   function openCreate() {
     setEditing(null);
     reset();
+    setActiveTab("cliente");
     setContacts([]);
     setHistoryEntries([]);
     setOpenForm(true);
@@ -485,6 +487,7 @@ export default function Clientes() {
 
   async function openEdit(cli) {
     setEditing(cli);
+    setActiveTab("cliente");
     setForm({
       nombre: cli.nombre || "",
       contacto_nombre: cli.contacto_nombre || "",
@@ -982,6 +985,7 @@ export default function Clientes() {
         onClose={() => {
           setOpenForm(false);
           setEditing(null);
+          setActiveTab("cliente");
           setContacts([]);
           setHistoryEntries([]);
           setEditingContact(null);
@@ -990,83 +994,96 @@ export default function Clientes() {
         }}
         title={editing ? t("actions.update") : t("actions.add")}
         headerButtons={
-          <>
+          <div className="join bg-base-200 rounded-lg">
             <button
               type="button"
-              className="btn btn-outline btn-xs sm:btn-sm"
+              className={`join-item btn btn-xs sm:btn-sm ${activeTab === "cliente" ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => setActiveTab("cliente")}
             >
               DATOS DEL CLIENTE
             </button>
             <button
               type="button"
-              className="btn btn-outline btn-xs sm:btn-sm"
+              className={`join-item btn btn-xs sm:btn-sm ${activeTab === "paciente" ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => setActiveTab("paciente")}
             >
               DATOS DEL PACIENTE
             </button>
             <button
               type="button"
-              className="btn btn-outline btn-xs sm:btn-sm"
-              onClick={() => setOpenHistoryModal(true)}
+              className={`join-item btn btn-xs sm:btn-sm ${activeTab === "historia" ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => setActiveTab("historia")}
             >
               HISTORIA CLINICA
             </button>
-          </>
+          </div>
         }
       >
         <form onSubmit={onSubmit} className="space-y-3 mb-6">
-          <div>
-            <label className="label">{clientLabel}</label>
-            <input
-              className="input input-bordered w-full"
-              name="nombre"
-              value={form.nombre}
-              onChange={onChange}
-              required
-            />
-          </div>
+          {activeTab === "cliente" && (
+            <div className="space-y-3">
+              <div>
+                <label className="label">{clientLabel}</label>
+                <input
+                  className="input input-bordered w-full"
+                  name="nombre"
+                  value={form.nombre}
+                  onChange={onChange}
+                  required
+                />
+              </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="label">{contactLabel}</label>
+                  <input
+                    className="input input-bordered w-full"
+                    name="contacto_nombre"
+                    value={form.contacto_nombre}
+                    onChange={onChange}
+                  />
+                </div>
+                <div>
+                  <label className="label">Email</label>
+                  <input
+                    type="email"
+                    className="input input-bordered w-full"
+                    name="email"
+                    value={form.email}
+                    onChange={onChange}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="label">{t("clients.form.phone")}</label>
+                  <input
+                    className="input input-bordered w-full"
+                    name="telefono"
+                    value={form.telefono}
+                    onChange={onChange}
+                  />
+                </div>
+                <div>
+                  <label className="label">{t("clients.form.address", "Direccion")}</label>
+                  <input className="input input-bordered w-full" name="direccion" value={form.direccion} onChange={onChange} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "paciente" && (
             <div>
-              <label className="label">{contactLabel}</label>
-              <input
-                className="input input-bordered w-full"
-                name="contacto_nombre"
-                value={form.contacto_nombre}
+              <label className="label">{t("clients.form.notes", "Observacion")}</label>
+              <textarea
+                className="textarea textarea-bordered w-full"
+                name="observacion"
+                value={form.observacion}
                 onChange={onChange}
               />
             </div>
-            <div>
-              <label className="label">Email</label>
-              <input
-                type="email"
-                className="input input-bordered w-full"
-                name="email"
-                value={form.email}
-                onChange={onChange}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="label">{t("clients.form.phone")}</label>
-              <input
-                className="input input-bordered w-full"
-                name="telefono"
-                value={form.telefono}
-                onChange={onChange}
-              />
-            </div>
-            <div>
-              <label className="label">{t("clients.form.address", "Direccion")}</label>
-              <input className="input input-bordered w-full" name="direccion" value={form.direccion} onChange={onChange} />
-            </div>
-          </div>
-
-          <div>
-            <label className="label">{t("clients.form.notes", "Observacion")}</label>
-            <textarea className="textarea textarea-bordered w-full" name="observacion" value={form.observacion} onChange={onChange} />
-          </div>
+          )}
 
           <div className="pt-2 flex gap-2 justify-end">
             <button
@@ -1075,6 +1092,7 @@ export default function Clientes() {
               onClick={() => {
                 setOpenForm(false);
                 setEditing(null);
+                setActiveTab("cliente");
                 setContacts([]);
                 setHistoryEntries([]);
                 setEditingContact(null);
@@ -1090,7 +1108,7 @@ export default function Clientes() {
           </div>
         </form>
 
-        {editing?.id ? (
+        {editing?.id && activeTab === "paciente" ? (
           <section className="mb-6">
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-semibold">{contactsLabel}</h4>
@@ -1153,16 +1171,22 @@ export default function Clientes() {
           </section>
         ) : null}
 
-        {editing?.id && features?.clinicalHistory ? (
+        {activeTab === "historia" ? (
           <section className="space-y-3">
             <div className="flex items-center gap-2">
               <HeartPulse className="w-5 h-5 text-primary" />
               <h4 className="font-semibold">{historyListLabel}</h4>
-              <button className="btn btn-outline btn-xs" onClick={() => setOpenHistoryModal(true)}>
-                Nueva entrada
-              </button>
+              {editing?.id && features?.clinicalHistory ? (
+                <button className="btn btn-outline btn-xs" onClick={() => setOpenHistoryModal(true)}>
+                  Nueva entrada
+                </button>
+              ) : null}
             </div>
-            {renderHistoryList()}
+            {editing?.id && features?.clinicalHistory ? (
+              renderHistoryList()
+            ) : (
+              <div className="text-sm opacity-70">Guardá el paciente para ver historias clínicas.</div>
+            )}
           </section>
         ) : null}
       </SlideOver>
