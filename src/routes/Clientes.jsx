@@ -6,6 +6,13 @@ import api from "../utils/api";
 import { Plus, X, Mail, Phone, Pencil, Trash2, Star, HeartPulse } from "lucide-react";
 import { useArea } from "../context/AreaContext";
 
+const PREGUNTAS_IMPORTANTES = [
+  { id: "alergias", label: "Alergias a medicamentos?" },
+  { id: "medicacion", label: "Medicacion prolongada?" },
+  { id: "embarazo", label: "Embarazo o lactancia?" },
+  { id: "cardiaco", label: "Antecedentes cardiacos?" },
+];
+
 function SlideOver({ open, onClose, title, children, widthClass = "w-full sm:w-[540px] md:w-[760px]" }) {
   return (
     <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none select-none"}`}>
@@ -32,7 +39,7 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary, contactLabel }) {
     <div className="flex items-start justify-between gap-3 p-3 border rounded-xl bg-base-100">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <div className="font-medium truncate">{c.nombre || c.email || c.telefono || "—"}</div>
+          <div className="font-medium truncate">{c.nombre || c.email || c.telefono || "-"}</div>
           {c.es_principal ? (
             <span className="badge badge-primary badge-sm">
               <Star className="w-3 h-3 mr-1" /> {contactLabel || "Principal"}
@@ -51,6 +58,13 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary, contactLabel }) {
             </div>
           ) : null}
           {(c.cargo || c.rol) && <div className="text-xs opacity-70">{[c.cargo, c.rol].filter(Boolean).join(" · ")}</div>}
+          {(c.obra_social || c.plan) && (
+            <div className="text-xs opacity-70">
+              Cobertura: {[c.obra_social, c.plan].filter(Boolean).join(" · ")}
+            </div>
+          )}
+          {c.numero_afiliado ? <div className="text-xs opacity-70">Afiliado: {c.numero_afiliado}</div> : null}
+          {c.motivo_consulta ? <div className="text-xs opacity-70">Motivo: {c.motivo_consulta}</div> : null}
           {c.notas ? <div className="text-xs opacity-70 whitespace-pre-wrap">{c.notas}</div> : null}
         </div>
       </div>
@@ -70,20 +84,47 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary, contactLabel }) {
     </div>
   );
 }
-
 function ContactFormInline({ initial, onCancel, onSave, saving }) {
-  const [f, setF] = useState({
-    nombre: initial?.nombre || "",
-    email: initial?.email || "",
-    telefono: initial?.telefono || "",
-    cargo: initial?.cargo || "",
-    rol: initial?.rol || "",
-    notas: initial?.notas || "",
-    es_principal: !!initial?.es_principal,
+  const buildState = (init) => ({
+    nombre: init?.nombre || "",
+    email: init?.email || "",
+    telefono: init?.telefono || "",
+    cargo: init?.cargo || "",
+    rol: init?.rol || "",
+    notas: init?.notas || "",
+    obra_social: init?.obra_social || "",
+    plan: init?.plan || "",
+    numero_afiliado: init?.numero_afiliado || "",
+    motivo_consulta: init?.motivo_consulta || "",
+    ultima_consulta: init?.ultima_consulta || "",
+    cepillados_diarios: init?.cepillados_diarios || "",
+    sangrado: init?.sangrado || "",
+    momentos_azucar: init?.momentos_azucar || "",
+    dolor: init?.dolor || "",
+    golpe: init?.golpe || "",
+    dificultad: init?.dificultad || "",
+    preguntas: PREGUNTAS_IMPORTANTES.reduce((acc, q) => {
+      acc[q.id] = init?.preguntas?.[q.id] || "";
+      return acc;
+    }, {}),
+    es_principal: !!init?.es_principal,
   });
+  const [f, setF] = useState(() => buildState(initial));
+
+  useEffect(() => {
+    setF(buildState(initial));
+  }, [initial]);
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name.startsWith("pregunta__")) {
+      const key = name.replace("pregunta__", "");
+      setF((p) => ({
+        ...p,
+        preguntas: { ...(p.preguntas || {}), [key]: value },
+      }));
+      return;
+    }
     setF((p) => ({
       ...p,
       [name]: type === "checkbox" ? checked : value,
@@ -92,7 +133,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
 
   return (
     <form
-      className="p-3 border rounded-xl bg-base-100 space-y-2"
+      className="p-3 border rounded-xl bg-base-100 space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
         onSave(f);
@@ -118,6 +159,89 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
         <label className="form-control">
           <span className="label-text">Rol</span>
           <input name="rol" className="input input-bordered input-sm" value={f.rol} onChange={onChange} />
+        </label>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <label className="form-control">
+          <span className="label-text">Obra social</span>
+          <input name="obra_social" className="input input-bordered input-sm" value={f.obra_social} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">Plan</span>
+          <input name="plan" className="input input-bordered input-sm" value={f.plan} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">Numero de afiliado</span>
+          <input name="numero_afiliado" className="input input-bordered input-sm" value={f.numero_afiliado} onChange={onChange} />
+        </label>
+      </div>
+
+      <div>
+        <h4 className="font-semibold text-sm mb-2">Preguntas importantes</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {PREGUNTAS_IMPORTANTES.map((p) => (
+            <div key={p.id} className="border rounded-lg p-2">
+              <div className="text-sm">{p.label}</div>
+              <div className="flex gap-3 mt-1">
+                <label className="flex items-center gap-1 text-xs">
+                  <input
+                    type="radio"
+                    name={`pregunta__${p.id}`}
+                    value="si"
+                    checked={f.preguntas?.[p.id] === "si"}
+                    onChange={onChange}
+                  />
+                  Si
+                </label>
+                <label className="flex items-center gap-1 text-xs">
+                  <input
+                    type="radio"
+                    name={`pregunta__${p.id}`}
+                    value="no"
+                    checked={f.preguntas?.[p.id] === "no"}
+                    onChange={onChange}
+                  />
+                  No
+                </label>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <label className="form-control">
+          <span className="label-text">Motivo de consulta</span>
+          <input name="motivo_consulta" className="input input-bordered input-sm" value={f.motivo_consulta} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">Ultima consulta odontologica</span>
+          <input name="ultima_consulta" className="input input-bordered input-sm" value={f.ultima_consulta} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">Cepillados diarios</span>
+          <input name="cepillados_diarios" className="input input-bordered input-sm" value={f.cepillados_diarios} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">Tiene sangrado?</span>
+          <input name="sangrado" className="input input-bordered input-sm" value={f.sangrado} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">Momentos de azucar</span>
+          <input name="momentos_azucar" className="input input-bordered input-sm" value={f.momentos_azucar} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">Ha tenido dolor?</span>
+          <input name="dolor" className="input input-bordered input-sm" value={f.dolor} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">Sufrio algun golpe?</span>
+          <input name="golpe" className="input input-bordered input-sm" value={f.golpe} onChange={onChange} />
+        </label>
+        <label className="form-control">
+          <span className="label-text">Dificultad al hablar/masticar/deglutir</span>
+          <input name="dificultad" className="input input-bordered input-sm" value={f.dificultad} onChange={onChange} />
         </label>
       </div>
 
@@ -158,7 +282,7 @@ function StatusBadge({ status, onChange }) {
         {Object.entries(map).map(([key, v]) => (
           <li key={key}>
             <button onClick={() => onChange(key)} className="justify-between">
-              {v.label} {key === status ? "✓" : ""}
+              {v.label} {key === status ? "?" : ""}
             </button>
           </li>
         ))}
@@ -848,3 +972,11 @@ export default function Clientes() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
