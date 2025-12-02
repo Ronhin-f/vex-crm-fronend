@@ -6,9 +6,19 @@ import api from "../utils/api";
 import { Plus, X, Mail, Phone, Pencil, Trash2, Star } from "lucide-react";
 
 /* ---------------- SlideOver genérico ---------------- */
-function SlideOver({ open, onClose, title, children, widthClass = "w-full sm:w-[540px] md:w-[760px]" }) {
+function SlideOver({
+  open,
+  onClose,
+  title,
+  children,
+  widthClass = "w-full sm:w-[540px] md:w-[760px]",
+}) {
   return (
-    <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none select-none"}`}>
+    <div
+      className={`fixed inset-0 z-50 ${
+        open ? "" : "pointer-events-none select-none"
+      }`}
+    >
       <div
         className={`absolute inset-0 bg-black/40 transition-opacity ${
           open ? "opacity-100" : "opacity-0"
@@ -23,11 +33,17 @@ function SlideOver({ open, onClose, title, children, widthClass = "w-full sm:w-[
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-base-200">
           <h3 className="font-semibold">{title}</h3>
-          <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={onClose}
+            aria-label="Close"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-4 overflow-y-auto h-[calc(100%-3.25rem)]">{children}</div>
+        <div className="p-4 overflow-y-auto h-[calc(100%-3.25rem)]">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -51,12 +67,14 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
         <div className="mt-1 text-sm opacity-80 space-y-0.5">
           {c.email ? (
             <div className="flex items-center gap-1">
-              <Mail className="w-3 h-3" /> <span className="truncate">{c.email}</span>
+              <Mail className="w-3 h-3" />{" "}
+              <span className="truncate">{c.email}</span>
             </div>
           ) : null}
           {c.telefono ? (
             <div className="flex items-center gap-1">
-              <Phone className="w-3 h-3" /> <span className="truncate">{c.telefono}</span>
+              <Phone className="w-3 h-3" />{" "}
+              <span className="truncate">{c.telefono}</span>
             </div>
           ) : null}
           {(c.cargo || c.rol) && (
@@ -65,13 +83,18 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary }) {
             </div>
           )}
           {c.notas ? (
-            <div className="text-xs opacity-70 whitespace-pre-wrap">{c.notas}</div>
+            <div className="text-xs opacity-70 whitespace-pre-wrap">
+              {c.notas}
+            </div>
           ) : null}
         </div>
       </div>
       <div className="flex-shrink-0 flex items-center gap-1">
         {!c.es_principal && (
-          <button className="btn btn-ghost btn-xs" onClick={() => onMakePrimary(c)}>
+          <button
+            className="btn btn-ghost btn-xs"
+            onClick={() => onMakePrimary(c)}
+          >
             <Star className="w-4 h-4" /> Hacer principal
           </button>
         )}
@@ -380,7 +403,9 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
         </button>
         <button
           type="submit"
-          className={`btn btn-primary btn-sm ${saving ? "btn-disabled" : ""}`}
+          className={`btn btn-primary btn-sm ${
+            saving ? "btn-disabled" : ""
+          }`}
         >
           Guardar
         </button>
@@ -412,7 +437,10 @@ function StatusBadge({ status, onChange }) {
       >
         {Object.entries(map).map(([key, v]) => (
           <li key={key}>
-            <button onClick={() => onChange(key)} className="justify-between">
+            <button
+              onClick={() => onChange(key)}
+              className="justify-between"
+            >
               {v.label} {key === status ? "✓" : ""}
             </button>
           </li>
@@ -453,7 +481,9 @@ export default function Clientes() {
   const load = async () => {
     setIsLoading(true);
     try {
-      const { data } = await api.get("/clientes", { params: { status: statusTab } });
+      const { data } = await api.get("/clientes", {
+        params: { status: statusTab },
+      });
       setItems(Array.isArray(data) ? data : []);
     } catch {
       toast.error(t("clients.toasts.loadError"));
@@ -696,26 +726,13 @@ export default function Clientes() {
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-4">
-      {/* Header con título + botón AGREGAR */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      {/* Header + botón AGREGAR */}
+      <div className="flex items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">
           {t("clients.title", "Clientes")}
         </h1>
         <button className="btn btn-primary btn-sm" onClick={openCreate}>
           <Plus className="w-4 h-4 mr-1" /> {t("actions.add")}
-        </button>
-      </div>
-
-      {/* Fila de botones debajo de AGREGAR */}
-      <div className="flex flex-wrap gap-2 justify-end">
-        <button className="btn btn-outline btn-sm" onClick={openCreate}>
-          DATOS DEL CLIENTE
-        </button>
-        <button className="btn btn-outline btn-sm" onClick={openCreate}>
-          DATOS DEL PACIENTE
-        </button>
-        <button className="btn btn-outline btn-sm" onClick={openCreate}>
-          COMPLETAR FORMULARIO OBLIGATORIO
         </button>
       </div>
 
@@ -874,6 +891,19 @@ export default function Clientes() {
         }}
         title={editing ? t("actions.update") : t("actions.add")}
       >
+        {/* ---- Botones dentro del SlideOver ---- */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button type="button" className="btn btn-outline btn-xs sm:btn-sm">
+            DATOS DEL CLIENTE
+          </button>
+          <button type="button" className="btn btn-outline btn-xs sm:btn-sm">
+            DATOS DEL PACIENTE
+          </button>
+          <button type="button" className="btn btn-outline btn-xs sm:btn-sm">
+            COMPLETAR FORMULARIO OBLIGATORIO
+          </button>
+        </div>
+
         {/* -------- Form Cliente -------- */}
         <form onSubmit={onSubmit} className="space-y-3 mb-6">
           <div>
