@@ -406,7 +406,10 @@ function StatusBadge({ status, onChange }) {
       >
         {label}
       </label>
-      <ul className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40">
+      <ul
+        tabIndex={0}
+        className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40"
+      >
         {Object.entries(map).map(([key, v]) => (
           <li key={key}>
             <button onClick={() => onChange(key)} className="justify-between">
@@ -693,25 +696,27 @@ export default function Clientes() {
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-4">
-      {/* Header + botones */}
+      {/* Header con título + botón AGREGAR */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-2xl font-bold">
           {t("clients.title", "Clientes")}
         </h1>
-        <div className="flex flex-wrap gap-2 justify-end">
-          <button className="btn btn-primary btn-sm" onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" /> {t("actions.add")}
-          </button>
-          <button className="btn btn-outline btn-sm" onClick={openCreate}>
-            DATOS DEL CLIENTE
-          </button>
-          <button className="btn btn-outline btn-sm" onClick={openCreate}>
-            DATOS DEL PACIENTE
-          </button>
-          <button className="btn btn-outline btn-sm" onClick={openCreate}>
-            COMPLETAR FORMULARIO OBLIGATORIO
-          </button>
-        </div>
+        <button className="btn btn-primary btn-sm" onClick={openCreate}>
+          <Plus className="w-4 h-4 mr-1" /> {t("actions.add")}
+        </button>
+      </div>
+
+      {/* Fila de botones debajo de AGREGAR */}
+      <div className="flex flex-wrap gap-2 justify-end">
+        <button className="btn btn-outline btn-sm" onClick={openCreate}>
+          DATOS DEL CLIENTE
+        </button>
+        <button className="btn btn-outline btn-sm" onClick={openCreate}>
+          DATOS DEL PACIENTE
+        </button>
+        <button className="btn btn-outline btn-sm" onClick={openCreate}>
+          COMPLETAR FORMULARIO OBLIGATORIO
+        </button>
       </div>
 
       {/* Tabs Activo/BID/Inactivo */}
