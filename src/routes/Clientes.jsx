@@ -1,4 +1,4 @@
-ï»¿// src/routes/Clientes.jsx â€” Clientes/Pacientes con contactos e historias clinicas
+// src/routes/Clientes.jsx - Clientes/Pacientes con contactos e historias clinicas
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
@@ -13,22 +13,43 @@ const PREGUNTAS_IMPORTANTES = [
   { id: "cardiaco", label: "Antecedentes cardiacos?" },
 ];
 
-function SlideOver({ open, onClose, title, children, widthClass = "w-full sm:w-[540px] md:w-[760px]" }) {
+function SlideOver({ open, onClose, title, headerButtons, children, widthClass = "w-full sm:w-[540px] md:w-[760px]" }) {
   return (
     <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none select-none"}`}>
       <div className={`absolute inset-0 bg-black/40 transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
       <div
         className={`absolute right-0 top-0 h-full bg-base-100 shadow-xl border-l border-base-200 ${widthClass}
                       transition-transform ${open ? "translate-x-0" : "translate-x-full"}`}
-        role="dialog" aria-modal="true"
+        role="dialog"
+        aria-modal="true"
       >
+        <div className="border-b border-base-200 px-4 py-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-semibold">{title}</h3>
+            <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {headerButtons ? <div className="mt-3 flex flex-wrap gap-2">{headerButtons}</div> : null}
+        </div>
+        <div className="p-4 overflow-y-auto h-[calc(100%-4.5rem)]">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function SimpleModal({ open, onClose, title, children }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-3">
+      <div className="bg-base-100 rounded-xl shadow-xl w-full max-w-4xl border border-base-200">
         <div className="flex items-center justify-between px-4 py-3 border-b border-base-200">
           <h3 className="font-semibold">{title}</h3>
-          <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">
+          <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Cerrar">
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-4 overflow-y-auto h-[calc(100%-3.25rem)]">{children}</div>
+        <div className="p-4 max-h-[80vh] overflow-y-auto">{children}</div>
       </div>
     </div>
   );
@@ -57,10 +78,10 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary, contactLabel }) {
               <Phone className="w-3 h-3" /> <span className="truncate">{c.telefono}</span>
             </div>
           ) : null}
-          {(c.cargo || c.rol) && <div className="text-xs opacity-70">{[c.cargo, c.rol].filter(Boolean).join(" Â· ")}</div>}
+          {(c.cargo || c.rol) && <div className="text-xs opacity-70">{[c.cargo, c.rol].filter(Boolean).join(" · ")}</div>}
           {(c.obra_social || c.plan) && (
             <div className="text-xs opacity-70">
-              Cobertura: {[c.obra_social, c.plan].filter(Boolean).join(" Â· ")}
+              Cobertura: {[c.obra_social, c.plan].filter(Boolean).join(" / ")}
             </div>
           )}
           {c.numero_afiliado ? <div className="text-xs opacity-70">Afiliado: {c.numero_afiliado}</div> : null}
@@ -84,6 +105,7 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary, contactLabel }) {
     </div>
   );
 }
+
 function ContactFormInline({ initial, onCancel, onSave, saving }) {
   const buildState = (init) => ({
     nombre: init?.nombre || "",
@@ -110,11 +132,11 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
     es_principal: !!init?.es_principal,
   });
   const [f, setF] = useState(() => buildState(initial));
+  const [openClinico, setOpenClinico] = useState(false);
 
   useEffect(() => {
     setF(buildState(initial));
   }, [initial]);
-
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
     if (name.startsWith("pregunta__")) {
@@ -130,6 +152,21 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
       [name]: type === "checkbox" ? checked : value,
     }));
   };
+
+  const hasClinicos = [
+    f.obra_social,
+    f.plan,
+    f.numero_afiliado,
+    f.motivo_consulta,
+    f.ultima_consulta,
+    f.cepillados_diarios,
+    f.sangrado,
+    f.momentos_azucar,
+    f.dolor,
+    f.golpe,
+    f.dificultad,
+    ...Object.values(f.preguntas || {}),
+  ].some(Boolean);
 
   return (
     <form
@@ -162,28 +199,61 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
         </label>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <label className="form-control">
-          <span className="label-text">Obra social</span>
-          <input name="obra_social" className="input input-bordered input-sm" value={f.obra_social} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Plan</span>
-          <input name="plan" className="input input-bordered input-sm" value={f.plan} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Numero de afiliado</span>
-          <input name="numero_afiliado" className="input input-bordered input-sm" value={f.numero_afiliado} onChange={onChange} />
-        </label>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <button type="button" className="btn btn-outline btn-xs" onClick={() => setOpenClinico(true)}>
+            <HeartPulse className="w-4 h-4" /> Datos clínicos {hasClinicos ? "•" : ""}
+          </button>
+          {hasClinicos ? <span className="badge badge-success badge-xs">Completo</span> : null}
+        </div>
       </div>
 
-      <div>
-        <h4 className="font-semibold text-sm mb-2">Preguntas importantes</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <label className="form-control">
+        <span className="label-text">Notas</span>
+        <textarea name="notas" className="textarea textarea-bordered textarea-sm" value={f.notas} onChange={onChange} />
+      </label>
+
+      <label className="label cursor-pointer w-fit gap-2">
+        <input
+          type="checkbox"
+          className="toggle toggle-sm"
+          name="es_principal"
+          checked={f.es_principal}
+          onChange={onChange}
+        />
+        <span className="label-text">Marcar como principal</span>
+      </label>
+
+      <div className="flex justify-end gap-2 pt-1">
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>
+          Cancelar
+        </button>
+        <button type="submit" className={`btn btn-primary btn-sm ${saving ? "btn-disabled" : ""}`}>
+          Guardar
+        </button>
+      </div>
+
+      <SimpleModal open={openClinico} onClose={() => setOpenClinico(false)} title="Datos clínicos del contacto">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          <label className="form-control">
+            <span className="label-text">Obra social</span>
+            <input name="obra_social" className="input input-bordered input-sm" value={f.obra_social} onChange={onChange} />
+          </label>
+          <label className="form-control">
+            <span className="label-text">Plan</span>
+            <input name="plan" className="input input-bordered input-sm" value={f.plan} onChange={onChange} />
+          </label>
+          <label className="form-control">
+            <span className="label-text">Número de afiliado</span>
+            <input name="numero_afiliado" className="input input-bordered input-sm" value={f.numero_afiliado} onChange={onChange} />
+          </label>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           {PREGUNTAS_IMPORTANTES.map((p) => (
-            <div key={p.id} className="border rounded-lg p-2">
-              <div className="text-sm">{p.label}</div>
-              <div className="flex gap-3 mt-1">
+            <div key={p.id} className="border rounded-lg p-3">
+              <div className="text-sm font-medium mb-1">{p.label}</div>
+              <div className="flex gap-4 mt-1">
                 <label className="flex items-center gap-1 text-xs">
                   <input
                     type="radio"
@@ -192,7 +262,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
                     checked={f.preguntas?.[p.id] === "si"}
                     onChange={onChange}
                   />
-                  Si
+                  Sí
                 </label>
                 <label className="flex items-center gap-1 text-xs">
                   <input
@@ -208,86 +278,75 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
             </div>
           ))}
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <label className="form-control">
-          <span className="label-text">Motivo de consulta</span>
-          <input name="motivo_consulta" className="input input-bordered input-sm" value={f.motivo_consulta} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Ultima consulta odontologica</span>
-          <input name="ultima_consulta" className="input input-bordered input-sm" value={f.ultima_consulta} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Cepillados diarios</span>
-          <input name="cepillados_diarios" className="input input-bordered input-sm" value={f.cepillados_diarios} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Tiene sangrado?</span>
-          <input name="sangrado" className="input input-bordered input-sm" value={f.sangrado} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Momentos de azucar</span>
-          <input name="momentos_azucar" className="input input-bordered input-sm" value={f.momentos_azucar} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Ha tenido dolor?</span>
-          <input name="dolor" className="input input-bordered input-sm" value={f.dolor} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Sufrio algun golpe?</span>
-          <input name="golpe" className="input input-bordered input-sm" value={f.golpe} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Dificultad al hablar/masticar/deglutir</span>
-          <input name="dificultad" className="input input-bordered input-sm" value={f.dificultad} onChange={onChange} />
-        </label>
-      </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="form-control">
+            <span className="label-text">Motivo de consulta</span>
+            <input name="motivo_consulta" className="input input-bordered input-sm" value={f.motivo_consulta} onChange={onChange} />
+          </label>
+          <label className="form-control">
+            <span className="label-text">Última consulta odontológica</span>
+            <input name="ultima_consulta" className="input input-bordered input-sm" value={f.ultima_consulta} onChange={onChange} />
+          </label>
+          <label className="form-control">
+            <span className="label-text">Cepillados diarios</span>
+            <input name="cepillados_diarios" className="input input-bordered input-sm" value={f.cepillados_diarios} onChange={onChange} />
+          </label>
+          <label className="form-control">
+            <span className="label-text">¿Tiene sangrado?</span>
+            <input name="sangrado" className="input input-bordered input-sm" value={f.sangrado} onChange={onChange} />
+          </label>
+          <label className="form-control">
+            <span className="label-text">Momentos de azúcar</span>
+            <input name="momentos_azucar" className="input input-bordered input-sm" value={f.momentos_azucar} onChange={onChange} />
+          </label>
+          <label className="form-control">
+            <span className="label-text">¿Ha tenido dolor?</span>
+            <input name="dolor" className="input input-bordered input-sm" value={f.dolor} onChange={onChange} />
+          </label>
+          <label className="form-control">
+            <span className="label-text">¿Sufrió algún golpe?</span>
+            <input name="golpe" className="input input-bordered input-sm" value={f.golpe} onChange={onChange} />
+          </label>
+          <label className="form-control">
+            <span className="label-text">Dificultad al hablar/masticar/deglutir</span>
+            <input name="dificultad" className="input input-bordered input-sm" value={f.dificultad} onChange={onChange} />
+          </label>
+        </div>
 
-      <label className="form-control">
-        <span className="label-text">Notas</span>
-        <textarea name="notas" className="textarea textarea-bordered textarea-sm" value={f.notas} onChange={onChange} />
-      </label>
-
-      <label className="label cursor-pointer w-fit gap-2">
-        <input type="checkbox" className="toggle toggle-sm" name="es_principal" checked={f.es_principal} onChange={onChange} />
-        <span className="label-text">Marcar como principal</span>
-      </label>
-
-      <div className="flex justify-end gap-2 pt-1">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>
-          Cancelar
-        </button>
-        <button type="submit" className={`btn btn-primary btn-sm ${saving ? "btn-disabled" : ""}`}>
-          Guardar
-        </button>
-      </div>
+        <div className="mt-4 flex justify-end">
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => setOpenClinico(false)}>
+            Cerrar
+          </button>
+        </div>
+      </SimpleModal>
     </form>
   );
 }
 
+/* ---------------- Badge de estado: botón simple ---------------- */
 function StatusBadge({ status, onChange }) {
   const map = {
-    active: { cls: "badge-success", label: "Activo" },
-    bid: { cls: "badge-warning", label: "BID" },
-    inactive: { cls: "badge-ghost", label: "Inactivo" },
+    active: { cls: "btn-success", label: "Activo" },
+    bid: { cls: "btn-warning", label: "BID" },
+    inactive: { cls: "btn-ghost", label: "Inactivo" },
   };
-  const { cls, label } = map[status] || map.active;
+
+  const current = status || "active";
+  const { cls, label } = map[current] || map.active;
+
+  const order = ["active", "bid", "inactive"];
+
+  const handleClick = () => {
+    const idx = order.indexOf(current);
+    const next = order[(idx + 1) % order.length];
+    if (onChange) onChange(next);
+  };
 
   return (
-    <div className="dropdown dropdown-end">
-      <label tabIndex={0} className={`badge ${cls} badge-sm cursor-pointer`}>{label}</label>
-      <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40">
-        {Object.entries(map).map(([key, v]) => (
-          <li key={key}>
-            <button onClick={() => onChange(key)} className="justify-between">
-              {v.label} {key === status ? "?" : ""}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <button type="button" className={`btn btn-xs ${cls}`} onClick={handleClick} title="Click para cambiar estado">
+      {label}
+    </button>
   );
 }
 
@@ -311,7 +370,6 @@ function buildHistoryForm(fields, vitalSigns) {
   });
   return { ...base, signos_vitales: vitals };
 }
-
 export default function Clientes() {
   const { t } = useTranslation();
   const { vocab, features, forms } = useArea();
@@ -353,6 +411,7 @@ export default function Clientes() {
   const [historyForm, setHistoryForm] = useState(() => buildHistoryForm(historyFields, vitalSigns));
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [savingHistory, setSavingHistory] = useState(false);
+  const [openHistoryModal, setOpenHistoryModal] = useState(false);
 
   useEffect(() => {
     setHistoryForm(buildHistoryForm(historyFields, vitalSigns));
@@ -361,7 +420,9 @@ export default function Clientes() {
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data } = await api.get("/clientes", { params: { status: statusTab } });
+      const { data } = await api.get("/clientes", {
+        params: { status: statusTab },
+      });
       setItems(Array.isArray(data) ? data : []);
     } catch {
       toast.error(t("clients.toasts.loadError"));
@@ -375,7 +436,14 @@ export default function Clientes() {
   }, [load]);
 
   const reset = () =>
-    setForm({ nombre: "", contacto_nombre: "", email: "", telefono: "", direccion: "", observacion: "" });
+    setForm({
+      nombre: "",
+      contacto_nombre: "",
+      email: "",
+      telefono: "",
+      direccion: "",
+      observacion: "",
+    });
 
   function openCreate() {
     setEditing(null);
@@ -478,12 +546,22 @@ export default function Clientes() {
       toast.success(t("actions.deleted", "Eliminado"));
     } catch (e) {
       const status = e?.response?.status;
-      if (status === 409) toast.error(t("clients.toasts.hasProjects", "No se puede borrar: tiene proyectos"));
+      if (status === 409)
+        toast.error(
+          t(
+            "clients.toasts.hasProjects",
+            "No se puede borrar: tiene proyectos"
+          )
+        );
       else toast.error(t("clients.toasts.updateError"));
     }
   }
 
-  const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const onChange = (e) =>
+    setForm((f) => ({
+      ...f,
+      [e.target.name]: e.target.value,
+    }));
 
   const list = useMemo(() => {
     const term = qtext.trim().toLowerCase();
@@ -495,14 +573,19 @@ export default function Clientes() {
           .some((v) => String(v).toLowerCase().includes(term))
       );
     }
-    arr.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    arr.sort(
+      (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+    );
     return arr;
   }, [items, qtext]);
 
   async function createContact(clienteId, data) {
     setSavingContact(true);
     try {
-      const { data: created } = await api.post(`/clientes/${clienteId}/contactos`, data);
+      const { data: created } = await api.post(
+        `/clientes/${clienteId}/contactos`,
+        data
+      );
       setContacts((prev) => [created, ...prev]);
       toast.success("Contacto creado");
       setShowAddContact(false);
@@ -516,8 +599,13 @@ export default function Clientes() {
   async function updateContact(contactId, data) {
     setSavingContact(true);
     try {
-      const { data: updated } = await api.patch(`/contactos/${contactId}`, data);
-      setContacts((prev) => prev.map((c) => (c.id === contactId ? updated : c)));
+      const { data: updated } = await api.patch(
+        `/contactos/${contactId}`,
+        data
+      );
+      setContacts((prev) =>
+        prev.map((c) => (c.id === contactId ? updated : c))
+      );
       toast.success("Contacto actualizado");
       setEditingContact(null);
     } catch {
@@ -540,11 +628,18 @@ export default function Clientes() {
 
   async function makePrimary(c) {
     try {
-      const { data: updated } = await api.patch(`/contactos/${c.id}`, { es_principal: true });
+      const { data: updated } = await api.patch(`/contactos/${c.id}`, {
+        es_principal: true,
+      });
       setContacts((prev) =>
         prev
-          .map((x) => (x.id === updated.id ? updated : { ...x, es_principal: false }))
-          .sort((a, b) => Number(b.es_principal) - Number(a.es_principal) || b.id - a.id)
+          .map((x) =>
+            x.id === updated.id ? updated : { ...x, es_principal: false }
+          )
+          .sort(
+            (a, b) =>
+              Number(b.es_principal) - Number(a.es_principal) || b.id - a.id
+          )
       );
       toast.success("Marcado como principal");
     } catch {
@@ -556,7 +651,13 @@ export default function Clientes() {
     try {
       await api.patch(`/clientes/${id}`, { status: next });
       toast.success(
-        `Estado: ${next === "active" ? "Activo" : next === "bid" ? "BID" : "Inactivo"}`
+        `Estado: ${
+          next === "active"
+            ? "Activo"
+            : next === "bid"
+            ? "BID"
+            : "Inactivo"
+        }`
       );
       if (next !== statusTab) {
         setItems((prev) => prev.filter((c) => c.id !== id));
@@ -615,6 +716,7 @@ export default function Clientes() {
       }
     } finally {
       setSavingHistory(false);
+      setOpenHistoryModal(false);
     }
   }
 
@@ -676,20 +778,40 @@ export default function Clientes() {
           <div key={h.id} className="border rounded-xl p-3 bg-base-100">
             <div className="flex items-center justify-between text-xs opacity-70">
               <span>{new Date(h.created_at || h.updated_at || Date.now()).toLocaleString()}</span>
-              <span>{h.creado_por || "â€”"}</span>
+              <span>{h.creado_por || "—"}</span>
             </div>
             <div className="mt-2 space-y-1 text-sm">
-              {h.motivo && <p><strong>Motivo:</strong> {h.motivo}</p>}
-              {h.diagnostico && <p><strong>Diagnostico:</strong> {h.diagnostico}</p>}
-              {h.tratamiento && <p><strong>Tratamiento:</strong> {h.tratamiento}</p>}
-              {h.indicaciones && <p><strong>Indicaciones:</strong> {h.indicaciones}</p>}
-              {h.notas && <p><strong>Notas:</strong> {h.notas}</p>}
+              {h.motivo && (
+                <p>
+                  <strong>Motivo:</strong> {h.motivo}
+                </p>
+              )}
+              {h.diagnostico && (
+                <p>
+                  <strong>Diagnostico:</strong> {h.diagnostico}
+                </p>
+              )}
+              {h.tratamiento && (
+                <p>
+                  <strong>Tratamiento:</strong> {h.tratamiento}
+                </p>
+              )}
+              {h.indicaciones && (
+                <p>
+                  <strong>Indicaciones:</strong> {h.indicaciones}
+                </p>
+              )}
+              {h.notas && (
+                <p>
+                  <strong>Notas:</strong> {h.notas}
+                </p>
+              )}
               {h.signos_vitales && Object.keys(h.signos_vitales).length ? (
                 <p>
                   <strong>Signos vitales:</strong>{" "}
                   {Object.entries(h.signos_vitales)
                     .map(([k, v]) => `${k}: ${v}`)
-                    .join(" Â· ")}
+                    .join(" · ")}
                 </p>
               ) : null}
               {h.extras && Object.keys(h.extras).length ? (
@@ -697,7 +819,7 @@ export default function Clientes() {
                   <strong>Datos extra:</strong>{" "}
                   {Object.entries(h.extras)
                     .map(([k, v]) => `${k}: ${v}`)
-                    .join(" Â· ")}
+                    .join(" · ")}
                 </p>
               ) : null}
             </div>
@@ -706,7 +828,6 @@ export default function Clientes() {
       </div>
     );
   };
-
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between gap-2">
@@ -719,19 +840,25 @@ export default function Clientes() {
       <div className="flex items-center gap-3">
         <div className="join rounded-xl border border-base-300 overflow-hidden">
           <button
-            className={`join-item btn btn-sm ${statusTab === "active" ? "btn-primary" : "btn-ghost"}`}
+            className={`join-item btn btn-sm ${
+              statusTab === "active" ? "btn-primary" : "btn-ghost"
+            }`}
             onClick={() => setStatusTab("active")}
           >
             Activos
           </button>
           <button
-            className={`join-item btn btn-sm ${statusTab === "bid" ? "btn-primary" : "btn-ghost"}`}
+            className={`join-item btn btn-sm ${
+              statusTab === "bid" ? "btn-primary" : "btn-ghost"
+            }`}
             onClick={() => setStatusTab("bid")}
           >
             BID
           </button>
           <button
-            className={`join-item btn btn-sm ${statusTab === "inactive" ? "btn-primary" : "btn-ghost"}`}
+            className={`join-item btn btn-sm ${
+              statusTab === "inactive" ? "btn-primary" : "btn-ghost"
+            }`}
             onClick={() => setStatusTab("inactive")}
           >
             Inactivos
@@ -758,7 +885,9 @@ export default function Clientes() {
                   <th className="px-3 py-2">{t("common.phone")}</th>
                   <th className="hidden lg:table-cell px-3 py-2">{t("clients.form.address", "Direccion")}</th>
                   <th className="px-3 py-2">Estado</th>
-                  <th className="text-right pr-5 px-3 py-2">{t("actions.update")}</th>
+                  <th className="text-right pr-5 px-3 py-2">
+                    {t("actions.update")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -772,24 +901,43 @@ export default function Clientes() {
                   ))
                 ) : list.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center opacity-70 py-6">
+                    <td
+                      colSpan={7}
+                      className="text-center opacity-70 py-6"
+                    >
                       {t("clients.list.none")}
                     </td>
                   </tr>
                 ) : (
                   list.map((c) => (
                     <tr key={c.id} className="align-top">
-                      <td onClick={() => openEdit(c)} className="cursor-pointer px-3 py-2">
+                      <td
+                        onClick={() => openEdit(c)}
+                        className="cursor-pointer px-3 py-2"
+                      >
                         <div className="font-medium">{c.nombre}</div>
-                        <div className="text-xs opacity-70">{c.observacion || "â€”"}</div>
+                        <div className="text-xs opacity-70">
+                          {c.observacion || "—"}
+                        </div>
                       </td>
-                      <td className="hidden md:table-cell px-3 py-2">{c.contacto_nombre || "â€”"}</td>
-                      <td className="px-3 py-2">{c.email || "â€”"}</td>
-                      <td className="px-3 py-2">{c.telefono || "â€”"}</td>
-                      <td className="hidden lg:table-cell px-3 py-2">{c.direccion || "â€”"}</td>
+                      <td className="hidden md:table-cell px-3 py-2">
+                        {c.contacto_nombre || "—"}
+                      </td>
+                      <td className="px-3 py-2">{c.email || "—"}</td>
+                      <td className="px-3 py-2">{c.telefono || "—"}</td>
+                      <td className="hidden lg:table-cell px-3 py-2">
+                        {c.direccion || "—"}
+                      </td>
                       <td className="px-3 py-2">
                         <StatusBadge
-                          status={c.status || (statusTab === "bid" ? "bid" : statusTab === "inactive" ? "inactive" : "active")}
+                          status={
+                            c.status ||
+                            (statusTab === "bid"
+                              ? "bid"
+                              : statusTab === "inactive"
+                              ? "inactive"
+                              : "active")
+                          }
                           onChange={(next) => updateStatus(c.id, next)}
                         />
                       </td>
@@ -803,7 +951,10 @@ export default function Clientes() {
                               Convertir a Activo
                             </button>
                           ) : null}
-                          <button className="btn btn-ghost btn-xs" onClick={() => openEdit(c)}>
+                          <button
+                            className="btn btn-ghost btn-xs"
+                            onClick={() => openEdit(c)}
+                          >
                             {t("actions.update")}
                           </button>
                           <button
@@ -835,28 +986,73 @@ export default function Clientes() {
           setHistoryForm(buildHistoryForm(historyFields, vitalSigns));
         }}
         title={editing ? t("actions.update") : t("actions.add")}
+        headerButtons={
+          <>
+            <button
+              type="button"
+              className="btn btn-outline btn-xs sm:btn-sm"
+            >
+              DATOS DEL CLIENTE
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline btn-xs sm:btn-sm"
+            >
+              DATOS DEL PACIENTE
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline btn-xs sm:btn-sm"
+              onClick={() => setOpenHistoryModal(true)}
+            >
+              HISTORIA CLINICA
+            </button>
+          </>
+        }
       >
         <form onSubmit={onSubmit} className="space-y-3 mb-6">
           <div>
             <label className="label">{clientLabel}</label>
-            <input className="input input-bordered w-full" name="nombre" value={form.nombre} onChange={onChange} required />
+            <input
+              className="input input-bordered w-full"
+              name="nombre"
+              value={form.nombre}
+              onChange={onChange}
+              required
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label">{contactLabel}</label>
-              <input className="input input-bordered w-full" name="contacto_nombre" value={form.contacto_nombre} onChange={onChange} />
+              <input
+                className="input input-bordered w-full"
+                name="contacto_nombre"
+                value={form.contacto_nombre}
+                onChange={onChange}
+              />
             </div>
             <div>
               <label className="label">Email</label>
-              <input type="email" className="input input-bordered w-full" name="email" value={form.email} onChange={onChange} />
+              <input
+                type="email"
+                className="input input-bordered w-full"
+                name="email"
+                value={form.email}
+                onChange={onChange}
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label">{t("clients.form.phone")}</label>
-              <input className="input input-bordered w-full" name="telefono" value={form.telefono} onChange={onChange} />
+              <input
+                className="input input-bordered w-full"
+                name="telefono"
+                value={form.telefono}
+                onChange={onChange}
+              />
             </div>
             <div>
               <label className="label">{t("clients.form.address", "Direccion")}</label>
@@ -896,7 +1092,13 @@ export default function Clientes() {
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-semibold">{contactsLabel}</h4>
               {!showAddContact ? (
-                <button className="btn btn-sm" onClick={() => { setShowAddContact(true); setEditingContact(null); }}>
+                <button
+                  className="btn btn-sm"
+                  onClick={() => {
+                    setShowAddContact(true);
+                    setEditingContact(null);
+                  }}
+                >
                   <Plus className="w-4 h-4 mr-1" /> Anadir {contactLabel.toLowerCase()}
                 </button>
               ) : null}
@@ -953,30 +1155,28 @@ export default function Clientes() {
             <div className="flex items-center gap-2">
               <HeartPulse className="w-5 h-5 text-primary" />
               <h4 className="font-semibold">{historyListLabel}</h4>
-            </div>
-            <div className="rounded-xl border border-base-200 p-3 bg-base-100 space-y-3">
-              {renderHistoryFields()}
-              <div className="flex justify-end gap-2">
-                <button className="btn btn-ghost btn-sm" onClick={() => setHistoryForm(buildHistoryForm(historyFields, vitalSigns))}>
-                  Limpiar
-                </button>
-                <button className={`btn btn-primary btn-sm ${savingHistory ? "btn-disabled" : ""}`} onClick={addHistoryEntry}>
-                  Guardar {historyLabel.toLowerCase()}
-                </button>
-              </div>
+              <button className="btn btn-outline btn-xs" onClick={() => setOpenHistoryModal(true)}>
+                Nueva entrada
+              </button>
             </div>
             {renderHistoryList()}
           </section>
         ) : null}
       </SlideOver>
+
+      <SimpleModal open={openHistoryModal} onClose={() => setOpenHistoryModal(false)} title={`Guardar ${historyLabel}`}>
+        <div className="rounded-xl border border-base-200 p-3 bg-base-100 space-y-3">
+          {renderHistoryFields()}
+          <div className="flex justify-end gap-2">
+            <button className="btn btn-ghost btn-sm" onClick={() => setHistoryForm(buildHistoryForm(historyFields, vitalSigns))}>
+              Limpiar
+            </button>
+            <button className={`btn btn-primary btn-sm ${savingHistory ? "btn-disabled" : ""}`} onClick={addHistoryEntry}>
+              Guardar {historyLabel.toLowerCase()}
+            </button>
+          </div>
+        </div>
+      </SimpleModal>
     </div>
   );
 }
-
-
-
-
-
-
-
-
