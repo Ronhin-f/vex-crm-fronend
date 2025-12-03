@@ -1,4 +1,4 @@
-// src/routes/Clientes.jsx - Clientes/Pacientes con contactos e historias clinicas
+﻿// src/routes/Clientes.jsx - Clientes/Pacientes con contactos e historias clinicas
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
@@ -78,7 +78,7 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary, contactLabel }) {
               <Phone className="w-3 h-3" /> <span className="truncate">{c.telefono}</span>
             </div>
           ) : null}
-          {(c.cargo || c.rol) && <div className="text-xs opacity-70">{[c.cargo, c.rol].filter(Boolean).join(" · ")}</div>}
+          {(c.cargo || c.rol) && <div className="text-xs opacity-70">{[c.cargo, c.rol].filter(Boolean).join(" Â· ")}</div>}
           {(c.obra_social || c.plan) && (
             <div className="text-xs opacity-70">
               Cobertura: {[c.obra_social, c.plan].filter(Boolean).join(" / ")}
@@ -187,7 +187,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
           <input name="email" type="email" className="input input-bordered input-sm" value={f.email} onChange={onChange} />
         </label>
         <label className="form-control">
-          <span className="label-text">Teléfono</span>
+          <span className="label-text">TelÃ©fono</span>
           <input name="telefono" className="input input-bordered input-sm" value={f.telefono} onChange={onChange} />
         </label>
         <label className="form-control">
@@ -203,7 +203,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <button type="button" className="btn btn-outline btn-xs" onClick={() => setOpenClinico(true)}>
-            <HeartPulse className="w-4 h-4" /> Datos clínicos {hasClinicos ? "•" : ""}
+            <HeartPulse className="w-4 h-4" /> Datos clÃ­nicos {hasClinicos ? "â€¢" : ""}
           </button>
           {hasClinicos ? <span className="badge badge-success badge-xs">Completo</span> : null}
         </div>
@@ -234,7 +234,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
         </button>
       </div>
 
-      <SimpleModal open={openClinico} onClose={() => setOpenClinico(false)} title="Datos clínicos del contacto">
+      <SimpleModal open={openClinico} onClose={() => setOpenClinico(false)} title="Datos clÃ­nicos del contacto">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <label className="form-control">
             <span className="label-text">Obra social</span>
@@ -245,7 +245,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
             <input name="plan" className="input input-bordered input-sm" value={f.plan} onChange={onChange} />
           </label>
           <label className="form-control">
-            <span className="label-text">Número de afiliado</span>
+            <span className="label-text">NÃºmero de afiliado</span>
             <input name="numero_afiliado" className="input input-bordered input-sm" value={f.numero_afiliado} onChange={onChange} />
           </label>
         </div>
@@ -263,7 +263,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
                     checked={f.preguntas?.[p.id] === "si"}
                     onChange={onChange}
                   />
-                  Sí
+                  SÃ­
                 </label>
                 <label className="flex items-center gap-1 text-xs">
                   <input
@@ -286,7 +286,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
             <input name="motivo_consulta" className="input input-bordered input-sm" value={f.motivo_consulta} onChange={onChange} />
           </label>
           <label className="form-control">
-            <span className="label-text">Última consulta odontológica</span>
+            <span className="label-text">Ãšltima consulta odontolÃ³gica</span>
             <input name="ultima_consulta" className="input input-bordered input-sm" value={f.ultima_consulta} onChange={onChange} />
           </label>
           <label className="form-control">
@@ -294,19 +294,19 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
             <input name="cepillados_diarios" className="input input-bordered input-sm" value={f.cepillados_diarios} onChange={onChange} />
           </label>
           <label className="form-control">
-            <span className="label-text">¿Tiene sangrado?</span>
+            <span className="label-text">Â¿Tiene sangrado?</span>
             <input name="sangrado" className="input input-bordered input-sm" value={f.sangrado} onChange={onChange} />
           </label>
           <label className="form-control">
-            <span className="label-text">Momentos de azúcar</span>
+            <span className="label-text">Momentos de azÃºcar</span>
             <input name="momentos_azucar" className="input input-bordered input-sm" value={f.momentos_azucar} onChange={onChange} />
           </label>
           <label className="form-control">
-            <span className="label-text">¿Ha tenido dolor?</span>
+            <span className="label-text">Â¿Ha tenido dolor?</span>
             <input name="dolor" className="input input-bordered input-sm" value={f.dolor} onChange={onChange} />
           </label>
           <label className="form-control">
-            <span className="label-text">¿Sufrió algún golpe?</span>
+            <span className="label-text">Â¿SufriÃ³ algÃºn golpe?</span>
             <input name="golpe" className="input input-bordered input-sm" value={f.golpe} onChange={onChange} />
           </label>
           <label className="form-control">
@@ -325,7 +325,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
   );
 }
 
-/* ---------------- Badge de estado: botón simple ---------------- */
+/* ---------------- Badge de estado: botÃ³n simple ---------------- */
 function StatusBadge({ status, onChange }) {
   const map = {
     active: { cls: "btn-success", label: "Activo" },
@@ -436,7 +436,8 @@ export default function Clientes() {
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   const [savingContact, setSavingContact] = useState(false);
-  const [showAddContact, setShowAddContact] = useState(false);
+  const [openContactModal, setOpenContactModal] = useState(false);
+  const [contactDraft, setContactDraft] = useState(null);
 
   const [historyEntries, setHistoryEntries] = useState([]);
   const [historyForm, setHistoryForm] = useState(() => buildHistoryForm(historyFields, vitalSigns));
@@ -459,7 +460,7 @@ export default function Clientes() {
   const [openReminderModal, setOpenReminderModal] = useState(false);
   const [savingReminder, setSavingReminder] = useState(false);
   const [reminderForm, setReminderForm] = useState(() => ({
-    titulo: "Próxima visita",
+    titulo: "PrÃ³xima visita",
     mensaje: "",
     leadDays: 2,
     fecha: "",
@@ -520,7 +521,6 @@ export default function Clientes() {
     setContacts([]);
     setHistoryEntries([]);
     setOpenForm(true);
-    setShowAddContact(false);
     setEditingContact(null);
     clearHistoryForm();
     clearLabForm();
@@ -564,7 +564,6 @@ export default function Clientes() {
       observacion: cli.observacion || "",
     });
     setOpenForm(true);
-    setShowAddContact(false);
     setEditingContact(null);
     clearHistoryForm();
     clearLabForm();
@@ -654,7 +653,6 @@ export default function Clientes() {
   }, [items, qtext]);
 
   async function createContact(clienteId, data) {
-    setSavingContact(true);
     try {
       const { data: created } = await api.post(
         `/clientes/${clienteId}/contactos`,
@@ -662,16 +660,12 @@ export default function Clientes() {
       );
       setContacts((prev) => [created, ...prev]);
       toast.success("Contacto creado");
-      setShowAddContact(false);
     } catch {
       toast.error("No se pudo crear el contacto");
-    } finally {
-      setSavingContact(false);
     }
   }
 
   async function updateContact(contactId, data) {
-    setSavingContact(true);
     try {
       const { data: updated } = await api.patch(
         `/contactos/${contactId}`,
@@ -684,6 +678,21 @@ export default function Clientes() {
       setEditingContact(null);
     } catch {
       toast.error("No se pudo actualizar el contacto");
+    }
+  }
+
+  async function handleContactSave(data) {
+    if (!editing?.id) return;
+    setSavingContact(true);
+    try {
+      if (editingContact?.id) {
+        await updateContact(editingContact.id, data);
+      } else {
+        await createContact(editing.id, data);
+      }
+      setOpenContactModal(false);
+      setContactDraft(null);
+      setEditingContact(null);
     } finally {
       setSavingContact(false);
     }
@@ -764,11 +773,11 @@ export default function Clientes() {
     if (!editing?.nombre) return;
     const baseMsg =
       `Recordatorio: ${editing.nombre} tiene control programado. ` +
-      `Motivo: ${historyForm.motivo || "seguimiento/curación"}. ` +
-      `Revisar puntos/herida y confirmar evolución.`;
+      `Motivo: ${historyForm.motivo || "seguimiento/curacion"}. ` +
+      `Revisar puntos/herida y confirmar evolucion.`;
     setReminderForm((r) => ({
       ...r,
-      titulo: `Próxima visita de ${editing.nombre}`,
+      titulo: `PrÃ³xima visita de ${editing.nombre}`,
       mensaje: baseMsg,
       fecha: "",
       hora: "10:00",
@@ -801,7 +810,7 @@ export default function Clientes() {
       });
       setLabAttachment(data?.file || null);
       setLabMatches(extracted.matches || []);
-      toast.success("Laboratorio importado. Revisá y editá antes de guardar.");
+      toast.success("Laboratorio importado. RevisÃ¡ y editÃ¡ antes de guardar.");
     } catch (e) {
       const msg = e?.response?.data?.message || "No pude leer el PDF de laboratorio";
       setLabError(msg);
@@ -906,11 +915,11 @@ export default function Clientes() {
   async function saveReminder() {
     if (!editing?.id) return;
     const when = buildReminderDate(reminderForm);
-    if (!when) return toast.error("Fecha/hora inválida");
+    if (!when) return toast.error("Fecha/hora invÃ¡lida");
     setSavingReminder(true);
     try {
       const payload = {
-        titulo: reminderForm.titulo || `Próxima visita de ${editing.nombre}`,
+        titulo: reminderForm.titulo || `PrÃ³xima visita de ${editing.nombre}`,
         mensaje: reminderForm.mensaje || "Control programado",
         enviar_en: when,
         cliente_id: editing.id,
@@ -988,7 +997,7 @@ export default function Clientes() {
           <div key={h.id} className="border rounded-xl p-3 bg-base-100">
             <div className="flex items-center justify-between text-xs opacity-70">
               <span>{new Date(h.created_at || h.updated_at || Date.now()).toLocaleString()}</span>
-              <span>{h.creado_por || "—"}</span>
+              <span>{h.creado_por || "â€”"}</span>
             </div>
             <div className="mt-2 space-y-1 text-sm">
               {LAB_FIELD_NAMES.map((f) => {
@@ -1004,7 +1013,7 @@ export default function Clientes() {
                   <strong>Signos vitales:</strong>{" "}
                   {Object.entries(h.signos_vitales)
                     .map(([k, v]) => `${k}: ${v}`)
-                    .join(" · ")}
+                    .join(" Â· ")}
                 </p>
               ) : null}
               {h.extras?.laboratorio_pdf ? (
@@ -1020,7 +1029,7 @@ export default function Clientes() {
                   <strong>Datos extra:</strong>{" "}
                   {Object.entries(h.extras)
                     .map(([k, v]) => `${k}: ${v}`)
-                    .join(" · ")}
+                    .join(" Â· ")}
                 </p>
               ) : null}
             </div>
@@ -1089,7 +1098,7 @@ export default function Clientes() {
           <div key={h.id} className="border rounded-xl p-3 bg-base-100">
             <div className="flex items-center justify-between text-xs opacity-70">
               <span>{new Date(h.created_at || h.updated_at || Date.now()).toLocaleString()}</span>
-              <span>{h.creado_por || "—"}</span>
+              <span>{h.creado_por || "â€”"}</span>
             </div>
             <div className="mt-2 space-y-1 text-sm">
               {h.motivo && (
@@ -1122,7 +1131,7 @@ export default function Clientes() {
                   <strong>Signos vitales:</strong>{" "}
                   {Object.entries(h.signos_vitales)
                     .map(([k, v]) => `${k}: ${v}`)
-                    .join(" · ")}
+                    .join(" Â· ")}
                 </p>
               ) : null}
               {h.extras && Object.keys(h.extras).length ? (
@@ -1130,7 +1139,7 @@ export default function Clientes() {
                   <strong>Datos extra:</strong>{" "}
                   {Object.entries(h.extras)
                     .map(([k, v]) => `${k}: ${v}`)
-                    .join(" · ")}
+                    .join(" Â· ")}
                 </p>
               ) : null}
             </div>
@@ -1145,7 +1154,7 @@ export default function Clientes() {
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">{clientsLabel}</h1>
         <button className="btn btn-primary btn-sm" onClick={openCreate}>
-          <Plus className="w-4 h-4 mr-1" /> {t("actions.add")}
+          <Plus className="w-4 h-4 mr-1" /> Añadir {contactLabel.toLowerCase()}
         </button>
       </div>
 
@@ -1229,16 +1238,16 @@ export default function Clientes() {
                       >
                         <div className="font-medium">{c.nombre}</div>
                         <div className="text-xs opacity-70">
-                          {c.observacion || "—"}
+                          {c.observacion || "â€”"}
                         </div>
                       </td>
                       <td className="hidden md:table-cell px-3 py-2">
-                        {c.contacto_nombre || "—"}
+                        {c.contacto_nombre || "â€”"}
                       </td>
-                      <td className="px-3 py-2">{c.email || "—"}</td>
-                      <td className="px-3 py-2">{c.telefono || "—"}</td>
+                      <td className="px-3 py-2">{c.email || "â€”"}</td>
+                      <td className="px-3 py-2">{c.telefono || "â€”"}</td>
                       <td className="hidden lg:table-cell px-3 py-2">
-                        {c.direccion || "—"}
+                        {c.direccion || "â€”"}
                       </td>
                       <td className="px-3 py-2">
                         <StatusBadge
@@ -1295,7 +1304,6 @@ export default function Clientes() {
           setContacts([]);
           setHistoryEntries([]);
           setEditingContact(null);
-          setShowAddContact(false);
           clearHistoryForm();
           clearLabForm();
         }}
@@ -1419,7 +1427,6 @@ export default function Clientes() {
                 setContacts([]);
                 setHistoryEntries([]);
                 setEditingContact(null);
-                setShowAddContact(false);
                 clearHistoryForm();
                 clearLabForm();
               }}
@@ -1436,29 +1443,17 @@ export default function Clientes() {
           <section className="mb-6">
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-semibold">{contactsLabel}</h4>
-              {!showAddContact ? (
-                <button
-                  className="btn btn-sm"
-                  onClick={() => {
-                    setShowAddContact(true);
-                    setEditingContact(null);
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-1" /> Añadir {contactLabel.toLowerCase()}
-                </button>
-              ) : null}
+              <button
+                className="btn btn-sm"
+                onClick={() => {
+                  setContactDraft(null);
+                  setEditingContact(null);
+                  setOpenContactModal(true);
+                }}
+              >
+                <Plus className="w-4 h-4 mr-1" /> Añadir {contactLabel.toLowerCase()}
+              </button>
             </div>
-
-            {showAddContact && (
-              <div className="mb-3">
-                <ContactFormInline
-                  initial={null}
-                  saving={savingContact}
-                  onCancel={() => setShowAddContact(false)}
-                  onSave={(f) => createContact(editing.id, f)}
-                />
-              </div>
-            )}
 
             {loadingContacts ? (
               <div className="space-y-2">
@@ -1470,31 +1465,24 @@ export default function Clientes() {
               <div className="text-sm opacity-70">Sin {contactsLabel.toLowerCase()} aún.</div>
             ) : (
               <div className="space-y-2">
-                {contacts.map((c) =>
-                  editingContact?.id === c.id ? (
-                    <ContactFormInline
-                      key={c.id}
-                      initial={editingContact}
-                      saving={savingContact}
-                      onCancel={() => setEditingContact(null)}
-                      onSave={(f) => updateContact(c.id, f)}
-                    />
-                  ) : (
-                    <ContactRow
-                      key={c.id}
-                      c={c}
-                      contactLabel={contactLabel}
-                      onEdit={(ci) => setEditingContact(ci)}
-                      onDelete={deleteContact}
-                      onMakePrimary={makePrimary}
-                    />
-                  )
-                )}
+                {contacts.map((c) => (
+                  <ContactRow
+                    key={c.id}
+                    c={c}
+                    contactLabel={contactLabel}
+                    onEdit={(ci) => {
+                      setEditingContact(ci);
+                      setContactDraft(ci);
+                      setOpenContactModal(true);
+                    }}
+                    onDelete={deleteContact}
+                    onMakePrimary={makePrimary}
+                  />
+                ))}
               </div>
             )}
           </section>
         ) : null}
-
         {activeTab === "historia" ? (
           <section className="space-y-3">
             <div className="flex items-center gap-2">
@@ -1509,7 +1497,7 @@ export default function Clientes() {
             {editing?.id && features?.clinicalHistory ? (
               renderHistoryList()
             ) : (
-              <div className="text-sm opacity-70">Guardá el paciente para ver historias clínicas.</div>
+              <div className="text-sm opacity-70">GuardÃ¡ el paciente para ver historias clÃ­nicas.</div>
             )}
           </section>
         ) : null}
@@ -1577,54 +1565,35 @@ export default function Clientes() {
                 {renderLabList()}
               </div>
             ) : (
-              <div className="text-sm opacity-70">Guardá el paciente para adjuntar laboratorios.</div>
+              <div className="text-sm opacity-70">GuardÃ¡ el paciente para adjuntar laboratorios.</div>
             )}
           </section>
         ) : null}
       </SlideOver>
 
+      <SimpleModal
+        open={openContactModal}
+        onClose={() => {
+          setOpenContactModal(false);
+          setContactDraft(null);
+          setEditingContact(null);
+        }}
+        title={`Guardar ${contactLabel}`}
+      >
+        <ContactFormInline
+          initial={contactDraft}
+          saving={savingContact}
+          onCancel={() => {
+            setOpenContactModal(false);
+            setContactDraft(null);
+            setEditingContact(null);
+          }}
+          onSave={handleContactSave}
+        />
+      </SimpleModal>
+
       <SimpleModal open={openHistoryModal} onClose={() => setOpenHistoryModal(false)} title={`Guardar ${historyLabel}`}>
         <div className="rounded-xl border border-base-200 p-3 bg-base-100 space-y-3">
-          {enableLabUpload ? (
-            <div className="rounded-lg border border-dashed border-base-300 p-3 bg-base-200/60 space-y-2">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div>
-                  <p className="font-semibold text-sm">Importar laboratorio (PDF)</p>
-                  <p className="text-xs opacity-70">
-                    Subi el PDF y completamos glucosa, urea, creatinina, hemograma y signos vitales.
-                  </p>
-                </div>
-                <label className={`btn btn-outline btn-sm ${labUploading ? "loading" : ""}`}>
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) importLabFromPdf(f);
-                      e.target.value = "";
-                    }}
-                  />
-                  <FileUp className="w-4 h-4 mr-1" /> {labUploading ? "Procesando..." : "Importar PDF"}
-                </label>
-              </div>
-              {labAttachment ? (
-                <div className="text-xs opacity-80">
-                  Adjunto: {labAttachment.originalname || labAttachment.filename}
-                </div>
-              ) : null}
-              {labMatches?.length ? (
-                <div className="flex flex-wrap gap-2 text-xs">
-                  {labMatches.map((m, i) => (
-                    <span key={`${m.target}-${i}`} className="badge badge-outline">
-                      {m.target}: {m.value}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-              {labError ? <div className="text-xs text-error">{labError}</div> : null}
-            </div>
-          ) : null}
           {renderHistoryFields()}
           <div className="flex justify-end gap-2">
             <button className="btn btn-ghost btn-sm" onClick={clearHistoryForm}>
@@ -1676,7 +1645,7 @@ export default function Clientes() {
               />
             </label>
             <label className="form-control">
-              <span className="label-text">Avisar días antes</span>
+              <span className="label-text">Avisar dÃ­as antes</span>
               <select
                 className="select select-bordered select-sm"
                 value={reminderForm.leadDays}
@@ -1684,7 +1653,7 @@ export default function Clientes() {
               >
                 {[0, 1, 2, 3, 5, 7].map((d) => (
                   <option key={d} value={d}>
-                    {d === 0 ? "Mismo día" : `${d} día(s) antes`}
+                    {d === 0 ? "Mismo dÃ­a" : `${d} dÃ­a(s) antes`}
                   </option>
                 ))}
               </select>
@@ -1703,3 +1672,25 @@ export default function Clientes() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
