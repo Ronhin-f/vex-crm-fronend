@@ -1091,7 +1091,7 @@ export default function Clientes() {
         </div>
       );
     }
-    if (!clinicalEntries.length) return <div className="text-sm opacity-70">Sin registros todavia.</div>;
+    if (!clinicalEntries.length) return <div className="text-sm opacity-70">Sin registros todavía.</div>;
     return (
       <div className="space-y-3">
         {clinicalEntries.map((h) => (
@@ -1592,14 +1592,14 @@ export default function Clientes() {
         />
       </SimpleModal>
 
-      <SimpleModal open={openHistoryModal} onClose={() => setOpenHistoryModal(false)} title={`Guardar ${historyLabel}`}>
+            <SimpleModal open={openHistoryModal} onClose={() => setOpenHistoryModal(false)} title={Guardar }>
         <div className="rounded-xl border border-base-200 p-3 bg-base-100 space-y-3">
           {renderHistoryFields()}
           <div className="flex justify-end gap-2">
             <button className="btn btn-ghost btn-sm" onClick={clearHistoryForm}>
               Limpiar
             </button>
-            <button className={`btn btn-primary btn-sm ${savingHistory ? "btn-disabled" : ""}`} onClick={addHistoryEntry}>
+            <button className={tn btn-primary btn-sm } onClick={addHistoryEntry}>
               Guardar {historyLabel.toLowerCase()}
             </button>
           </div>
@@ -1672,6 +1672,10 @@ export default function Clientes() {
     </div>
   );
 }
+
+
+
+
 
 
 
