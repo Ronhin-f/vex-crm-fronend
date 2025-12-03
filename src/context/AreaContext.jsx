@@ -17,7 +17,7 @@ const BASE_PROFILE = {
     clinicalHistory: "Historia clinica",
     clinicalHistoryList: "Historias clinicas",
   },
-  features: { clinicalHistory: false },
+  features: { clinicalHistory: false, labResults: false },
   forms: {
     clinicalHistory: {
       fields: [
@@ -70,12 +70,17 @@ export function AreaProvider({ children }) {
         params: { organizacion_id: orgId },
       });
       const p = data?.perfil || {};
+      const areaFromCore = normalizeArea(p.area_vertical) || fallbackArea;
       const merged = {
-        area: normalizeArea(p.area_vertical) || fallbackArea,
+        area: areaFromCore,
         vocab: { ...BASE_PROFILE.vocab, ...(data?.vocab || {}) },
         features: {
           ...BASE_PROFILE.features,
           clinicalHistory: !!p.habilita_historias_clinicas,
+          labResults:
+            typeof p.habilita_resultados_lab === "boolean"
+              ? p.habilita_resultados_lab
+              : areaFromCore === "veterinaria",
         },
         forms: BASE_PROFILE.forms,
         availableAreas: BASE_PROFILE.availableAreas,
@@ -92,7 +97,10 @@ export function AreaProvider({ children }) {
       try {
         const { data: sync } = await crmApi.post("/area/sync", {
           area: merged.area,
-          features: { clinicalHistory: !!p.habilita_historias_clinicas },
+          features: {
+            clinicalHistory: !!p.habilita_historias_clinicas,
+            labResults: merged.features.labResults,
+          },
         });
         const perfil = sync?.perfil;
         if (perfil) {
@@ -100,8 +108,8 @@ export function AreaProvider({ children }) {
             area: perfil.area || merged.area,
             vocab: { ...merged.vocab, ...(perfil.vocab || {}) },
             features: { ...merged.features, ...(perfil.features || {}) },
-            forms: merged.forms,
-            availableAreas: merged.availableAreas,
+            forms: perfil.forms || merged.forms,
+            availableAreas: perfil.availableAreas || merged.availableAreas,
           };
         }
       } catch {

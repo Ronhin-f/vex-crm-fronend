@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import api from "../utils/api";
-import { Plus, X, Mail, Phone, Pencil, Trash2, Star, HeartPulse } from "lucide-react";
+import { Plus, X, Mail, Phone, Pencil, Trash2, Star, HeartPulse, FileUp } from "lucide-react";
 import { useArea } from "../context/AreaContext";
 
 const PREGUNTAS_IMPORTANTES = [
@@ -359,6 +359,20 @@ const FALLBACK_HISTORY_FIELDS = [
   { name: "notas", label: "Notas", type: "textarea" },
 ];
 const FALLBACK_VITALS = [];
+const LAB_FIELD_NAMES = [
+  "hematocrito",
+  "hemoglobina",
+  "leucocitos",
+  "plaquetas",
+  "glucosa",
+  "urea",
+  "creatinina",
+  "alt",
+  "ast",
+  "fosfatasa_alcalina",
+  "proteinas_totales",
+];
+const LAB_VITALS = ["peso", "temperatura"];
 
 function buildHistoryForm(fields, vitalSigns) {
   const base = {};
@@ -372,9 +386,21 @@ function buildHistoryForm(fields, vitalSigns) {
   return { ...base, signos_vitales: vitals };
 }
 
+function buildLabForm() {
+  const base = {};
+  LAB_FIELD_NAMES.forEach((f) => {
+    base[f] = "";
+  });
+  const vitals = {};
+  LAB_VITALS.forEach((k) => {
+    vitals[k] = "";
+  });
+  return { ...base, notas: "", signos_vitales: vitals, extras: {} };
+}
+
 export default function Clientes() {
   const { t } = useTranslation();
-  const { vocab, features, forms } = useArea();
+  const { vocab, features, forms, area } = useArea();
 
   const clientsLabel = vocab?.clients || t("clients.title", "Clientes");
   const clientLabel = vocab?.client || t("clients.form.name", "Cliente");
@@ -385,6 +411,8 @@ export default function Clientes() {
 
   const historyFields = forms?.clinicalHistory?.fields || FALLBACK_HISTORY_FIELDS;
   const vitalSigns = forms?.clinicalHistory?.vitalSigns || FALLBACK_VITALS;
+  const isVet = (area || "").toLowerCase() === "veterinaria";
+  const enableLabUpload = isVet && !!features?.labResults;
 
   const [isLoading, setIsLoading] = useState(true);
   const [items, setItems] = useState([]);
@@ -415,10 +443,38 @@ export default function Clientes() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [savingHistory, setSavingHistory] = useState(false);
   const [openHistoryModal, setOpenHistoryModal] = useState(false);
+  const [labUploading, setLabUploading] = useState(false);
+  const [labAttachment, setLabAttachment] = useState(null);
+  const [labMatches, setLabMatches] = useState([]);
+  const [labError, setLabError] = useState("");
+  const [labForm, setLabForm] = useState(() => buildLabForm());
+  const labEntries = useMemo(
+    () => historyEntries.filter((h) => (h.tipo || "").toLowerCase() === "laboratorio"),
+    [historyEntries]
+  );
+  const clinicalEntries = useMemo(
+    () => historyEntries.filter((h) => (h.tipo || "").toLowerCase() !== "laboratorio"),
+    [historyEntries]
+  );
+
+  const clearHistoryForm = useCallback(() => {
+    setHistoryForm(buildHistoryForm(historyFields, vitalSigns));
+    setLabAttachment(null);
+    setLabMatches([]);
+    setLabError("");
+  }, [historyFields, vitalSigns]);
+
+  const clearLabForm = useCallback(() => {
+    setLabForm(buildLabForm());
+    setLabAttachment(null);
+    setLabMatches([]);
+    setLabError("");
+  }, []);
 
   useEffect(() => {
-    setHistoryForm(buildHistoryForm(historyFields, vitalSigns));
-  }, [historyFields, vitalSigns, features?.clinicalHistory]);
+    clearHistoryForm();
+    clearLabForm();
+  }, [historyFields, vitalSigns, features?.clinicalHistory, clearHistoryForm, clearLabForm]);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -457,6 +513,8 @@ export default function Clientes() {
     setOpenForm(true);
     setShowAddContact(false);
     setEditingContact(null);
+    clearHistoryForm();
+    clearLabForm();
   }
 
   async function fetchContacts(clienteId) {
@@ -499,6 +557,8 @@ export default function Clientes() {
     setOpenForm(true);
     setShowAddContact(false);
     setEditingContact(null);
+    clearHistoryForm();
+    clearLabForm();
     await fetchContacts(cli.id);
     if (features?.clinicalHistory) {
       fetchHistory(cli.id);
@@ -691,6 +751,41 @@ export default function Clientes() {
     }
   }
 
+  async function importLabFromPdf(file) {
+    if (!file) return;
+    setLabError("");
+    setLabUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data } = await api.post("/labs/parse", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const extracted = data?.extracted || {};
+      setLabForm((prev) => {
+        const next = { ...prev };
+        for (const [k, v] of Object.entries(extracted.fields || {})) {
+          if (LAB_FIELD_NAMES.includes(k)) next[k] = v;
+          else next.extras = { ...(next.extras || {}), [k]: v };
+        }
+        for (const [k, v] of Object.entries(extracted.extras || {})) {
+          next.extras = { ...(next.extras || {}), [k]: v };
+        }
+        next.signos_vitales = { ...(prev.signos_vitales || {}), ...(extracted.signos_vitales || {}) };
+        return next;
+      });
+      setLabAttachment(data?.file || null);
+      setLabMatches(extracted.matches || []);
+      toast.success("Laboratorio importado. Revisá y editá antes de guardar.");
+    } catch (e) {
+      const msg = e?.response?.data?.message || "No pude leer el PDF de laboratorio";
+      setLabError(msg);
+      toast.error(msg);
+    } finally {
+      setLabUploading(false);
+    }
+  }
+
   async function addHistoryEntry() {
     if (!editing?.id) return;
     setSavingHistory(true);
@@ -704,6 +799,12 @@ export default function Clientes() {
           extras[f.name] = payload[f.name];
         }
       }
+      if (labAttachment?.url) {
+        extras.laboratorio_pdf = labAttachment.url;
+        if (labAttachment.originalname || labAttachment.filename) {
+          extras.laboratorio_archivo = labAttachment.originalname || labAttachment.filename;
+        }
+      }
       const finalPayload = {
         ...rest,
         signos_vitales,
@@ -711,7 +812,7 @@ export default function Clientes() {
       };
       const { data } = await api.post("/historias", finalPayload);
       setHistoryEntries((prev) => [data, ...prev]);
-      setHistoryForm(buildHistoryForm(historyFields, vitalSigns));
+      clearHistoryForm();
       toast.success("Historia guardada");
     } catch (e) {
       if (e?.response?.status === 403) {
@@ -722,8 +823,153 @@ export default function Clientes() {
     } finally {
       setSavingHistory(false);
       setOpenHistoryModal(false);
+      setLabAttachment(null);
+      setLabMatches([]);
+      setLabError("");
     }
   }
+
+  async function addLabEntry() {
+    if (!editing?.id) return;
+    setSavingHistory(true);
+    try {
+      const { signos_vitales, extras: extraMap, notas, ...rest } = labForm;
+      const extras = { ...(extraMap || {}) };
+      LAB_FIELD_NAMES.forEach((f) => {
+        if (rest[f]) extras[f] = rest[f];
+      });
+      if (labAttachment?.url) {
+        extras.laboratorio_pdf = labAttachment.url;
+        if (labAttachment.originalname || labAttachment.filename) {
+          extras.laboratorio_archivo = labAttachment.originalname || labAttachment.filename;
+        }
+      }
+      const finalPayload = {
+        tipo: "laboratorio",
+        motivo: "Laboratorio",
+        notas: notas || "",
+        cliente_id: editing.id,
+        signos_vitales,
+        extras,
+      };
+      const { data } = await api.post("/historias", finalPayload);
+      setHistoryEntries((prev) => [data, ...prev]);
+      clearLabForm();
+      toast.success("Laboratorio guardado");
+    } catch (e) {
+      if (e?.response?.status === 403) {
+        toast.error("Historias clinicas no habilitadas para esta organizacion");
+      } else {
+        toast.error("No pude guardar el laboratorio");
+      }
+    } finally {
+      setSavingHistory(false);
+    }
+  }
+
+  const renderLabFields = () => (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {LAB_FIELD_NAMES.map((name) => (
+          <label key={name} className="form-control">
+            <span className="label-text">{name.replace(/_/g, " ")}</span>
+            <input
+              name={name}
+              type="number"
+              className="input input-bordered input-sm"
+              value={labForm[name] || ""}
+              onChange={(e) => setLabForm((p) => ({ ...p, [name]: e.target.value }))}
+            />
+          </label>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {LAB_VITALS.map((v) => (
+          <label key={v} className="form-control">
+            <span className="label-text">Signo vital: {v}</span>
+            <input
+              name={`lab_vital__${v}`}
+              className="input input-bordered input-sm"
+              value={labForm.signos_vitales?.[v] || ""}
+              onChange={(e) =>
+                setLabForm((p) => ({
+                  ...p,
+                  signos_vitales: { ...(p.signos_vitales || {}), [v]: e.target.value },
+                }))
+              }
+            />
+          </label>
+        ))}
+      </div>
+      <label className="form-control">
+        <span className="label-text">Notas</span>
+        <textarea
+          className="textarea textarea-bordered textarea-sm"
+          value={labForm.notas || ""}
+          onChange={(e) => setLabForm((p) => ({ ...p, notas: e.target.value }))}
+        />
+      </label>
+    </div>
+  );
+
+  const renderLabList = () => {
+    if (loadingHistory) {
+      return (
+        <div className="space-y-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="skeleton h-16 w-full rounded-xl" />
+          ))}
+        </div>
+      );
+    }
+    if (!labEntries.length) return <div className="text-sm opacity-70">Sin laboratorios cargados.</div>;
+    return (
+      <div className="space-y-3">
+        {labEntries.map((h) => (
+          <div key={h.id} className="border rounded-xl p-3 bg-base-100">
+            <div className="flex items-center justify-between text-xs opacity-70">
+              <span>{new Date(h.created_at || h.updated_at || Date.now()).toLocaleString()}</span>
+              <span>{h.creado_por || "—"}</span>
+            </div>
+            <div className="mt-2 space-y-1 text-sm">
+              {LAB_FIELD_NAMES.map((f) => {
+                const val = h[f] ?? h.extras?.[f];
+                return val ? (
+                  <p key={f}>
+                    <strong>{f.replace(/_/g, " ")}:</strong> {val}
+                  </p>
+                ) : null;
+              })}
+              {h.signos_vitales && Object.keys(h.signos_vitales).length ? (
+                <p>
+                  <strong>Signos vitales:</strong>{" "}
+                  {Object.entries(h.signos_vitales)
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join(" · ")}
+                </p>
+              ) : null}
+              {h.extras?.laboratorio_pdf ? (
+                <p>
+                  <strong>PDF:</strong>{" "}
+                  <a className="link" href={h.extras.laboratorio_pdf} target="_blank" rel="noreferrer">
+                    Ver resultado
+                  </a>
+                </p>
+              ) : null}
+              {h.extras && Object.keys(h.extras).length ? (
+                <p>
+                  <strong>Datos extra:</strong>{" "}
+                  {Object.entries(h.extras)
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join(" · ")}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   const renderHistoryFields = () => (
     <div className="space-y-3">
@@ -740,6 +986,7 @@ export default function Clientes() {
           ) : (
             <input
               name={f.name}
+              type={f.type === "number" ? "number" : "text"}
               className="input input-bordered input-sm"
               value={historyForm[f.name] || ""}
               onChange={onChangeHistory}
@@ -776,10 +1023,10 @@ export default function Clientes() {
         </div>
       );
     }
-    if (!historyEntries.length) return <div className="text-sm opacity-70">Sin registros todavia.</div>;
+    if (!clinicalEntries.length) return <div className="text-sm opacity-70">Sin registros todavia.</div>;
     return (
       <div className="space-y-3">
-        {historyEntries.map((h) => (
+        {clinicalEntries.map((h) => (
           <div key={h.id} className="border rounded-xl p-3 bg-base-100">
             <div className="flex items-center justify-between text-xs opacity-70">
               <span>{new Date(h.created_at || h.updated_at || Date.now()).toLocaleString()}</span>
@@ -990,7 +1237,8 @@ export default function Clientes() {
           setHistoryEntries([]);
           setEditingContact(null);
           setShowAddContact(false);
-          setHistoryForm(buildHistoryForm(historyFields, vitalSigns));
+          clearHistoryForm();
+          clearLabForm();
         }}
         title={editing ? t("actions.update") : t("actions.add")}
         headerButtons={
@@ -1016,6 +1264,15 @@ export default function Clientes() {
             >
               HISTORIA CLINICA
             </button>
+            {enableLabUpload ? (
+              <button
+                type="button"
+                className={`join-item btn btn-xs sm:btn-sm ${activeTab === "laboratorio" ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => setActiveTab("laboratorio")}
+              >
+                LABORATORIO
+              </button>
+            ) : null}
           </div>
         }
       >
@@ -1097,7 +1354,8 @@ export default function Clientes() {
                 setHistoryEntries([]);
                 setEditingContact(null);
                 setShowAddContact(false);
-                setHistoryForm(buildHistoryForm(historyFields, vitalSigns));
+                clearHistoryForm();
+                clearLabForm();
               }}
             >
               {t("actions.cancel")}
@@ -1189,13 +1447,121 @@ export default function Clientes() {
             )}
           </section>
         ) : null}
+
+        {activeTab === "laboratorio" && enableLabUpload ? (
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <FileUp className="w-5 h-5 text-primary" />
+              <h4 className="font-semibold">Resultados de laboratorio</h4>
+            </div>
+            {editing?.id ? (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-dashed border-base-300 p-3 bg-base-200/60 space-y-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                      <p className="font-semibold text-sm">Subir PDF</p>
+                      <p className="text-xs opacity-70">Autocompleta valores al detectar analitos.</p>
+                    </div>
+                    <label className={`btn btn-outline btn-sm ${labUploading ? "loading" : ""}`}>
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) importLabFromPdf(f);
+                          e.target.value = "";
+                        }}
+                      />
+                      <FileUp className="w-4 h-4 mr-1" /> {labUploading ? "Procesando..." : "Importar PDF"}
+                    </label>
+                  </div>
+                  {labAttachment ? (
+                    <div className="text-xs opacity-80">
+                      Adjunto: {labAttachment.originalname || labAttachment.filename}
+                    </div>
+                  ) : null}
+                  {labMatches?.length ? (
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      {labMatches.map((m, i) => (
+                        <span key={`${m.target}-${i}`} className="badge badge-outline">
+                          {m.target}: {m.value}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {labError ? <div className="text-xs text-error">{labError}</div> : null}
+                </div>
+
+                {renderLabFields()}
+
+                <div className="flex justify-end gap-2">
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={clearLabForm}>
+                    Limpiar
+                  </button>
+                  <button
+                    className={`btn btn-primary btn-sm ${savingHistory ? "btn-disabled" : ""}`}
+                    onClick={addLabEntry}
+                  >
+                    Guardar laboratorio
+                  </button>
+                </div>
+
+                <div className="divider">Cargados</div>
+                {renderLabList()}
+              </div>
+            ) : (
+              <div className="text-sm opacity-70">Guardá el paciente para adjuntar laboratorios.</div>
+            )}
+          </section>
+        ) : null}
       </SlideOver>
 
       <SimpleModal open={openHistoryModal} onClose={() => setOpenHistoryModal(false)} title={`Guardar ${historyLabel}`}>
         <div className="rounded-xl border border-base-200 p-3 bg-base-100 space-y-3">
+          {enableLabUpload ? (
+            <div className="rounded-lg border border-dashed border-base-300 p-3 bg-base-200/60 space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div>
+                  <p className="font-semibold text-sm">Importar laboratorio (PDF)</p>
+                  <p className="text-xs opacity-70">
+                    Subi el PDF y completamos glucosa, urea, creatinina, hemograma y signos vitales.
+                  </p>
+                </div>
+                <label className={`btn btn-outline btn-sm ${labUploading ? "loading" : ""}`}>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) importLabFromPdf(f);
+                      e.target.value = "";
+                    }}
+                  />
+                  <FileUp className="w-4 h-4 mr-1" /> {labUploading ? "Procesando..." : "Importar PDF"}
+                </label>
+              </div>
+              {labAttachment ? (
+                <div className="text-xs opacity-80">
+                  Adjunto: {labAttachment.originalname || labAttachment.filename}
+                </div>
+              ) : null}
+              {labMatches?.length ? (
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {labMatches.map((m, i) => (
+                    <span key={`${m.target}-${i}`} className="badge badge-outline">
+                      {m.target}: {m.value}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              {labError ? <div className="text-xs text-error">{labError}</div> : null}
+            </div>
+          ) : null}
           {renderHistoryFields()}
           <div className="flex justify-end gap-2">
-            <button className="btn btn-ghost btn-sm" onClick={() => setHistoryForm(buildHistoryForm(historyFields, vitalSigns))}>
+            <button className="btn btn-ghost btn-sm" onClick={clearHistoryForm}>
               Limpiar
             </button>
             <button className={`btn btn-primary btn-sm ${savingHistory ? "btn-disabled" : ""}`} onClick={addHistoryEntry}>
