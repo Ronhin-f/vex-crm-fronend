@@ -71,9 +71,13 @@ export function AreaProvider({ children }) {
       });
       const p = data?.perfil || {};
       const areaFromCore = normalizeArea(p.area_vertical) || fallbackArea;
+      const areaVocab =
+        areaFromCore === "veterinaria"
+          ? { clients: "Mascotas", client: "Mascota", contacts: "Duenos", contact: "Dueno" }
+          : {};
       const merged = {
         area: areaFromCore,
-        vocab: { ...BASE_PROFILE.vocab, ...(data?.vocab || {}) },
+        vocab: { ...BASE_PROFILE.vocab, ...(data?.vocab || {}), ...areaVocab },
         features: {
           ...BASE_PROFILE.features,
           clinicalHistory: !!p.habilita_historias_clinicas,

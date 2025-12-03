@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import api from "../utils/api";
-import { Plus, X, Mail, Phone, Pencil, Trash2, Star, HeartPulse, FileUp } from "lucide-react";
+import { Plus, X, Mail, Phone, Pencil, Trash2, Star, HeartPulse, FileUp, Bell } from "lucide-react";
 import { useArea } from "../context/AreaContext";
 
 const PREGUNTAS_IMPORTANTES = [
@@ -456,6 +456,15 @@ export default function Clientes() {
     () => historyEntries.filter((h) => (h.tipo || "").toLowerCase() !== "laboratorio"),
     [historyEntries]
   );
+  const [openReminderModal, setOpenReminderModal] = useState(false);
+  const [savingReminder, setSavingReminder] = useState(false);
+  const [reminderForm, setReminderForm] = useState(() => ({
+    titulo: "Próxima visita",
+    mensaje: "",
+    leadDays: 2,
+    fecha: "",
+    hora: "10:00",
+  }));
 
   const clearHistoryForm = useCallback(() => {
     setHistoryForm(buildHistoryForm(historyFields, vitalSigns));
@@ -751,6 +760,22 @@ export default function Clientes() {
     }
   }
 
+  function openReminderPrefill() {
+    if (!editing?.nombre) return;
+    const baseMsg =
+      `Recordatorio: ${editing.nombre} tiene control programado. ` +
+      `Motivo: ${historyForm.motivo || "seguimiento/curación"}. ` +
+      `Revisar puntos/herida y confirmar evolución.`;
+    setReminderForm((r) => ({
+      ...r,
+      titulo: `Próxima visita de ${editing.nombre}`,
+      mensaje: baseMsg,
+      fecha: "",
+      hora: "10:00",
+    }));
+    setOpenReminderModal(true);
+  }
+
   async function importLabFromPdf(file) {
     if (!file) return;
     setLabError("");
@@ -864,6 +889,40 @@ export default function Clientes() {
       }
     } finally {
       setSavingHistory(false);
+    }
+  }
+
+  function buildReminderDate(form) {
+    if (!form.fecha) return null;
+    const [hh = "00", mm = "00"] = (form.hora || "00:00").split(":");
+    const d = new Date(`${form.fecha}T${hh.padStart(2, "0")}:${mm.padStart(2, "0")}:00`);
+    if (Number.isNaN(d.getTime())) return null;
+    if (form.leadDays && Number.isFinite(Number(form.leadDays))) {
+      d.setDate(d.getDate() - Number(form.leadDays));
+    }
+    return d.toISOString();
+  }
+
+  async function saveReminder() {
+    if (!editing?.id) return;
+    const when = buildReminderDate(reminderForm);
+    if (!when) return toast.error("Fecha/hora inválida");
+    setSavingReminder(true);
+    try {
+      const payload = {
+        titulo: reminderForm.titulo || `Próxima visita de ${editing.nombre}`,
+        mensaje: reminderForm.mensaje || "Control programado",
+        enviar_en: when,
+        cliente_id: editing.id,
+      };
+      await api.post("/recordatorios", payload);
+      toast.success("Recordatorio programado");
+      setOpenReminderModal(false);
+    } catch (e) {
+      const msg = e?.response?.data?.message || "No pude programar el recordatorio";
+      toast.error(msg);
+    } finally {
+      setSavingReminder(false);
     }
   }
 
@@ -1242,35 +1301,42 @@ export default function Clientes() {
         }}
         title={editing ? t("actions.update") : t("actions.add")}
         headerButtons={
-          <div className="join bg-base-200 rounded-lg">
-            <button
-              type="button"
-              className={`join-item btn btn-xs sm:btn-sm ${activeTab === "cliente" ? "btn-primary" : "btn-ghost"}`}
-              onClick={() => setActiveTab("cliente")}
-            >
-              DATOS DEL CLIENTE
-            </button>
-            <button
-              type="button"
-              className={`join-item btn btn-xs sm:btn-sm ${activeTab === "paciente" ? "btn-primary" : "btn-ghost"}`}
-              onClick={() => setActiveTab("paciente")}
-            >
-              DATOS DEL PACIENTE
-            </button>
-            <button
-              type="button"
-              className={`join-item btn btn-xs sm:btn-sm ${activeTab === "historia" ? "btn-primary" : "btn-ghost"}`}
-              onClick={() => setActiveTab("historia")}
-            >
-              HISTORIA CLINICA
-            </button>
-            {enableLabUpload ? (
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="join bg-base-200 rounded-lg">
               <button
                 type="button"
-                className={`join-item btn btn-xs sm:btn-sm ${activeTab === "laboratorio" ? "btn-primary" : "btn-ghost"}`}
-                onClick={() => setActiveTab("laboratorio")}
+                className={`join-item btn btn-xs sm:btn-sm ${activeTab === "cliente" ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => setActiveTab("cliente")}
               >
-                LABORATORIO
+                DATOS
+              </button>
+              <button
+                type="button"
+                className={`join-item btn btn-xs sm:btn-sm ${activeTab === "paciente" ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => setActiveTab("paciente")}
+              >
+                DUENOS
+              </button>
+              <button
+                type="button"
+                className={`join-item btn btn-xs sm:btn-sm ${activeTab === "historia" ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => setActiveTab("historia")}
+              >
+                HISTORIA
+              </button>
+              {enableLabUpload ? (
+                <button
+                  type="button"
+                  className={`join-item btn btn-xs sm:btn-sm ${activeTab === "laboratorio" ? "btn-primary" : "btn-ghost"}`}
+                  onClick={() => setActiveTab("laboratorio")}
+                >
+                  LABS
+                </button>
+              ) : null}
+            </div>
+            {editing?.id ? (
+              <button type="button" className="btn btn-outline btn-xs sm:btn-sm" onClick={openReminderPrefill}>
+                <Bell className="w-4 h-4 mr-1" /> Programar recordatorio
               </button>
             ) : null}
           </div>
@@ -1566,6 +1632,70 @@ export default function Clientes() {
             </button>
             <button className={`btn btn-primary btn-sm ${savingHistory ? "btn-disabled" : ""}`} onClick={addHistoryEntry}>
               Guardar {historyLabel.toLowerCase()}
+            </button>
+          </div>
+        </div>
+      </SimpleModal>
+
+      <SimpleModal open={openReminderModal} onClose={() => setOpenReminderModal(false)} title="Programar recordatorio">
+        <div className="space-y-3">
+          <label className="form-control">
+            <span className="label-text">Titulo</span>
+            <input
+              className="input input-bordered input-sm"
+              value={reminderForm.titulo}
+              onChange={(e) => setReminderForm((p) => ({ ...p, titulo: e.target.value }))}
+            />
+          </label>
+          <label className="form-control">
+            <span className="label-text">Mensaje</span>
+            <textarea
+              className="textarea textarea-bordered textarea-sm"
+              rows={4}
+              value={reminderForm.mensaje}
+              onChange={(e) => setReminderForm((p) => ({ ...p, mensaje: e.target.value }))}
+            />
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <label className="form-control">
+              <span className="label-text">Fecha de visita</span>
+              <input
+                type="date"
+                className="input input-bordered input-sm"
+                value={reminderForm.fecha}
+                onChange={(e) => setReminderForm((p) => ({ ...p, fecha: e.target.value }))}
+              />
+            </label>
+            <label className="form-control">
+              <span className="label-text">Hora</span>
+              <input
+                type="time"
+                className="input input-bordered input-sm"
+                value={reminderForm.hora}
+                onChange={(e) => setReminderForm((p) => ({ ...p, hora: e.target.value }))}
+              />
+            </label>
+            <label className="form-control">
+              <span className="label-text">Avisar días antes</span>
+              <select
+                className="select select-bordered select-sm"
+                value={reminderForm.leadDays}
+                onChange={(e) => setReminderForm((p) => ({ ...p, leadDays: Number(e.target.value) }))}
+              >
+                {[0, 1, 2, 3, 5, 7].map((d) => (
+                  <option key={d} value={d}>
+                    {d === 0 ? "Mismo día" : `${d} día(s) antes`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button className="btn btn-ghost btn-sm" onClick={() => setOpenReminderModal(false)}>
+              Cancelar
+            </button>
+            <button className={`btn btn-primary btn-sm ${savingReminder ? "btn-disabled" : ""}`} onClick={saveReminder}>
+              Programar
             </button>
           </div>
         </div>
