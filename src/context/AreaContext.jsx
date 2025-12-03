@@ -73,7 +73,7 @@ export function AreaProvider({ children }) {
       const areaFromCore = normalizeArea(p.area_vertical) || fallbackArea;
       const areaVocab =
         areaFromCore === "veterinaria"
-          ? { clients: "Mascotas", client: "Mascota", contacts: "Duenos", contact: "Dueno" }
+          ? { clients: "Dueños", client: "Dueño", contacts: "Mascotas", contact: "Mascota" }
           : {};
       const merged = {
         area: areaFromCore,

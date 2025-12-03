@@ -1315,7 +1315,7 @@ export default function Clientes() {
                 className={`join-item btn btn-xs sm:btn-sm ${activeTab === "paciente" ? "btn-primary" : "btn-ghost"}`}
                 onClick={() => setActiveTab("paciente")}
               >
-                DUENOS
+                {contactsLabel.toUpperCase()}
               </button>
               <button
                 type="button"
