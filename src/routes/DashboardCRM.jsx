@@ -1,4 +1,4 @@
-﻿// vex-crm-fronend/src/routes/DashboardCRM.jsx
+// vex-crm-fronend/src/routes/DashboardCRM.jsx
 import { useEffect, useMemo, useState } from "react";
 import {
   Users,
@@ -132,7 +132,7 @@ function InsightsBlock({ insights, t }) {
   if (!txt) {
     return (
       <p className="text-sm text-base-content/60">
-        {t("insights.empty", "Aún no hay recomendaciones. Cargá clientes/tareas y volvé a intentar.")}
+        {t("insights.empty", "Aun no hay recomendaciones. Carga clientes/tareas y volve a intentar.")}
       </p>
     );
   }
@@ -347,7 +347,7 @@ export default function DashboardCRM() {
     } catch (e) {
       const status = e?.response?.status;
       if (status === 403) {
-        toast.error(t("errors.permission", "No tenés permisos para ejecutar el dispatcher."), { id });
+        toast.error(t("errors.permission", "No tenes permisos para ejecutar el dispatcher."), { id });
       } else {
         toast.error(t("errors.genericSend", "No se pudo despachar follow-ups."), { id });
       }
@@ -601,7 +601,7 @@ export default function DashboardCRM() {
           <section className="card bg-base-100 shadow">
             <div className="card-body">
               <h2 className="card-title flex items-center gap-2">
-                <BarChart2 size={18} /> Calificación
+                <BarChart2 size={18} /> Calificacion
               </h2>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="p-3 rounded bg-base-200">
@@ -640,7 +640,7 @@ export default function DashboardCRM() {
                 <PauseCircle size={18} /> Incoming estancados
               </h2>
               <p className="text-3xl font-semibold">{analytics.qualification.stalled_in_incoming.total}</p>
-              <p className="text-sm text-base-content/60">+{analytics.qualification.stalled_in_incoming.days} días sin tareas.</p>
+              <p className="text-sm text-base-content/60">+{analytics.qualification.stalled_in_incoming.days} dias sin tareas.</p>
             </div>
           </section>
         </div>
@@ -752,79 +752,7 @@ export default function DashboardCRM() {
             <InsightsBlock insights={insights} t={t} />
           </div>
         </section>
-              ) : (
-                <ul className="divide-y divide-base-200">
-                  {vaccineList.map((v) => (
-                    <li key={v.id} className="py-3 flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{v.nombre || "Mascota"}</div>
-                        <div className="text-xs text-base-content/60 truncate">{v.cliente_nombre || "Dueño no informado"}</div>
-                        {v.peso ? <div className="text-xs text-base-content/70">Peso: {v.peso} kg</div> : null}
-                        {v.vacunas ? <div className="text-xs text-base-content/70 truncate">Vacunas: {v.vacunas}</div> : null}
-                      </div>
-                      <div className="text-right space-y-1">
-                        <div className={`badge ${v.tone} badge-outline`}>{v.days != null ? `${v.days} d` : "--"}</div>
-                        <div className="text-xs text-base-content/60">{v.fecha ? v.fecha.toLocaleDateString(i18n.language || undefined) : "Sin fecha"}</div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
-
-          <section className="card bg-base-100 shadow lg:col-span-2">
-            <div className="card-body">
-              <div className="flex items-center justify-between">
-                <h2 className="card-title flex items-center gap-2">
-                  <Brain size={18} />
-                  {t("cards.insights", "Insights del negocio")}
-                  {insights.model ? (
-                    <span className="badge badge-outline">{insights.model}</span>
-                  ) : (
-                    <span className="badge badge-ghost">{t("insights.baseline", "Baseline")}</span>
-                  )}
-                </h2>
-                <div className="flex items-center gap-2">
-                  <span className="badge badge-ghost flex items-center gap-1">
-                    <PlugZap size={14} />
-                    {integraciones?.slack?.configured ? "Slack ON" : "Slack OFF"}
-                  </span>
-                  <span className="badge badge-ghost">
-                    {integraciones?.whatsapp?.configured ? "WhatsApp ON" : "WhatsApp OFF"}
-                  </span>
-                </div>
-              </div>
-              <InsightsBlock insights={insights} t={t} />
-            </div>
-          </section>
-        </div>
-                  {t("cards.insights", "Insights del negocio")}
-                  {insights.model ? (
-                    <span className="badge badge-outline">{insights.model}</span>
-                  ) : (
-                    <span className="badge badge-ghost">{t("insights.baseline", "Baseline")}</span>
-                  )}
-                </h2>
-                <div className="flex items-center gap-2">
-                  <span className="badge badge-ghost flex items-center gap-1">
-                    <PlugZap size={14} />
-                    {integraciones?.slack?.configured ? "Slack ON" : "Slack OFF"}
-                  </span>
-                  <span className="badge badge-ghost">
-                    {integraciones?.whatsapp?.configured ? "WhatsApp ON" : "WhatsApp OFF"}
-                  </span>
-                </div>
-              </div>
-              <InsightsBlock insights={insights} t={t} />
-            </div>
-          </section>
-        </div>
       </div>
     </div>
   );
 }
-
-
-
-
