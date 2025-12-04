@@ -725,33 +725,33 @@ export default function DashboardCRM() {
               )}
             </div>
           </section>
-
-          <section className="card bg-base-100 shadow lg:col-span-2">
-            <div className="card-body">
-              <div className="flex items-center justify-between">
-                <h2 className="card-title flex items-center gap-2">
-                  <Brain size={18} />
-                  {t("cards.insights", "Insights del negocio")}
-                  {insights.model ? (
-                    <span className="badge badge-outline">{insights.model}</span>
-                  ) : (
-                    <span className="badge badge-ghost">{t("insights.baseline", "Baseline")}</span>
-                  )}
-                </h2>
-                <div className="flex items-center gap-2">
-                  <span className="badge badge-ghost flex items-center gap-1">
-                    <PlugZap size={14} />
-                    {integraciones?.slack?.configured ? "Slack ON" : "Slack OFF"}
-                  </span>
-                  <span className="badge badge-ghost">
-                    {integraciones?.whatsapp?.configured ? "WhatsApp ON" : "WhatsApp OFF"}
-                  </span>
-                </div>
-              </div>
-              <InsightsBlock insights={insights} t={t} />
-            </div>
-          </section>
         </div>
+
+        <section className="card bg-base-100 shadow mt-6">
+          <div className="card-body">
+            <div className="flex items-center justify-between">
+              <h2 className="card-title flex items-center gap-2">
+                <Brain size={18} />
+                {t("cards.insights", "Insights del negocio")}
+                {insights.model ? (
+                  <span className="badge badge-outline">{insights.model}</span>
+                ) : (
+                  <span className="badge badge-ghost">{t("insights.baseline", "Baseline")}</span>
+                )}
+              </h2>
+              <div className="flex items-center gap-2">
+                <span className="badge badge-ghost flex items-center gap-1">
+                  <PlugZap size={14} />
+                  {integraciones?.slack?.configured ? "Slack ON" : "Slack OFF"}
+                </span>
+                <span className="badge badge-ghost">
+                  {integraciones?.whatsapp?.configured ? "WhatsApp ON" : "WhatsApp OFF"}
+                </span>
+              </div>
+            </div>
+            <InsightsBlock insights={insights} t={t} />
+          </div>
+        </section>
               ) : (
                 <ul className="divide-y divide-base-200">
                   {vaccineList.map((v) => (
