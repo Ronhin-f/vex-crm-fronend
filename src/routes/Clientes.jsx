@@ -494,6 +494,9 @@ export default function Clientes() {
   const vitalSigns = forms?.clinicalHistory?.vitalSigns || FALLBACK_VITALS;
   const isVet = (area || "").toLowerCase() === "veterinaria";
   const enableLabUpload = isVet && !!features?.labResults;
+  const historyFormFields = enableLabUpload
+    ? historyFields.filter((f) => !LAB_FIELD_NAMES.includes(f.name))
+    : historyFields;
 
   const [isLoading, setIsLoading] = useState(true);
   const [items, setItems] = useState([]);
@@ -521,7 +524,7 @@ export default function Clientes() {
   const [contactDraft, setContactDraft] = useState(null);
 
   const [historyEntries, setHistoryEntries] = useState([]);
-  const [historyForm, setHistoryForm] = useState(() => buildHistoryForm(historyFields, vitalSigns));
+  const [historyForm, setHistoryForm] = useState(() => buildHistoryForm(historyFormFields, vitalSigns));
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [savingHistory, setSavingHistory] = useState(false);
   const [openHistoryModal, setOpenHistoryModal] = useState(false);
@@ -549,11 +552,11 @@ export default function Clientes() {
   }));
 
   const clearHistoryForm = useCallback(() => {
-    setHistoryForm(buildHistoryForm(historyFields, vitalSigns));
+    setHistoryForm(buildHistoryForm(historyFormFields, vitalSigns));
     setLabAttachment(null);
     setLabMatches([]);
     setLabError("");
-  }, [historyFields, vitalSigns]);
+  }, [historyFormFields, vitalSigns]);
 
   const clearLabForm = useCallback(() => {
     setLabForm(buildLabForm());
@@ -565,7 +568,7 @@ export default function Clientes() {
   useEffect(() => {
     clearHistoryForm();
     clearLabForm();
-  }, [historyFields, vitalSigns, features?.clinicalHistory, clearHistoryForm, clearLabForm]);
+  }, [historyFormFields, vitalSigns, features?.clinicalHistory, clearHistoryForm, clearLabForm]);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -909,7 +912,7 @@ export default function Clientes() {
       const { signos_vitales, ...rest } = payload;
       const extras = {};
       const allowed = new Set(["motivo", "diagnostico", "tratamiento", "indicaciones", "notas", "sintomas", "animal", "vacunas"]);
-      for (const f of historyFields) {
+    for (const f of historyFormFields) {
         if (!allowed.has(f.name)) {
           extras[f.name] = payload[f.name];
         }
@@ -1122,7 +1125,7 @@ export default function Clientes() {
 
   const renderHistoryFields = () => (
     <div className="space-y-3">
-      {historyFields.map((f) => (
+      {historyFormFields.map((f) => (
         <label key={f.name} className="form-control">
           <span className="label-text">{f.label}</span>
           {f.type === "textarea" ? (
