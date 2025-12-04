@@ -78,12 +78,9 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary, contactLabel }) {
               <Phone className="w-3 h-3" /> <span className="truncate">{c.telefono}</span>
             </div>
           ) : null}
-          {(c.cargo || c.rol) && <div className="text-xs opacity-70">{[c.cargo, c.rol].filter(Boolean).join(" Â· ")}</div>}
-          {(c.obra_social || c.plan) && (
-            <div className="text-xs opacity-70">
-              Cobertura: {[c.obra_social, c.plan].filter(Boolean).join(" / ")}
-            </div>
-          )}
+          {(c.cargo || c.rol) && <div className="text-xs opacity-70">{[c.cargo, c.rol].filter(Boolean).join(" / ")}</div>}
+          {c.peso ? <div className="text-xs opacity-70">Peso: {c.peso} kg</div> : null}
+          {c.vacunas ? <div className="text-xs opacity-70 whitespace-pre-wrap">Vacunas: {c.vacunas}</div> : null}
           {c.numero_afiliado ? <div className="text-xs opacity-70">Afiliado: {c.numero_afiliado}</div> : null}
           {c.motivo_consulta ? <div className="text-xs opacity-70">Motivo: {c.motivo_consulta}</div> : null}
           {c.notas ? <div className="text-xs opacity-70 whitespace-pre-wrap">{c.notas}</div> : null}
@@ -106,13 +103,17 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary, contactLabel }) {
   );
 }
 
-function ContactFormInline({ initial, onCancel, onSave, saving }) {
+function ContactFormInline({ initial, onCancel, onSave, saving, isVet = false }) {
   const buildState = (init) => ({
     nombre: init?.nombre || "",
     email: init?.email || "",
     telefono: init?.telefono || "",
     cargo: init?.cargo || "",
     rol: init?.rol || "",
+    peso: init?.peso || "",
+    vacunas: init?.vacunas || "",
+    ultima_vacuna: init?.ultima_vacuna || "",
+    proxima_vacuna: init?.proxima_vacuna || "",
     notas: init?.notas || "",
     obra_social: init?.obra_social || "",
     plan: init?.plan || "",
@@ -133,10 +134,15 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
   });
   const [f, setF] = useState(() => buildState(initial));
   const [openClinico, setOpenClinico] = useState(false);
+  const [contactTab, setContactTab] = useState(isVet ? "datos" : "datos");
 
   useEffect(() => {
     setF(buildState(initial));
   }, [initial]);
+
+  useEffect(() => {
+    setContactTab(isVet ? "datos" : "datos");
+  }, [isVet]);
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -177,42 +183,105 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
         onSave(f);
       }}
     >
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <label className="form-control">
-          <span className="label-text">Nombre</span>
-          <input name="nombre" className="input input-bordered input-sm" value={f.nombre} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Email</span>
-          <input name="email" type="email" className="input input-bordered input-sm" value={f.email} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">TelÃ©fono</span>
-          <input name="telefono" className="input input-bordered input-sm" value={f.telefono} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Cargo</span>
-          <input name="cargo" className="input input-bordered input-sm" value={f.cargo} onChange={onChange} />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Rol</span>
-          <input name="rol" className="input input-bordered input-sm" value={f.rol} onChange={onChange} />
-        </label>
-      </div>
-
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <button type="button" className="btn btn-outline btn-xs" onClick={() => setOpenClinico(true)}>
-            <HeartPulse className="w-4 h-4" /> Datos clÃ­nicos {hasClinicos ? "â€¢" : ""}
+      {isVet ? (
+        <div className="join mb-1">
+          <button
+            type="button"
+            className={`join-item btn btn-xs ${contactTab === "datos" ? "btn-primary" : "btn-ghost"}`}
+            onClick={() => setContactTab("datos")}
+          >
+            Datos
           </button>
-          {hasClinicos ? <span className="badge badge-success badge-xs">Completo</span> : null}
+          <button
+            type="button"
+            className={`join-item btn btn-xs ${contactTab === "vacunas" ? "btn-primary" : "btn-ghost"}`}
+            onClick={() => setContactTab("vacunas")}
+          >
+            Vacunas
+          </button>
         </div>
-      </div>
+      ) : null}
 
-      <label className="form-control">
-        <span className="label-text">Notas</span>
-        <textarea name="notas" className="textarea textarea-bordered textarea-sm" value={f.notas} onChange={onChange} />
-      </label>
+      {contactTab === "datos" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <label className="form-control">
+            <span className="label-text">{isVet ? "Nombre de la mascota" : "Nombre"}</span>
+            <input name="nombre" className="input input-bordered input-sm" value={f.nombre} onChange={onChange} />
+          </label>
+          {isVet ? (
+            <label className="form-control">
+              <span className="label-text">Especie</span>
+              <input name="rol" className="input input-bordered input-sm" value={f.rol} onChange={onChange} />
+            </label>
+          ) : (
+            <label className="form-control">
+              <span className="label-text">Email</span>
+              <input name="email" type="email" className="input input-bordered input-sm" value={f.email} onChange={onChange} />
+            </label>
+          )}
+          {isVet ? (
+            <label className="form-control">
+              <span className="label-text">Raza</span>
+              <input name="cargo" className="input input-bordered input-sm" value={f.cargo} onChange={onChange} />
+            </label>
+          ) : (
+            <label className="form-control">
+              <span className="label-text">Telefono</span>
+              <input name="telefono" className="input input-bordered input-sm" value={f.telefono} onChange={onChange} />
+            </label>
+          )}
+          {isVet ? (
+            <label className="form-control">
+              <span className="label-text">Peso (kg)</span>
+              <input
+                name="peso"
+                type="number"
+                step="0.01"
+                className="input input-bordered input-sm"
+                value={f.peso}
+                onChange={onChange}
+              />
+            </label>
+          ) : (
+            <label className="form-control">
+              <span className="label-text">Cargo</span>
+              <input name="cargo" className="input input-bordered input-sm" value={f.cargo} onChange={onChange} />
+            </label>
+          )}
+          {!isVet ? (
+            <label className="form-control">
+              <span className="label-text">Rol</span>
+              <input name="rol" className="input input-bordered input-sm" value={f.rol} onChange={onChange} />
+            </label>
+          ) : null}
+        </div>
+      )}
+
+      {isVet && contactTab === "vacunas" ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <label className="form-control">
+              <span className="label-text">Ultima vacuna</span>
+              <input name="ultima_vacuna" className="input input-bordered input-sm" value={f.ultima_vacuna} onChange={onChange} />
+            </label>
+            <label className="form-control">
+              <span className="label-text">Proxima vacuna</span>
+              <input name="proxima_vacuna" className="input input-bordered input-sm" value={f.proxima_vacuna} onChange={onChange} />
+            </label>
+          </div>
+          <label className="form-control">
+            <span className="label-text">Vacunas / observaciones</span>
+            <textarea name="vacunas" className="textarea textarea-bordered textarea-sm" rows={4} value={f.vacunas} onChange={onChange} />
+          </label>
+        </div>
+      ) : null}
+
+      {(!isVet || contactTab !== "vacunas") && (
+        <label className="form-control">
+          <span className="label-text">Notas</span>
+          <textarea name="notas" className="textarea textarea-bordered textarea-sm" value={f.notas} onChange={onChange} />
+        </label>
+      )}
 
       <label className="label cursor-pointer w-fit gap-2">
         <input
@@ -225,6 +294,17 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
         <span className="label-text">Marcar como principal</span>
       </label>
 
+      {!isVet ? (
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <button type="button" className="btn btn-outline btn-xs" onClick={() => setOpenClinico(true)}>
+              <HeartPulse className="w-4 h-4" /> Datos clinicos {hasClinicos ? "✔" : ""}
+            </button>
+            {hasClinicos ? <span className="badge badge-success badge-xs">Completo</span> : null}
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex justify-end gap-2 pt-1">
         <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>
           Cancelar
@@ -234,97 +314,98 @@ function ContactFormInline({ initial, onCancel, onSave, saving }) {
         </button>
       </div>
 
-      <SimpleModal open={openClinico} onClose={() => setOpenClinico(false)} title="Datos clÃ­nicos del contacto">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-          <label className="form-control">
-            <span className="label-text">Obra social</span>
-            <input name="obra_social" className="input input-bordered input-sm" value={f.obra_social} onChange={onChange} />
-          </label>
-          <label className="form-control">
-            <span className="label-text">Plan</span>
-            <input name="plan" className="input input-bordered input-sm" value={f.plan} onChange={onChange} />
-          </label>
-          <label className="form-control">
-            <span className="label-text">NÃºmero de afiliado</span>
-            <input name="numero_afiliado" className="input input-bordered input-sm" value={f.numero_afiliado} onChange={onChange} />
-          </label>
-        </div>
+      {!isVet ? (
+        <SimpleModal open={openClinico} onClose={() => setOpenClinico(false)} title="Datos clinicos del contacto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <label className="form-control">
+              <span className="label-text">Obra social</span>
+              <input name="obra_social" className="input input-bordered input-sm" value={f.obra_social} onChange={onChange} />
+            </label>
+            <label className="form-control">
+              <span className="label-text">Plan</span>
+              <input name="plan" className="input input-bordered input-sm" value={f.plan} onChange={onChange} />
+            </label>
+            <label className="form-control">
+              <span className="label-text">Numero de afiliado</span>
+              <input name="numero_afiliado" className="input input-bordered input-sm" value={f.numero_afiliado} onChange={onChange} />
+            </label>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-          {PREGUNTAS_IMPORTANTES.map((p) => (
-            <div key={p.id} className="border rounded-lg p-3">
-              <div className="text-sm font-medium mb-1">{p.label}</div>
-              <div className="flex gap-4 mt-1">
-                <label className="flex items-center gap-1 text-xs">
-                  <input
-                    type="radio"
-                    name={`pregunta__${p.id}`}
-                    value="si"
-                    checked={f.preguntas?.[p.id] === "si"}
-                    onChange={onChange}
-                  />
-                  SÃ­
-                </label>
-                <label className="flex items-center gap-1 text-xs">
-                  <input
-                    type="radio"
-                    name={`pregunta__${p.id}`}
-                    value="no"
-                    checked={f.preguntas?.[p.id] === "no"}
-                    onChange={onChange}
-                  />
-                  No
-                </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            {PREGUNTAS_IMPORTANTES.map((p) => (
+              <div key={p.id} className="border rounded-lg p-3">
+                <div className="text-sm font-medium mb-1">{p.label}</div>
+                <div className="flex gap-4 mt-1">
+                  <label className="flex items-center gap-1 text-xs">
+                    <input
+                      type="radio"
+                      name={`pregunta__${p.id}`}
+                      value="si"
+                      checked={f.preguntas?.[p.id] === "si"}
+                      onChange={onChange}
+                    />
+                    Si
+                  </label>
+                  <label className="flex items-center gap-1 text-xs">
+                    <input
+                      type="radio"
+                      name={`pregunta__${p.id}`}
+                      value="no"
+                      checked={f.preguntas?.[p.id] === "no"}
+                      onChange={onChange}
+                    />
+                    No
+                  </label>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="form-control">
-            <span className="label-text">Motivo de consulta</span>
-            <input name="motivo_consulta" className="input input-bordered input-sm" value={f.motivo_consulta} onChange={onChange} />
-          </label>
-          <label className="form-control">
-            <span className="label-text">Ãšltima consulta odontolÃ³gica</span>
-            <input name="ultima_consulta" className="input input-bordered input-sm" value={f.ultima_consulta} onChange={onChange} />
-          </label>
-          <label className="form-control">
-            <span className="label-text">Cepillados diarios</span>
-            <input name="cepillados_diarios" className="input input-bordered input-sm" value={f.cepillados_diarios} onChange={onChange} />
-          </label>
-          <label className="form-control">
-            <span className="label-text">Â¿Tiene sangrado?</span>
-            <input name="sangrado" className="input input-bordered input-sm" value={f.sangrado} onChange={onChange} />
-          </label>
-          <label className="form-control">
-            <span className="label-text">Momentos de azÃºcar</span>
-            <input name="momentos_azucar" className="input input-bordered input-sm" value={f.momentos_azucar} onChange={onChange} />
-          </label>
-          <label className="form-control">
-            <span className="label-text">Â¿Ha tenido dolor?</span>
-            <input name="dolor" className="input input-bordered input-sm" value={f.dolor} onChange={onChange} />
-          </label>
-          <label className="form-control">
-            <span className="label-text">Â¿SufriÃ³ algÃºn golpe?</span>
-            <input name="golpe" className="input input-bordered input-sm" value={f.golpe} onChange={onChange} />
-          </label>
-          <label className="form-control">
-            <span className="label-text">Dificultad al hablar/masticar/deglutir</span>
-            <input name="dificultad" className="input input-bordered input-sm" value={f.dificultad} onChange={onChange} />
-          </label>
-        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="form-control">
+              <span className="label-text">Motivo de consulta</span>
+              <input name="motivo_consulta" className="input input-bordered input-sm" value={f.motivo_consulta} onChange={onChange} />
+            </label>
+            <label className="form-control">
+              <span className="label-text">Ultima consulta odontologica</span>
+              <input name="ultima_consulta" className="input input-bordered input-sm" value={f.ultima_consulta} onChange={onChange} />
+            </label>
+            <label className="form-control">
+              <span className="label-text">Cepillados diarios</span>
+              <input name="cepillados_diarios" className="input input-bordered input-sm" value={f.cepillados_diarios} onChange={onChange} />
+            </label>
+            <label className="form-control">
+              <span className="label-text">Tiene sangrado?</span>
+              <input name="sangrado" className="input input-bordered input-sm" value={f.sangrado} onChange={onChange} />
+            </label>
+            <label className="form-control">
+              <span className="label-text">Momentos de azucar</span>
+              <input name="momentos_azucar" className="input input-bordered input-sm" value={f.momentos_azucar} onChange={onChange} />
+            </label>
+            <label className="form-control">
+              <span className="label-text">Ha tenido dolor?</span>
+              <input name="dolor" className="input input-bordered input-sm" value={f.dolor} onChange={onChange} />
+            </label>
+            <label className="form-control">
+              <span className="label-text">Sufrio algun golpe?</span>
+              <input name="golpe" className="input input-bordered input-sm" value={f.golpe} onChange={onChange} />
+            </label>
+            <label className="form-control">
+              <span className="label-text">Dificultad al hablar/masticar/deglutir</span>
+              <input name="dificultad" className="input input-bordered input-sm" value={f.dificultad} onChange={onChange} />
+            </label>
+          </div>
 
-        <div className="mt-4 flex justify-end">
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => setOpenClinico(false)}>
-            Cerrar
-          </button>
-        </div>
-      </SimpleModal>
+          <div className="mt-4 flex justify-end">
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => setOpenClinico(false)}>
+              Cerrar
+            </button>
+          </div>
+        </SimpleModal>
+      ) : null}
     </form>
   );
 }
-
 /* ---------------- Badge de estado: botÃ³n simple ---------------- */
 function StatusBadge({ status, onChange }) {
   const map = {
@@ -427,7 +508,7 @@ export default function Clientes() {
     nombre: "",
     contacto_nombre: "",
     email: "",
-    telefono: "",
+    Telefono: "",
     direccion: "",
     observacion: "",
   });
@@ -509,7 +590,7 @@ export default function Clientes() {
       nombre: "",
       contacto_nombre: "",
       email: "",
-      telefono: "",
+      Telefono: "",
       direccion: "",
       observacion: "",
     });
@@ -559,7 +640,7 @@ export default function Clientes() {
       nombre: cli.nombre || "",
       contacto_nombre: cli.contacto_nombre || "",
       email: cli.email || "",
-      telefono: cli.telefono || "",
+      Telefono || "",
       direccion: cli.direccion || "",
       observacion: cli.observacion || "",
     });
@@ -641,7 +722,7 @@ export default function Clientes() {
     let arr = [...items];
     if (term) {
       arr = arr.filter((c) =>
-        [c.nombre, c.contacto_nombre, c.email, c.telefono, c.direccion]
+        [c.nombre, c.contacto_nombre, c.email, c.Telefono, c.direccion]
           .filter(Boolean)
           .some((v) => String(v).toLowerCase().includes(term))
       );
@@ -1245,7 +1326,7 @@ export default function Clientes() {
                         {c.contacto_nombre || "â€”"}
                       </td>
                       <td className="px-3 py-2">{c.email || "â€”"}</td>
-                      <td className="px-3 py-2">{c.telefono || "â€”"}</td>
+                      <td className="px-3 py-2">{c.Telefono || "â€”"}</td>
                       <td className="hidden lg:table-cell px-3 py-2">
                         {c.direccion || "â€”"}
                       </td>
@@ -1391,8 +1472,8 @@ export default function Clientes() {
                   <label className="label">{t("clients.form.phone")}</label>
                   <input
                     className="input input-bordered w-full"
-                    name="telefono"
-                    value={form.telefono}
+                    name="Telefono"
+                    value={form.Telefono}
                     onChange={onChange}
                   />
                 </div>
@@ -1583,6 +1664,7 @@ export default function Clientes() {
         <ContactFormInline
           initial={contactDraft}
           saving={savingContact}
+          isVet={isVet}
           onCancel={() => {
             setOpenContactModal(false);
             setContactDraft(null);
@@ -1676,6 +1758,10 @@ export default function Clientes() {
     </div>
   );
 }
+
+
+
+
 
 
 

@@ -1,4 +1,4 @@
-// vex-crm-fronend/src/routes/DashboardCRM.jsx
+﻿// vex-crm-fronend/src/routes/DashboardCRM.jsx
 import { useEffect, useMemo, useState } from "react";
 import {
   Users,
@@ -178,6 +178,7 @@ export default function DashboardCRM() {
 
   const [top, setTop] = useState([]);
   const [seg, setSeg] = useState([]);
+  const [vacunas, setVacunas] = useState([]);
 
   const [insights, setInsights] = useState({
     recomendaciones: null,
@@ -239,6 +240,7 @@ export default function DashboardCRM() {
         }));
         setTop(Array.isArray(d.topClientes) ? d.topClientes : []);
         setSeg(Array.isArray(d.proximosSeguimientos) ? d.proximosSeguimientos : []);
+        setVacunas(Array.isArray(d.vacunas) ? d.vacunas : []);
       }
 
       if (isOk(aiRes)) {
@@ -382,6 +384,21 @@ export default function DashboardCRM() {
     () => sum(analytics?.pipeline?.summary?.stages || [], (s) => s.total),
     [analytics]
   );
+
+  const vaccineList = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return (vacunas || []).map((v) => {
+      const fecha = v.proxima_vacuna ? new Date(v.proxima_vacuna) : null;
+      const days = fecha ? Math.floor((fecha - today) / 86400000) : null;
+      let tone = "badge-success";
+      if (days == null) tone = "badge-ghost";
+      else if (days <= 3) tone = "badge-error";
+      else if (days <= 7) tone = "badge-warning";
+      else tone = "badge-success";
+      return { ...v, days, tone, fecha };
+    });
+  }, [vacunas]);
 
   if (isLoading) {
     return (
@@ -628,8 +645,8 @@ export default function DashboardCRM() {
           </section>
         </div>
 
-        {/* Listas: clientes recientes y próximos 7d */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Listas: clientes recientes / tareas / vacunas */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <section className="card bg-base-100 shadow">
             <div className="card-body">
               <h2 className="card-title">{t("cards.topRecentClients", "Clientes recientes")}</h2>
@@ -644,7 +661,7 @@ export default function DashboardCRM() {
                         <div className="flex-1">
                           <div className="font-medium leading-5">{c.nombre}</div>
                           <div className="text-xs text-base-content/60">
-                            {(c.email || "-")} · {(c.telefono || "-")}
+                            {(c.email || "-")} / {(c.telefono || "-")}
                           </div>
                         </div>
                       </div>
@@ -657,9 +674,9 @@ export default function DashboardCRM() {
 
           <section className="card bg-base-100 shadow">
             <div className="card-body">
-              <h2 className="card-title">{t("cards.upcoming7d", "Próximos 7 días")}</h2>
+              <h2 className="card-title">{t("cards.upcoming7d", "Proximos 7 dias")}</h2>
               {seg.length === 0 ? (
-                <p className="text-sm text-base-content/60">{t("cards.noUpcoming", "No hay tareas próximas.")}</p>
+                <p className="text-sm text-base-content/60">{t("cards.noUpcoming", "No hay tareas proximas.")}</p>
               ) : (
                 <ul className="divide-y divide-base-200">
                   {seg.map((s) => {
@@ -678,6 +695,32 @@ export default function DashboardCRM() {
                       </li>
                     );
                   })}
+                </ul>
+              )}
+            </div>
+          </section>
+
+          <section className="card bg-base-100 shadow">
+            <div className="card-body">
+              <h2 className="card-title">Vacunas (14/7/3)</h2>
+              {vaccineList.length === 0 ? (
+                <p className="text-sm text-base-content/60">Sin vacunas pendientes.</p>
+              ) : (
+                <ul className="divide-y divide-base-200">
+                  {vaccineList.map((v) => (
+                    <li key={v.id} className="py-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{v.nombre || "Mascota"}</div>
+                        <div className="text-xs text-base-content/60 truncate">{v.cliente_nombre || "Dueno no informado"}</div>
+                        {v.peso ? <div className="text-xs text-base-content/70">Peso: {v.peso} kg</div> : null}
+                        {v.vacunas ? <div className="text-xs text-base-content/70 truncate">Vacunas: {v.vacunas}</div> : null}
+                      </div>
+                      <div className="text-right space-y-1">
+                        <div className={`badge ${v.tone} badge-outline`}>{v.days != null ? `${v.days} d` : "--"}</div>
+                        <div className="text-xs text-base-content/60">{v.fecha ? v.fecha.toLocaleDateString(i18n.language || undefined) : "Sin fecha"}</div>
+                      </div>
+                    </li>
+                  ))}
                 </ul>
               )}
             </div>
@@ -709,7 +752,79 @@ export default function DashboardCRM() {
             </div>
           </section>
         </div>
+              ) : (
+                <ul className="divide-y divide-base-200">
+                  {vaccineList.map((v) => (
+                    <li key={v.id} className="py-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{v.nombre || "Mascota"}</div>
+                        <div className="text-xs text-base-content/60 truncate">{v.cliente_nombre || "Dueño no informado"}</div>
+                        {v.peso ? <div className="text-xs text-base-content/70">Peso: {v.peso} kg</div> : null}
+                        {v.vacunas ? <div className="text-xs text-base-content/70 truncate">Vacunas: {v.vacunas}</div> : null}
+                      </div>
+                      <div className="text-right space-y-1">
+                        <div className={`badge ${v.tone} badge-outline`}>{v.days != null ? `${v.days} d` : "--"}</div>
+                        <div className="text-xs text-base-content/60">{v.fecha ? v.fecha.toLocaleDateString(i18n.language || undefined) : "Sin fecha"}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+
+          <section className="card bg-base-100 shadow lg:col-span-2">
+            <div className="card-body">
+              <div className="flex items-center justify-between">
+                <h2 className="card-title flex items-center gap-2">
+                  <Brain size={18} />
+                  {t("cards.insights", "Insights del negocio")}
+                  {insights.model ? (
+                    <span className="badge badge-outline">{insights.model}</span>
+                  ) : (
+                    <span className="badge badge-ghost">{t("insights.baseline", "Baseline")}</span>
+                  )}
+                </h2>
+                <div className="flex items-center gap-2">
+                  <span className="badge badge-ghost flex items-center gap-1">
+                    <PlugZap size={14} />
+                    {integraciones?.slack?.configured ? "Slack ON" : "Slack OFF"}
+                  </span>
+                  <span className="badge badge-ghost">
+                    {integraciones?.whatsapp?.configured ? "WhatsApp ON" : "WhatsApp OFF"}
+                  </span>
+                </div>
+              </div>
+              <InsightsBlock insights={insights} t={t} />
+            </div>
+          </section>
+        </div>
+                  {t("cards.insights", "Insights del negocio")}
+                  {insights.model ? (
+                    <span className="badge badge-outline">{insights.model}</span>
+                  ) : (
+                    <span className="badge badge-ghost">{t("insights.baseline", "Baseline")}</span>
+                  )}
+                </h2>
+                <div className="flex items-center gap-2">
+                  <span className="badge badge-ghost flex items-center gap-1">
+                    <PlugZap size={14} />
+                    {integraciones?.slack?.configured ? "Slack ON" : "Slack OFF"}
+                  </span>
+                  <span className="badge badge-ghost">
+                    {integraciones?.whatsapp?.configured ? "WhatsApp ON" : "WhatsApp OFF"}
+                  </span>
+                </div>
+              </div>
+              <InsightsBlock insights={insights} t={t} />
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );
 }
+
+
+
+
