@@ -23,6 +23,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import api from "../utils/api";
+import { useArea } from "../context/AreaContext";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-hot-toast";
@@ -154,6 +155,8 @@ function InsightsBlock({ insights, t }) {
 export default function DashboardCRM() {
   const { usuario } = useAuth();
   const { t, i18n } = useTranslation();
+  const { area } = useArea();
+  const isVet = (area || "").toLowerCase() === "veterinaria";
 
   const [range, setRange] = useState("30");
   const [isLoading, setIsLoading] = useState(true);
@@ -645,86 +648,99 @@ export default function DashboardCRM() {
           </section>
         </div>
 
-        {/* Listas: clientes recientes / tareas / vacunas */}
+        {/* Listas: clientes recientes / tareas / vacunas (vet: vacunas primero) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <section className="card bg-base-100 shadow">
-            <div className="card-body">
-              <h2 className="card-title">{t("cards.topRecentClients", "Clientes recientes")}</h2>
-              {top.length === 0 ? (
-                <p className="text-sm text-base-content/60">{t("cards.noRecentClients", "No hay clientes recientes.")}</p>
-              ) : (
-                <ul className="menu bg-base-100 rounded-box w-full">
-                  {top.map((c) => (
-                    <li key={c.id} className="py-1">
-                      <div className="flex items-center gap-3">
-                        <User2 className="text-primary" size={16} />
-                        <div className="flex-1">
-                          <div className="font-medium leading-5">{c.nombre}</div>
-                          <div className="text-xs text-base-content/60">
-                            {(c.email || "-")} / {(c.telefono || "-")}
+          {(isVet
+            ? ["vacunas", "tareas", "clientes"]
+            : ["clientes", "tareas", "vacunas"]
+          ).map((slot) => {
+            if (slot === "clientes") {
+              return (
+                <section key="clientes" className="card bg-base-100 shadow">
+                  <div className="card-body">
+                    <h2 className="card-title">{t("cards.topRecentClients", "Clientes recientes")}</h2>
+                    {top.length === 0 ? (
+                      <p className="text-sm text-base-content/60">{t("cards.noRecentClients", "No hay clientes recientes.")}</p>
+                    ) : (
+                      <ul className="menu bg-base-100 rounded-box w-full">
+                        {top.map((c) => (
+                          <li key={c.id} className="py-1">
+                            <div className="flex items-center gap-3">
+                              <User2 className="text-primary" size={16} />
+                              <div className="flex-1">
+                                <div className="font-medium leading-5">{c.nombre}</div>
+                                <div className="text-xs text-base-content/60">
+                                  {(c.email || "-")} / {(c.telefono || "-")}
+                                </div>
+                              </div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </section>
+              );
+            }
+            if (slot === "tareas") {
+              return (
+                <section key="tareas" className="card bg-base-100 shadow">
+                  <div className="card-body">
+                    <h2 className="card-title">{t("cards.upcoming7d", "Proximos 7 dias")}</h2>
+                    {seg.length === 0 ? (
+                      <p className="text-sm text-base-content/60">{t("cards.noUpcoming", "No hay tareas proximas.")}</p>
+                    ) : (
+                      <ul className="divide-y divide-base-200">
+                        {seg.map((s) => {
+                          const due = new Date(s.vence_en);
+                          const mins = (due - Date.now()) / 60000;
+                          const tone = mins < 0 ? "badge-error" : mins <= 60 * 24 ? "badge-warning" : "badge-info";
+                          return (
+                            <li key={s.id} className="py-3 flex items-start justify-between gap-3">
+                              <div>
+                                <div className="font-medium">{s.titulo}</div>
+                                <div className="text-xs text-base-content/60">{s.cliente_nombre || "-"}</div>
+                              </div>
+                              <span className={`badge ${tone} badge-outline flex items-center gap-1`}>
+                                {t("cards.dueAt", "Vence")} {due.toLocaleString(i18n.language || undefined)}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                </section>
+              );
+            }
+            return (
+              <section key="vacunas" className="card bg-base-100 shadow">
+                <div className="card-body">
+                  <h2 className="card-title">Vacunas (14/7/3)</h2>
+                  {vaccineList.length === 0 ? (
+                    <p className="text-sm text-base-content/60">Sin vacunas pendientes.</p>
+                  ) : (
+                    <ul className="divide-y divide-base-200">
+                      {vaccineList.map((v) => (
+                        <li key={v.id} className="py-3 flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{v.nombre || "Mascota"}</div>
+                            <div className="text-xs text-base-content/60 truncate">{v.cliente_nombre || "Dueno no informado"}</div>
+                            {v.peso ? <div className="text-xs text-base-content/70">Peso: {v.peso} kg</div> : null}
+                            {v.vacunas ? <div className="text-xs text-base-content/70 truncate">Vacunas: {v.vacunas}</div> : null}
                           </div>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
-
-          <section className="card bg-base-100 shadow">
-            <div className="card-body">
-              <h2 className="card-title">{t("cards.upcoming7d", "Proximos 7 dias")}</h2>
-              {seg.length === 0 ? (
-                <p className="text-sm text-base-content/60">{t("cards.noUpcoming", "No hay tareas proximas.")}</p>
-              ) : (
-                <ul className="divide-y divide-base-200">
-                  {seg.map((s) => {
-                    const due = new Date(s.vence_en);
-                    const mins = (due - Date.now()) / 60000;
-                    const tone = mins < 0 ? "badge-error" : mins <= 60 * 24 ? "badge-warning" : "badge-info";
-                    return (
-                      <li key={s.id} className="py-3 flex items-start justify-between gap-3">
-                        <div>
-                          <div className="font-medium">{s.titulo}</div>
-                          <div className="text-xs text-base-content/60">{s.cliente_nombre || "-"}</div>
-                        </div>
-                        <span className={`badge ${tone} badge-outline flex items-center gap-1`}>
-                          {t("cards.dueAt", "Vence")} {due.toLocaleString(i18n.language || undefined)}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          </section>
-
-          <section className="card bg-base-100 shadow">
-            <div className="card-body">
-              <h2 className="card-title">Vacunas (14/7/3)</h2>
-              {vaccineList.length === 0 ? (
-                <p className="text-sm text-base-content/60">Sin vacunas pendientes.</p>
-              ) : (
-                <ul className="divide-y divide-base-200">
-                  {vaccineList.map((v) => (
-                    <li key={v.id} className="py-3 flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{v.nombre || "Mascota"}</div>
-                        <div className="text-xs text-base-content/60 truncate">{v.cliente_nombre || "Dueno no informado"}</div>
-                        {v.peso ? <div className="text-xs text-base-content/70">Peso: {v.peso} kg</div> : null}
-                        {v.vacunas ? <div className="text-xs text-base-content/70 truncate">Vacunas: {v.vacunas}</div> : null}
-                      </div>
-                      <div className="text-right space-y-1">
-                        <div className={`badge ${v.tone} badge-outline`}>{v.days != null ? `${v.days} d` : "--"}</div>
-                        <div className="text-xs text-base-content/60">{v.fecha ? v.fecha.toLocaleDateString(i18n.language || undefined) : "Sin fecha"}</div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
+                          <div className="text-right space-y-1">
+                            <div className={`badge ${v.tone} badge-outline`}>{v.days != null ? `${v.days} d` : "--"}</div>
+                            <div className="text-xs text-base-content/60">{v.fecha ? v.fecha.toLocaleDateString(i18n.language || undefined) : "Sin fecha"}</div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </section>
+            );
+          })}
         </div>
 
         <section className="card bg-base-100 shadow mt-6">
