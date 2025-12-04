@@ -226,7 +226,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving, isVet = false })
             </label>
           ) : (
             <label className="form-control">
-              <span className="label-text">Telefono</span>
+              <span className="label-text">telefono</span>
               <input name="telefono" className="input input-bordered input-sm" value={f.telefono} onChange={onChange} />
             </label>
           )}
@@ -508,7 +508,7 @@ export default function Clientes() {
     nombre: "",
     contacto_nombre: "",
     email: "",
-    Telefono: "",
+    telefono: "",
     direccion: "",
     observacion: "",
   });
@@ -590,7 +590,7 @@ export default function Clientes() {
       nombre: "",
       contacto_nombre: "",
       email: "",
-      Telefono: "",
+      telefono: "",
       direccion: "",
       observacion: "",
     });
@@ -640,7 +640,7 @@ export default function Clientes() {
       nombre: cli.nombre || "",
       contacto_nombre: cli.contacto_nombre || "",
       email: cli.email || "",
-      Telefono || "",
+      telefono: cli.telefono || "",
       direccion: cli.direccion || "",
       observacion: cli.observacion || "",
     });
@@ -722,7 +722,7 @@ export default function Clientes() {
     let arr = [...items];
     if (term) {
       arr = arr.filter((c) =>
-        [c.nombre, c.contacto_nombre, c.email, c.Telefono, c.direccion]
+        [c.nombre, c.contacto_nombre, c.email, c.telefono, c.direccion]
           .filter(Boolean)
           .some((v) => String(v).toLowerCase().includes(term))
       );
@@ -1326,7 +1326,7 @@ export default function Clientes() {
                         {c.contacto_nombre || "â€”"}
                       </td>
                       <td className="px-3 py-2">{c.email || "â€”"}</td>
-                      <td className="px-3 py-2">{c.Telefono || "â€”"}</td>
+                      <td className="px-3 py-2">{c.telefono || "â€”"}</td>
                       <td className="hidden lg:table-cell px-3 py-2">
                         {c.direccion || "â€”"}
                       </td>
@@ -1472,8 +1472,8 @@ export default function Clientes() {
                   <label className="label">{t("clients.form.phone")}</label>
                   <input
                     className="input input-bordered w-full"
-                    name="Telefono"
-                    value={form.Telefono}
+                    name="telefono"
+                    value={form.telefono}
                     onChange={onChange}
                   />
                 </div>
@@ -1758,6 +1758,7 @@ export default function Clientes() {
     </div>
   );
 }
+
 
 
 
