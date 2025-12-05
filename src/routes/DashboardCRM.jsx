@@ -450,28 +450,30 @@ export default function DashboardCRM() {
           </div>
         </div>
 
-        {/* Primera fila: cierres + pipeline */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <div className="card bg-base-100 shadow col-span-1">
-            <div className="card-body">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm text-base-content/60 flex items-center gap-1">
-                    <PieChart size={16} /> Won / Lost
+        {/* Primera fila: pipeline (y win/loss solo fuera de veterinaria) */}
+        <div className={`grid grid-cols-1 ${isVet ? "lg:grid-cols-1" : "lg:grid-cols-3"} gap-6 mb-6`}>
+          {!isVet ? (
+            <div className="card bg-base-100 shadow col-span-1">
+              <div className="card-body">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-base-content/60 flex items-center gap-1">
+                      <PieChart size={16} /> Won / Lost
+                    </div>
+                    <div className="text-2xl font-semibold">{kpis.winRate}% win rate</div>
                   </div>
-                  <div className="text-2xl font-semibold">{kpis.winRate}% win rate</div>
+                  <DonutChart won={kpis.won} lost={kpis.lost} other={kpis.unqualified} />
                 </div>
-                <DonutChart won={kpis.won} lost={kpis.lost} other={kpis.unqualified} />
-              </div>
-              <div className="flex gap-3 text-sm mt-3 flex-wrap">
-                <span className="badge badge-success gap-1"><Trophy size={14} />{kpis.won} Won</span>
-                <span className="badge badge-error gap-1"><ThumbsDown size={14} />{kpis.lost} Lost</span>
-                <span className="badge badge-neutral gap-1"><Ban size={14} />{kpis.unqualified} Unqualified</span>
+                <div className="flex gap-3 text-sm mt-3 flex-wrap">
+                  <span className="badge badge-success gap-1"><Trophy size={14} />{kpis.won} Won</span>
+                  <span className="badge badge-error gap-1"><ThumbsDown size={14} />{kpis.lost} Lost</span>
+                  <span className="badge badge-neutral gap-1"><Ban size={14} />{kpis.unqualified} Unqualified</span>
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
 
-          <div className="card bg-base-100 shadow col-span-2">
+          <div className={`card bg-base-100 shadow ${isVet ? "col-span-1" : "col-span-2"}`}>
             <div className="card-body">
               <div className="flex items-center gap-2 text-sm text-base-content/60 mb-2">
                 <LineIcon size={16} /> Pipeline por stage
