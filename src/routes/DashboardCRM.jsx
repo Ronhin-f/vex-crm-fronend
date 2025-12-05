@@ -523,9 +523,9 @@ export default function DashboardCRM() {
           </section>
         </div>
 
-        {/* Primera fila: pipeline (y win/loss solo fuera de veterinaria) */}
-        <div className={`grid grid-cols-1 ${isVet ? "lg:grid-cols-1" : "lg:grid-cols-3"} gap-6 mb-6`}>
-          {!isVet ? (
+        {/* Primera fila: pipeline (solo para verticales no vet/marketing) */}
+        {!isVet && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <div className="card bg-base-100 shadow col-span-1">
               <div className="card-body">
                 <div className="flex items-center justify-between">
@@ -544,25 +544,25 @@ export default function DashboardCRM() {
                 </div>
               </div>
             </div>
-          ) : null}
 
-          <div className={`card bg-base-100 shadow ${isVet ? "col-span-1" : "col-span-2"}`}>
-            <div className="card-body">
-              <div className="flex items-center gap-2 text-sm text-base-content/60 mb-2">
-                <LineIcon size={16} /> Pipeline por stage
-              </div>
-              {totalStages === 0 ? (
-                <p className="text-sm text-base-content/60">Sin datos en el rango.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {(analytics?.pipeline?.summary?.stages || []).map((s, i) => (
-                    <BarRow key={i} label={s.stage} value={s.total} total={totalStages} />
-                  ))}
+            <div className="card bg-base-100 shadow col-span-2">
+              <div className="card-body">
+                <div className="flex items-center gap-2 text-sm text-base-content/60 mb-2">
+                  <LineIcon size={16} /> Pipeline por stage
                 </div>
-              )}
+                {totalStages === 0 ? (
+                  <p className="text-sm text-base-content/60">Sin datos en el rango.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {(analytics?.pipeline?.summary?.stages || []).map((s, i) => (
+                      <BarRow key={i} label={s.stage} value={s.total} total={totalStages} />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Segunda fila: contadores y contactabilidad */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
