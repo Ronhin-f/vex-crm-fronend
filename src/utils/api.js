@@ -7,9 +7,18 @@
 
 import axios from "axios";
 
+const sanitizeBase = (v) => {
+  if (!v) return "";
+  let b = String(v).trim();
+  if (!b) return "";
+  b = b.replace(/\/+$/, "");
+  if (/\/api$/i.test(b)) b = b.replace(/\/api$/i, "");
+  return b;
+};
+
 /* Base URLs (env) */
-const ENV_CORE = (import.meta.env.VITE_API_CORE_URL || "https://vex-core-backend-production.up.railway.app").replace(/\/+$/, "");
-const ENV_CRM  = (import.meta.env.VITE_API_CRM_URL  || (import.meta.env.VITE_API_URL || "http://localhost:3000")).replace(/\/+$/, "");
+const ENV_CORE = sanitizeBase(import.meta.env.VITE_API_CORE_URL || "https://vex-core-backend-production.up.railway.app");
+const ENV_CRM  = sanitizeBase(import.meta.env.VITE_API_CRM_URL  || import.meta.env.VITE_API_URL || "http://localhost:3000");
 
 /* Helpers para override en runtime (debug/SSO bridge) */
 function pickRuntimeBase(key, fallback) {
@@ -17,7 +26,7 @@ function pickRuntimeBase(key, fallback) {
     const winHint = (typeof window !== "undefined" && window[key]) ? String(window[key]) : "";
     const ls = (typeof localStorage !== "undefined" && localStorage.getItem("vex_api_base")) || "";
     const chosen = (winHint || ls || "").trim();
-    return (chosen || fallback).replace(/\/+$/, "");
+    return sanitizeBase(chosen || fallback);
   } catch {
     return fallback;
   }
@@ -28,8 +37,8 @@ export const crmApi  = axios.create({ baseURL: pickRuntimeBase("__VEX_API_BASE__
 
 /* Exponer atajos para ajustar el baseURL en caliente desde consola si hace falta */
 if (typeof window !== "undefined") {
-  window.__VEX_SET_API__ = (u) => { crmApi.defaults.baseURL = String(u || ENV_CRM).replace(/\/+$/, ""); console.info("[api] crm base =", crmApi.defaults.baseURL); };
-  window.__VEX_SET_CORE__ = (u) => { coreApi.defaults.baseURL = String(u || ENV_CORE).replace(/\/+$/, ""); console.info("[api] core base =", coreApi.defaults.baseURL); };
+  window.__VEX_SET_API__ = (u) => { crmApi.defaults.baseURL = sanitizeBase(u || ENV_CRM); console.info("[api] crm base =", crmApi.defaults.baseURL); };
+  window.__VEX_SET_CORE__ = (u) => { coreApi.defaults.baseURL = sanitizeBase(u || ENV_CORE); console.info("[api] core base =", coreApi.defaults.baseURL); };
 }
 
 /* Utils */
