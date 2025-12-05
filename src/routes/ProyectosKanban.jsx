@@ -1,9 +1,6 @@
 // frontend/src/routes/ProyectosKanban.jsx
-import { useUsersOptions } from "../hooks/useUsersOptions";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { fetchProyectosKanban, moveProyecto } from "../utils/vexKanbanApi";
-import api from "../utils/api";
 import { toast } from "react-hot-toast";
 import {
   CalendarClock,
@@ -22,9 +19,12 @@ import {
   Save,
   Pencil,
 } from "lucide-react";
+import api from "../utils/api";
+import { fetchProyectosKanban, moveProyecto } from "../utils/vexKanbanApi";
+import { useUsersOptions } from "../hooks/useUsersOptions";
+import { useArea } from "../context/AreaContext";
 
-/* ─────────────── Pipeline canónico (BE) ─────────────── */
-const PIPELINE = [
+const PIPELINE_DEFAULT = [
   "Incoming Leads",
   "Unqualified",
   "Qualified",
@@ -33,8 +33,9 @@ const PIPELINE = [
   "Won",
   "Lost",
 ];
+const PIPELINE_VET = ["Turno fijado", "Pre quirurgico", "Completado", "Turno perdido", "Lost"];
+const HIDDEN_VET = new Set(["Lost"]);
 
-// Orígenes disponibles para el dropdown de "Origen"
 const SOURCE_OPTS = [
   "Outreach",
   "Building Connected",
@@ -48,8 +49,7 @@ const SOURCE_OPTS = [
   "Unknown",
 ];
 
-/* ─────────────── Utils ─────────────── */
-function sortByDueCreated(items = []) {
+const sortByDueCreated = (items = []) => {
   const arr = [...items];
   arr.sort((a, b) => {
     const da = a.due_date ? new Date(a.due_date).getTime() : Infinity;
@@ -60,79 +60,8 @@ function sortByDueCreated(items = []) {
     return cb - ca;
   });
   return arr;
-}
+};
 
-/** Filtro FE cuando el BE no banca filtros (lo dejamos por compat) */
-function applyFiltersFE(list = [], f = {}) {
-  const q = (f.q || "").toLowerCase().trim();
-  return (list || []).filter((c) => {
-    if (q) {
-      const hay = [c.nombre, c.empresa, c.email, c.telefono]
-        .map((v) => (v || "").toLowerCase())
-        .some((v) => v.includes(q));
-      if (!hay) return false;
-    }
-    if (f.source) {
-      if ((c.source || "") !== f.source) return false;
-    }
-    if (f.assignee) {
-      const asg = (c.assignee_email || c.assignee || "").trim();
-      if (f.assignee === "Sin asignar") {
-        if (asg) return false;
-      } else if ((asg || "").toLowerCase() !== f.assignee.toLowerCase()) {
-        return false;
-      }
-    }
-    if (f.only_due) {
-      const duev = c.due_date || c.next_follow_up;
-      if (!duev) return false;
-    }
-    return true;
-  });
-}
-
-/* ─────────────── Badges ─────────────── */
-function DueBadge({ date, compact }) {
-  const { t } = useTranslation();
-  if (!date) return null;
-  const due = new Date(date);
-  const mins = (due.getTime() - Date.now()) / 60000;
-  let tone = "badge-info";
-  let label = t("common.badges.due");
-  if (mins < 0) {
-    tone = "badge-error";
-    label = t("common.badges.overdue");
-  } else if (mins <= 60 * 24) {
-    tone = "badge-warning";
-    label = t("common.badges.dueToday");
-  }
-  return (
-    <span className={`badge ${tone} ${compact ? "badge-xs" : "badge-sm"} badge-outline`}>
-      <CalendarClock size={12} className="mr-1" />
-      {label}: {due.toLocaleString()}
-    </span>
-  );
-}
-
-function EstimateChip({ url, compact }) {
-  const { t } = useTranslation();
-  if (!url) return null;
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      className={`badge badge-primary ${compact ? "badge-xs" : "badge-sm"} badge-outline no-underline`}
-      title={t("clients.list.viewEstimate")}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <Paperclip size={12} className="mr-1" />
-      {t("common.badges.estimate")}
-    </a>
-  );
-}
-
-/* ─────────────── Filtros con persistencia en URL ─────────────── */
 function useQueryState() {
   const [state, setState] = useState(() => {
     const u = new URL(window.location.href);
@@ -159,7 +88,7 @@ function useQueryState() {
   return [state, setState];
 }
 
-function FiltersBar({ value, onChange, onClear, right }) {
+const FiltersBar = ({ value, onChange, onClear, right }) => {
   const { t } = useTranslation();
   const [typing, setTyping] = useState(value.q);
   useEffect(() => {
@@ -186,7 +115,6 @@ function FiltersBar({ value, onChange, onClear, right }) {
           onChange={(e) => onChange({ ...value, source: e.target.value })}
         >
           <option value="">{t("pipeline.filters.sourceAll")}</option>
-          {/* sources conocidos; si llega otro, se verá crudo */}
           <option>Outreach</option>
           <option>Blue Book ITB</option>
           <option>Inbound</option>
@@ -202,7 +130,6 @@ function FiltersBar({ value, onChange, onClear, right }) {
         >
           <option value="">{t("pipeline.filters.assigneeAll")}</option>
           <option>{t("common.unassigned")}</option>
-          {/* agrega tus usuarios reales si corresponde */}
         </select>
 
         <label className="label cursor-pointer gap-2">
@@ -229,15 +156,54 @@ function FiltersBar({ value, onChange, onClear, right }) {
       </div>
     </div>
   );
-}
+};
 
-/* ─────────────── Modales ─────────────── */
-function DetailModal({ open, onClose, item, onEdit }) {
+const DueBadge = ({ date, compact }) => {
+  const { t } = useTranslation();
+  if (!date) return null;
+  const due = new Date(date);
+  const mins = (due.getTime() - Date.now()) / 60000;
+  let tone = "badge-info";
+  let label = t("common.badges.due");
+  if (mins < 0) {
+    tone = "badge-error";
+    label = t("common.badges.overdue");
+  } else if (mins <= 60 * 24) {
+    tone = "badge-warning";
+    label = t("common.badges.dueToday");
+  }
+  return (
+    <span className={`badge ${tone} ${compact ? "badge-xs" : "badge-sm"} badge-outline`}>
+      <CalendarClock size={12} className="mr-1" />
+      {label}: {due.toLocaleString()}
+    </span>
+  );
+};
+
+const EstimateChip = ({ url, compact }) => {
+  const { t } = useTranslation();
+  if (!url) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className={`badge badge-primary ${compact ? "badge-xs" : "badge-sm"} badge-outline no-underline`}
+      title={t("clients.list.viewEstimate")}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <Paperclip size={12} className="mr-1" />
+      {t("common.badges.estimate")}
+    </a>
+  );
+};
+
+const DetailModal = ({ open, onClose, item, onEdit }) => {
   const { t } = useTranslation();
   if (!open || !item) return null;
   const assignee = item.assignee_email || item.assignee || t("common.unassigned");
   const stageLabel = (s) => t(`common.stages.${s}`, s);
-  const notas = item.descripcion || item.notas || ""; // fallback
+  const notas = item.descripcion || item.notas || "";
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4" onClick={onClose}>
@@ -247,9 +213,7 @@ function DetailModal({ open, onClose, item, onEdit }) {
       >
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h3 className="text-lg font-semibold truncate">
-              {item.nombre || item.email || t("common.noData")}
-            </h3>
+            <h3 className="text-lg font-semibold truncate">{item.nombre || item.email || t("common.noData")}</h3>
             {item.empresa && (
               <div className="text-sm opacity-70 truncate flex items-center gap-1">
                 <Building2 size={14} /> {item.empresa}
@@ -307,33 +271,36 @@ function DetailModal({ open, onClose, item, onEdit }) {
         </div>
 
         <div className="mt-3 text-xs opacity-60 flex items-center gap-3">
-          <Clock3 size={12} /> {t("common.createdAt")}:{" "}
-          {item.created_at ? new Date(item.created_at).toLocaleString() : "—"}
+          <Clock3 size={12} /> {t("common.createdAt")}: {item.created_at ? new Date(item.created_at).toLocaleString() : "—"}
         </div>
       </div>
     </div>
   );
-}
+};
 
-function CreateProjectModal({ open, onClose, onCreated, clients }) {
+const CreateProjectModal = ({ open, onClose, onCreated, clients, pipeline, hiddenStages }) => {
   const { t } = useTranslation();
-  const { options: userOpts } = useUsersOptions(); // ← opciones para "Responsable"
+  const { options: userOpts } = useUsersOptions();
+  const stageOptions = useMemo(
+    () => (pipeline || PIPELINE_DEFAULT).filter((s) => !hiddenStages?.has?.(s)),
+    [pipeline, hiddenStages]
+  );
   const [form, setForm] = useState({
     nombre: "",
     cliente_id: "",
-    stage: PIPELINE[0],
+    stage: stageOptions[0] || PIPELINE_DEFAULT[0],
     estimate_amount: "",
     estimate_currency: "USD",
     source: "",
     assignee: "",
-    descripcion: "",         // Notas
-    due_date: "",            // NUEVO
+    descripcion: "",
+    due_date: "",
   });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) setForm((f) => ({ ...f, stage: PIPELINE[0], due_date: "" }));
-  }, [open]);
+    if (open) setForm((f) => ({ ...f, stage: stageOptions[0] || PIPELINE_DEFAULT[0], due_date: "" }));
+  }, [open, stageOptions]);
 
   if (!open) return null;
 
@@ -353,10 +320,9 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
         assignee: form.assignee || null,
         estimate_amount: form.estimate_amount ? Number(form.estimate_amount) : null,
         estimate_currency: form.estimate_currency || null,
-        // ⬇️ Notas: mandamos ambas llaves
         descripcion: form.descripcion?.trim() || null,
         notas: form.descripcion?.trim() || null,
-        due_date: form.due_date ? new Date(form.due_date).toISOString() : null, // enviar ISO
+        due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
       };
       const res = await api.post("/proyectos", payload);
       if (res?.data?.ok) {
@@ -366,8 +332,8 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
       } else {
         throw new Error(res?.data?.message || "Error creando proyecto");
       }
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
       toast.error(t("pipeline.toasts.createError", "No se pudo crear"));
     } finally {
       setSaving(false);
@@ -388,19 +354,17 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
           </button>
         </div>
 
-        {/* Nombre */}
         <label className="form-control">
           <span className="label-text">{t("common.name", "Nombre")}</span>
           <input
             className="input input-bordered"
             value={form.nombre}
             onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-            placeholder="Ej: Roof repair – Store #112"
+            placeholder="Ej: Roof repair — Store #112"
             required
           />
         </label>
 
-        {/* Cliente + Etapa */}
         <div className="grid md:grid-cols-2 gap-3">
           <label className="form-control">
             <span className="label-text">{t("common.client", "Cliente")}</span>
@@ -425,7 +389,7 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
               value={form.stage}
               onChange={(e) => setForm({ ...form, stage: e.target.value })}
             >
-              {PIPELINE.map((s) => (
+              {stageOptions.map((s) => (
                 <option key={s} value={s}>
                   {t(`common.stages.${s}`, s)}
                 </option>
@@ -434,7 +398,6 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
           </label>
         </div>
 
-        {/* Monto + Moneda */}
         <div className="grid md:grid-cols-2 gap-3">
           <label className="form-control">
             <span className="label-text">{t("common.amount", "Monto estimado")}</span>
@@ -460,7 +423,6 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
           </label>
         </div>
 
-        {/* Source + Assignee (Dropdowns) */}
         <div className="grid md:grid-cols-2 gap-3">
           <label className="form-control">
             <span className="label-text">{t("common.source", "Origen")}</span>
@@ -471,7 +433,9 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
             >
               <option value="">{t("common.none", "— Ninguno —")}</option>
               {SOURCE_OPTS.map((s) => (
-                <option key={s} value={s}>{t(`common.sources.${s}`, s)}</option>
+                <option key={s} value={s}>
+                  {t(`common.sources.${s}`, s)}
+                </option>
               ))}
             </select>
           </label>
@@ -485,13 +449,14 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
             >
               <option value="">{t("common.unassigned", "— Sin asignar —")}</option>
               {userOpts.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
               ))}
             </select>
           </label>
         </div>
 
-        {/* Due date */}
         <label className="form-control">
           <span className="label-text">{t("common.dueDate", "Fecha límite")}</span>
           <input
@@ -502,7 +467,6 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
           />
         </label>
 
-        {/* Notas */}
         <label className="form-control">
           <span className="label-text">{t("common.notes", "Notas")}</span>
           <textarea
@@ -525,16 +489,19 @@ function CreateProjectModal({ open, onClose, onCreated, clients }) {
       </form>
     </div>
   );
-}
+};
 
-/* ========= Modal de Edición ========= */
-function EditProjectModal({ open, onClose, onSaved, item, clients }) {
+const EditProjectModal = ({ open, onClose, onSaved, item, clients, pipeline, hiddenStages }) => {
   const { t } = useTranslation();
-  const { options: userOpts } = useUsersOptions(); // ← opciones para "Responsable"
+  const { options: userOpts } = useUsersOptions();
+  const stageOptions = useMemo(
+    () => (pipeline || PIPELINE_DEFAULT).filter((s) => !hiddenStages?.has?.(s)),
+    [pipeline, hiddenStages]
+  );
   const [form, setForm] = useState({
     nombre: "",
     cliente_id: "",
-    stage: PIPELINE[0],
+    stage: stageOptions[0] || PIPELINE_DEFAULT[0],
     estimate_amount: "",
     estimate_currency: "USD",
     source: "",
@@ -549,34 +516,33 @@ function EditProjectModal({ open, onClose, onSaved, item, clients }) {
     setForm({
       nombre: item.nombre || "",
       cliente_id: item.cliente_id ?? "",
-      stage: item.stage || PIPELINE[0],
+      stage: item.stage && stageOptions.includes(item.stage) ? item.stage : stageOptions[0] || PIPELINE_DEFAULT[0],
       estimate_amount: item.estimate_amount ?? "",
       estimate_currency: item.estimate_currency || "USD",
       source: item.source || "",
-      assignee: item.assignee || item.assignee_email || "",
+      assignee: item.assignee || "",
       descripcion: item.descripcion || item.notas || "",
       due_date: item.due_date ? new Date(item.due_date).toISOString().slice(0, 16) : "",
     });
-  }, [open, item]);
+  }, [open, item, stageOptions]);
 
-  if (!open || !item) return null;
+  if (!open) return null;
 
   const onSubmit = async (e) => {
     e.preventDefault();
     try {
       setSaving(true);
       const payload = {
-        nombre: form.nombre?.trim() || null,
-        cliente_id: form.cliente_id ? Number(form.cliente_id) : null,
+        nombre: form.nombre,
+        cliente_id: form.cliente_id || null,
         stage: form.stage,
         source: form.source || null,
         assignee: form.assignee || null,
-        estimate_amount: form.estimate_amount !== "" ? Number(form.estimate_amount) : null,
-        estimate_currency: form.estimate_currency || null,
-        // ⬇️ Notas: mandamos ambas llaves
-        descripcion: form.descripcion?.trim() || null,
-        notas: form.descripcion?.trim() || null,
+        descripcion: form.descripcion || null,
+        notas: form.descripcion || null,
         due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
+        estimate_amount: form.estimate_amount ? Number(form.estimate_amount) : null,
+        estimate_currency: form.estimate_currency || null,
       };
       const res = await api.patch(`/proyectos/${item.id}`, payload);
       if (res?.data?.ok) {
@@ -643,7 +609,7 @@ function EditProjectModal({ open, onClose, onSaved, item, clients }) {
               value={form.stage}
               onChange={(e) => setForm({ ...form, stage: e.target.value })}
             >
-              {PIPELINE.map((s) => (
+              {stageOptions.map((s) => (
                 <option key={s} value={s}>
                   {t(`common.stages.${s}`, s)}
                 </option>
@@ -674,7 +640,6 @@ function EditProjectModal({ open, onClose, onSaved, item, clients }) {
           </label>
         </div>
 
-        {/* Source + Assignee (Dropdowns) */}
         <div className="grid md:grid-cols-2 gap-3">
           <label className="form-control">
             <span className="label-text">{t("projects.form.source", "Origen")}</span>
@@ -685,7 +650,9 @@ function EditProjectModal({ open, onClose, onSaved, item, clients }) {
             >
               <option value="">{t("common.none", "— Ninguno —")}</option>
               {SOURCE_OPTS.map((s) => (
-                <option key={s} value={s}>{t(`common.sources.${s}`, s)}</option>
+                <option key={s} value={s}>
+                  {t(`common.sources.${s}`, s)}
+                </option>
               ))}
             </select>
           </label>
@@ -698,7 +665,9 @@ function EditProjectModal({ open, onClose, onSaved, item, clients }) {
             >
               <option value="">{t("common.unassigned", "— Sin asignar —")}</option>
               {userOpts.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
               ))}
             </select>
           </label>
@@ -735,27 +704,25 @@ function EditProjectModal({ open, onClose, onSaved, item, clients }) {
       </form>
     </div>
   );
-}
+};
 
-/* ─────────────── Página principal ─────────────── */
 export default function ProyectosKanban() {
   const { t } = useTranslation();
+  const { area } = useArea();
+  const isVet = (area || "").toLowerCase() === "veterinaria";
+  const pipeline = isVet ? PIPELINE_VET : PIPELINE_DEFAULT;
+  const hiddenStages = isVet ? HIDDEN_VET : new Set();
+  const visiblePipeline = pipeline.filter((s) => !hiddenStages.has(s));
+
   const [filters, setFilters] = useQueryState();
   const [cols, setCols] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailItem, setDetailItem] = useState(null);
-
-  // Nuevo: modal de creación + clientes para el select
   const [createOpen, setCreateOpen] = useState(false);
   const [clientsForCreate, setClientsForCreate] = useState([]);
-
-  // Editar
   const [editOpen, setEditOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
-
-  // Modo compacto (persistente)
   const [compact, setCompact] = useState(() => {
     try {
       const v = localStorage.getItem("vex_pipeline_compact");
@@ -764,17 +731,16 @@ export default function ProyectosKanban() {
       return true;
     }
   });
+
+  const firstLoadRef = useRef(true);
+  const inflightRef = useRef(0);
+
   useEffect(() => {
     try {
       localStorage.setItem("vex_pipeline_compact", compact ? "1" : "0");
     } catch {}
   }, [compact]);
 
-  // Anti-flicker & cancelación
-  const firstLoadRef = useRef(true);
-  const inflightRef = useRef(0);
-
-  // Cargar clientes (solo para los modales) ——— CAMBIO: incluir active + bid
   useEffect(() => {
     async function fetchClients() {
       try {
@@ -791,7 +757,7 @@ export default function ProyectosKanban() {
   useEffect(() => {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+  }, [filters, area]);
 
   async function reload() {
     const myReq = ++inflightRef.current;
@@ -805,20 +771,18 @@ export default function ProyectosKanban() {
         assignee: filters.assignee || undefined,
         only_due: filters.only_due ? 1 : undefined,
       };
-
-      // 1) columnas del kanban (PROYECTOS)
       const data = await fetchProyectosKanban(beParams);
       if (myReq !== inflightRef.current) return;
 
-      // 2) enriquecer con /clientes para completar email/teléfono/empresa ——— CAMBIO: active + bid
       let fullClients = [];
       try {
-        const res = await api.get(`/clientes`, { params: { status: "active,bid" } });
-        fullClients = Array.isArray(res.data) ? res.data : [];
+        const res = await api.get("/clientes", { params: { status: "active,bid" } });
+        fullClients = Array.isArray(res.data) ? res.data : res.data?.items || [];
       } catch {
         fullClients = [];
       }
       const byClientId = new Map(fullClients.map((c) => [c.id, c]));
+      const baseOrder = data?.order?.length ? data.order : pipeline;
 
       let ordered = [];
       if (Array.isArray(data?.columns)) {
@@ -840,14 +804,12 @@ export default function ProyectosKanban() {
             return [key, { ...c, key, items, count: items.length }];
           })
         );
-        const order = data.order?.length
-          ? data.order
-          : (data.columns || []).map((c) => c.key || c.title);
-        ordered = (order.length ? order : PIPELINE).map(
+        const order = baseOrder.length ? baseOrder : pipeline;
+        ordered = (order.length ? order : pipeline).map(
           (k) => byKey.get(k) || { key: k, title: k, count: 0, items: [] }
         );
       } else {
-        const order = data?.order?.length ? data.order : PIPELINE;
+        const order = baseOrder.length ? baseOrder : pipeline;
         ordered = order.map((k) => {
           const base = Array.isArray(data?.columns?.[k]) ? data.columns[k] : [];
           const items = sortByDueCreated(
@@ -866,10 +828,10 @@ export default function ProyectosKanban() {
         });
       }
 
-      ordered.forEach((c) => (c.count = c.items.length));
+      ordered = ordered.filter((c) => !hiddenStages.has(c.key)).map((c) => ({ ...c, count: c.items.length }));
       if (myReq === inflightRef.current) setCols(ordered);
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
       toast.error(t("pipeline.toasts.loadError"));
     } finally {
       if (myReq === inflightRef.current && (firstLoadRef.current || cols.length === 0)) {
@@ -879,27 +841,25 @@ export default function ProyectosKanban() {
     }
   }
 
-  // DnD nativo
-  function onDragStart(e, item, fromKey) {
+  const onDragStart = (e, item, fromKey) => {
     e.dataTransfer.setData("text/plain", JSON.stringify({ id: item.id, fromKey }));
     e.dataTransfer.effectAllowed = "move";
-  }
-
-  async function onDrop(e, toKey) {
-    e.preventDefault();
-    const payload = JSON.parse(e.dataTransfer.getData("text/plain") || "{}");
-    if (!payload.id) return;
-    if (payload.fromKey === toKey) return;
-    await doMove(payload.id, payload.fromKey, toKey);
-  }
-
-  const nextStageOf = (current) => {
-    const i = PIPELINE.indexOf(current);
-    if (i < 0) return PIPELINE[0];
-    return PIPELINE[Math.min(i + 1, PIPELINE.length - 1)];
   };
 
-  async function doMove(id, fromKey, toKey) {
+  const onDrop = async (e, toKey) => {
+    e.preventDefault();
+    const payload = JSON.parse(e.dataTransfer.getData("text/plain") || "{}");
+    if (!payload.id || payload.fromKey === toKey) return;
+    await doMove(payload.id, payload.fromKey, toKey);
+  };
+
+  const nextStageOf = (current) => {
+    const i = visiblePipeline.indexOf(current);
+    if (i < 0) return visiblePipeline[0] || pipeline[0];
+    return visiblePipeline[Math.min(i + 1, visiblePipeline.length - 1)];
+  };
+
+  const doMove = async (id, fromKey, toKey) => {
     try {
       await moveProyecto(id, toKey);
       setCols((prev) => {
@@ -910,7 +870,7 @@ export default function ProyectosKanban() {
         const idx = from.items.findIndex((x) => x.id === id);
         if (idx >= 0) {
           const [itm] = from.items.splice(idx, 1);
-          itm.categoria = toKey; // espejo por compat
+          itm.categoria = toKey;
           itm.stage = toKey;
           to.items.unshift(itm);
           to.items = sortByDueCreated(to.items);
@@ -923,12 +883,12 @@ export default function ProyectosKanban() {
     } catch {
       toast.error(t("pipeline.toasts.moveError"));
     }
-  }
+  };
 
-  const colCount = cols?.length || PIPELINE.length;
+  const colCount = cols?.length || visiblePipeline.length || pipeline.length;
   const gridStyle = { gridTemplateColumns: `repeat(${colCount}, minmax(240px,1fr))` };
 
-  if (loading)
+  if (loading) {
     return (
       <div className="p-4">
         <div className="skeleton h-9 w-56 mb-4" />
@@ -944,6 +904,7 @@ export default function ProyectosKanban() {
         </div>
       </div>
     );
+  }
 
   const stageLabel = (s) => t(`common.stages.${s}`, s);
 
@@ -995,7 +956,7 @@ export default function ProyectosKanban() {
                   const next = nextStageOf(col.key);
                   if (next !== col.key) doMove(item.id, col.key, next);
                 }}
-                isLast={col.key === PIPELINE[PIPELINE.length - 1]}
+                isLast={col.key === visiblePipeline[visiblePipeline.length - 1]}
               />
             ))}
           </Column>
@@ -1017,6 +978,8 @@ export default function ProyectosKanban() {
         onClose={() => setCreateOpen(false)}
         onCreated={reload}
         clients={clientsForCreate}
+        pipeline={pipeline}
+        hiddenStages={hiddenStages}
       />
       <EditProjectModal
         open={editOpen}
@@ -1024,26 +987,25 @@ export default function ProyectosKanban() {
         onSaved={reload}
         item={editItem}
         clients={clientsForCreate}
+        pipeline={pipeline}
+        hiddenStages={hiddenStages}
       />
     </div>
   );
 }
 
-/* ─────────────── Column / Card ─────────────── */
-function Column({ title, children, onDrop }) {
-  return (
-    <div
-      className="rounded-2xl bg-base-200 border border-base-300 min-h-[280px] p-3"
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={onDrop}
-    >
-      <div className="font-medium mb-2">{title}</div>
-      <div className="space-y-2">{children}</div>
-    </div>
-  );
-}
+const Column = ({ title, children, onDrop }) => (
+  <div
+    className="rounded-2xl bg-base-200 border border-base-300 min-h-[280px] p-3"
+    onDragOver={(e) => e.preventDefault()}
+    onDrop={onDrop}
+  >
+    <div className="font-medium mb-2">{title}</div>
+    <div className="space-y-2">{children}</div>
+  </div>
+);
 
-function Card({ item, onDragStart, onNext, isLast, onClick, compact }) {
+const Card = ({ item, onDragStart, onNext, isLast, onClick, compact }) => {
   const { t } = useTranslation();
   const assignee = item.assignee_email || item.assignee || null;
   const title = item.nombre || item.email || t("common.noData");
@@ -1081,7 +1043,7 @@ function Card({ item, onDragStart, onNext, isLast, onClick, compact }) {
         <div className="min-w-0">
           <div className={`font-medium truncate ${compact ? "text-sm" : ""}`}>{title}</div>
           {item.empresa && item.nombre && (
-            <div className="text-xs opacity-60 truncate flex itemscenter gap-1">
+            <div className="text-xs opacity-60 truncate flex items-center gap-1">
               <Building2 size={12} /> {item.empresa}
             </div>
           )}
@@ -1126,4 +1088,4 @@ function Card({ item, onDragStart, onNext, isLast, onClick, compact }) {
       )}
     </div>
   );
-}
+};

@@ -87,6 +87,10 @@ const resources = {
           "Bid/Estimate Sent": "Presupuesto enviado",
           "Won": "Ganados",
           "Lost": "Perdidos",
+          "Turno fijado": "Turno fijado",
+          "Pre quirurgico": "Pre quirúrgico",
+          "Completado": "Completado",
+          "Turno perdido": "Turno perdido",
         },
         taskStates: {
           todo: "Por hacer",
@@ -427,6 +431,10 @@ const resources = {
           "Bid/Estimate Sent": "Bid/Estimate Sent",
           "Won": "Won",
           "Lost": "Lost",
+          "Turno fijado": "Appointment set",
+          "Pre quirurgico": "Pre-surgery",
+          "Completado": "Completed",
+          "Turno perdido": "Missed appointment",
         },
         taskStates: {
           todo: "To do",
