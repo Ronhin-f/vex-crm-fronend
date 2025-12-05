@@ -403,6 +403,14 @@ export default function DashboardCRM() {
     });
   }, [vacunas]);
 
+  const remindersCount = useMemo(() => {
+    const proximos = Number(metrics?.proximos_7d ?? NaN);
+    if (Number.isFinite(proximos)) return proximos;
+    const proximosKpi = Number(kpis?.proximos7d ?? NaN);
+    if (Number.isFinite(proximosKpi)) return proximosKpi;
+    return Array.isArray(seg) ? seg.length : 0;
+  }, [metrics?.proximos_7d, kpis?.proximos7d, seg]);
+
   if (isLoading) {
     return (
       <div className="p-6">
@@ -448,6 +456,71 @@ export default function DashboardCRM() {
               {dispatchBusy ? t("actions.sending", "Enviando...") : t("actions.dispatchNow", "Enviar follow-ups")}
             </button>
           </div>
+        </div>
+
+        {/* Prioridad: tareas y recordatorios arriba */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <section className="card bg-base-100 shadow">
+            <div className="card-body">
+              <div className="flex items-center justify-between">
+                <h2 className="card-title">{t("cards.upcoming7d", "Proximos 7 dias")}</h2>
+                <span className="badge badge-outline">{remindersCount} {t("cards.items", "items")}</span>
+              </div>
+              {seg.length === 0 ? (
+                <p className="text-sm text-base-content/60">{t("cards.noUpcoming", "No hay tareas proximas.")}</p>
+              ) : (
+                <ul className="divide-y divide-base-200">
+                  {seg.map((s) => {
+                    const due = new Date(s.vence_en);
+                    const mins = (due - Date.now()) / 60000;
+                    const tone = mins < 0 ? "badge-error" : mins <= 60 * 24 ? "badge-warning" : "badge-info";
+                    return (
+                      <li key={s.id} className="py-3 flex items-start justify-between gap-3">
+                        <div>
+                          <div className="font-medium">{s.titulo}</div>
+                          <div className="text-xs text-base-content/60">{s.cliente_nombre || "-"}</div>
+                        </div>
+                        <span className={`badge ${tone} badge-outline flex items-center gap-1`}>
+                          {t("cards.dueAt", "Vence")} {due.toLocaleString(i18n.language || undefined)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </section>
+
+          <section className="card bg-base-100 shadow">
+            <div className="card-body">
+              <h2 className="card-title flex items-center gap-2">
+                <BellRing size={18} /> {t("cards.reminders", "Recordatorios")}
+              </h2>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="p-3 rounded bg-base-200">
+                  <div className="text-xs text-base-content/60">{t("cards.remindersNext7d", "Proximos 7 dias")}</div>
+                  <div className="text-2xl font-semibold">{remindersCount}</div>
+                  <div className="text-xs text-base-content/60">{t("cards.followUpsScheduled", "Follow-ups en agenda")}</div>
+                </div>
+                <div className="p-3 rounded bg-base-200">
+                  <div className="text-xs text-base-content/60">{t("metrics.overdue", "Overdue")}</div>
+                  <div className="text-2xl font-semibold">{analytics.tasks.overdue}</div>
+                  <div className="text-xs text-base-content/60">{t("cards.pendingToday", "Revisar hoy")}</div>
+                </div>
+                <div className="p-3 rounded bg-base-200 col-span-2 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs text-base-content/60">{t("cards.dispatchChannel", "Canal de recordatorios")}</div>
+                    <div className="text-sm text-base-content/80">
+                      {integraciones?.slack?.configured ? "Slack listo para despachar." : "Configura Slack para avisos."}
+                    </div>
+                  </div>
+                  <span className={`badge ${integraciones?.slack?.configured ? "badge-success" : "badge-ghost"}`}>
+                    {integraciones?.slack?.configured ? "Slack ON" : "Slack OFF"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
 
         {/* Primera fila: pipeline (y win/loss solo fuera de veterinaria) */}
@@ -650,11 +723,11 @@ export default function DashboardCRM() {
           </section>
         </div>
 
-        {/* Listas: clientes recientes / tareas / vacunas (vet: vacunas primero) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Listas: clientes recientes / vacunas (vet: vacunas primero) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {(isVet
-            ? ["vacunas", "tareas", "clientes"]
-            : ["clientes", "tareas", "vacunas"]
+            ? ["vacunas", "clientes"]
+            : ["clientes", "vacunas"]
           ).map((slot) => {
             if (slot === "clientes") {
               return (
@@ -678,37 +751,6 @@ export default function DashboardCRM() {
                             </div>
                           </li>
                         ))}
-                      </ul>
-                    )}
-                  </div>
-                </section>
-              );
-            }
-            if (slot === "tareas") {
-              return (
-                <section key="tareas" className="card bg-base-100 shadow">
-                  <div className="card-body">
-                    <h2 className="card-title">{t("cards.upcoming7d", "Proximos 7 dias")}</h2>
-                    {seg.length === 0 ? (
-                      <p className="text-sm text-base-content/60">{t("cards.noUpcoming", "No hay tareas proximas.")}</p>
-                    ) : (
-                      <ul className="divide-y divide-base-200">
-                        {seg.map((s) => {
-                          const due = new Date(s.vence_en);
-                          const mins = (due - Date.now()) / 60000;
-                          const tone = mins < 0 ? "badge-error" : mins <= 60 * 24 ? "badge-warning" : "badge-info";
-                          return (
-                            <li key={s.id} className="py-3 flex items-start justify-between gap-3">
-                              <div>
-                                <div className="font-medium">{s.titulo}</div>
-                                <div className="text-xs text-base-content/60">{s.cliente_nombre || "-"}</div>
-                              </div>
-                              <span className={`badge ${tone} badge-outline flex items-center gap-1`}>
-                                {t("cards.dueAt", "Vence")} {due.toLocaleString(i18n.language || undefined)}
-                              </span>
-                            </li>
-                          );
-                        })}
                       </ul>
                     )}
                   </div>
