@@ -12,7 +12,6 @@ const sanitizeBase = (v) => {
   let b = String(v).trim();
   if (!b) return "";
   b = b.replace(/\/+$/, "");
-  if (/\/api$/i.test(b)) b = b.replace(/\/api$/i, "");
   return b;
 };
 
