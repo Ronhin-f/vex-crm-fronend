@@ -564,16 +564,16 @@ export default function DashboardCRM() {
           </div>
         )}
 
-        {/* Segunda fila: contadores y contactabilidad */}
+        {/* Segunda fila: contadores */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
           <div className="stat shadow bg-base-100">
             <div className="stat-figure text-primary"><Users size={20} /></div>
-            <div className="stat-title">{t("metrics.clients", "Clientes")}</div>
+            <div className="stat-title">{isVet ? "Dueños" : t("metrics.clients", "Clientes")}</div>
             <div className="stat-value">{metrics.total_clientes}</div>
           </div>
           <div className="stat shadow bg-base-100">
             <div className="stat-figure text-info"><Tag size={20} /></div>
-            <div className="stat-title">{t("metrics.projects", "Proyectos")}</div>
+            <div className="stat-title">{isVet ? "Casos" : t("metrics.projects", "Proyectos")}</div>
             <div className="stat-value">{metrics.total_proyectos}</div>
           </div>
           <div className="stat shadow bg-base-100">
@@ -588,140 +588,144 @@ export default function DashboardCRM() {
           </div>
         </div>
 
-        {/* Leads y contactabilidad */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <section className="card bg-base-100 shadow">
-            <div className="card-body">
-              <div className="flex items-center justify-between mb-2">
+        {/* Bloques de ventas/marketing: ocultos en veterinaria */}
+        {!isVet && (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <section className="card bg-base-100 shadow">
+                <div className="card-body">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="card-title flex items-center gap-2">
+                      <LineIcon size={18} /> Leads creados
+                    </h2>
+                    <span className="badge badge-outline">{analytics.contacts.total} en rango</span>
+                  </div>
+                  <LineChart series={leadsSeries} color="#3b82f6" />
+                </div>
+              </section>
+              <section className="card bg-base-100 shadow">
+                <div className="card-body">
+                  <h2 className="card-title flex items-center gap-2">
+                    <BarChart2 size={18} /> {t("analytics.contactability", "Contactabilidad")}
+                  </h2>
+                  <div className="flex items-center gap-4">
+                    <div className="text-4xl font-semibold">{analytics.contacts.contactability_pct}%</div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Timer size={16} /> p50: {analytics.contacts.first_touch.p50_min} min
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Timer size={16} /> avg: {analytics.contacts.first_touch.avg_min} min
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <section className="card bg-base-100 shadow">
+                <div className="card-body">
+                  <h2 className="card-title flex items-center gap-2">
+                    <Percent size={18} /> Win rate por Source
+                  </h2>
+                  {analytics.pipeline.by_source.length === 0 ? (
+                    <p className="text-sm text-base-content/60">{t("common.noData", "Sin datos")}</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {analytics.pipeline.by_source.map((r, i) => (
+                        <div key={i} className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span>{r.source}</span>
+                            <span>{r.win_rate}% ({r.won}/{r.lost})</span>
+                          </div>
+                          <div className="h-2 bg-base-200 rounded overflow-hidden">
+                            <div className="h-full bg-success" style={{ width: `${Math.min(100, r.win_rate)}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="card bg-base-100 shadow">
+                <div className="card-body">
+                  <h2 className="card-title flex items-center gap-2">
+                    <User2 size={18} /> Win rate por Owner
+                  </h2>
+                  {analytics.pipeline.by_owner.length === 0 ? (
+                    <p className="text-sm text-base-content/60">{t("common.noData", "Sin datos")}</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {analytics.pipeline.by_owner.map((r, i) => (
+                        <div key={i} className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span>{r.owner}</span>
+                            <span>{r.win_rate}% ({r.won}/{r.lost})</span>
+                          </div>
+                          <div className="h-2 bg-base-200 rounded overflow-hidden">
+                            <div className="h-full bg-info" style={{ width: `${Math.min(100, r.win_rate)}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
+          </>
+        )}
+
+        {!isVet && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <section className="card bg-base-100 shadow">
+              <div className="card-body">
                 <h2 className="card-title flex items-center gap-2">
-                  <LineIcon size={18} /> Leads creados
+                  <BarChart2 size={18} /> Calificacion
                 </h2>
-                <span className="badge badge-outline">{analytics.contacts.total} en rango</span>
-              </div>
-              <LineChart series={leadsSeries} color="#3b82f6" />
-            </div>
-          </section>
-          <section className="card bg-base-100 shadow">
-            <div className="card-body">
-              <h2 className="card-title flex items-center gap-2">
-                <BarChart2 size={18} /> {t("analytics.contactability", "Contactabilidad")}
-              </h2>
-              <div className="flex items-center gap-4">
-                <div className="text-4xl font-semibold">{analytics.contacts.contactability_pct}%</div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Timer size={16} /> p50: {analytics.contacts.first_touch.p50_min} min
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="p-3 rounded bg-base-200">
+                    <div className="text-xs text-base-content/60">{t("analytics.leadsRange", "Leads (rango)")}</div>
+                    <div className="text-xl font-semibold">{analytics.qualification.total}</div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Timer size={16} /> avg: {analytics.contacts.first_touch.avg_min} min
+                  <div className="p-3 rounded bg-base-200">
+                    <div className="text-xs text-base-content/60">{t("analytics.qualified", "Qualified")}</div>
+                    <div className="text-xl font-semibold">{analytics.qualification.qualified}</div>
+                  </div>
+                  <div className="p-3 rounded bg-base-200">
+                    <div className="text-xs text-base-content/60">{t("analytics.qualRate", "Rate")}</div>
+                    <div className="text-xl font-semibold">{analytics.qualification.rate_pct}%</div>
+                  </div>
+                  <div className="p-3 rounded bg-base-200">
+                    <div className="text-xs text-base-content/60">{t("analytics.uncontactable", "No contactables")}</div>
+                    <div className="text-xl font-semibold">{analytics.qualification.uncontactable.total}</div>
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
-        </div>
+            </section>
 
-        {/* Win rate por Source/Owner en barras */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <section className="card bg-base-100 shadow">
-            <div className="card-body">
-              <h2 className="card-title flex items-center gap-2">
-                <Percent size={18} /> Win rate por Source
-              </h2>
-              {analytics.pipeline.by_source.length === 0 ? (
-                <p className="text-sm text-base-content/60">{t("common.noData", "Sin datos")}</p>
-              ) : (
-                <div className="space-y-3">
-                  {analytics.pipeline.by_source.map((r, i) => (
-                    <div key={i} className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span>{r.source}</span>
-                        <span>{r.win_rate}% ({r.won}/{r.lost})</span>
-                      </div>
-                      <div className="h-2 bg-base-200 rounded overflow-hidden">
-                        <div className="h-full bg-success" style={{ width: `${Math.min(100, r.win_rate)}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="card bg-base-100 shadow">
-            <div className="card-body">
-              <h2 className="card-title flex items-center gap-2">
-                <User2 size={18} /> Win rate por Owner
-              </h2>
-              {analytics.pipeline.by_owner.length === 0 ? (
-                <p className="text-sm text-base-content/60">{t("common.noData", "Sin datos")}</p>
-              ) : (
-                <div className="space-y-3">
-                  {analytics.pipeline.by_owner.map((r, i) => (
-                    <div key={i} className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span>{r.owner}</span>
-                        <span>{r.win_rate}% ({r.won}/{r.lost})</span>
-                      </div>
-                      <div className="h-2 bg-base-200 rounded overflow-hidden">
-                        <div className="h-full bg-info" style={{ width: `${Math.min(100, r.win_rate)}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
-
-        {/* Calificabilidad + incoming */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <section className="card bg-base-100 shadow">
-            <div className="card-body">
-              <h2 className="card-title flex items-center gap-2">
-                <BarChart2 size={18} /> Calificacion
-              </h2>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="p-3 rounded bg-base-200">
-                  <div className="text-xs text-base-content/60">{t("analytics.leadsRange", "Leads (rango)")}</div>
-                  <div className="text-xl font-semibold">{analytics.qualification.total}</div>
-                </div>
-                <div className="p-3 rounded bg-base-200">
-                  <div className="text-xs text-base-content/60">{t("analytics.qualified", "Qualified")}</div>
-                  <div className="text-xl font-semibold">{analytics.qualification.qualified}</div>
-                </div>
-                <div className="p-3 rounded bg-base-200">
-                  <div className="text-xs text-base-content/60">{t("analytics.qualRate", "Rate")}</div>
-                  <div className="text-xl font-semibold">{analytics.qualification.rate_pct}%</div>
-                </div>
-                <div className="p-3 rounded bg-base-200">
-                  <div className="text-xs text-base-content/60">{t("analytics.uncontactable", "No contactables")}</div>
-                  <div className="text-xl font-semibold">{analytics.qualification.uncontactable.total}</div>
-                </div>
+            <section className="card bg-base-100 shadow">
+              <div className="card-body">
+                <h2 className="card-title flex items-center gap-2">
+                  <Timer size={18} /> Sin primer contacto
+                </h2>
+                <p className="text-3xl font-semibold">{analytics.qualification.no_first_touch.total}</p>
+                <p className="text-sm text-base-content/60">{analytics.qualification.no_first_touch.pct}% del rango.</p>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section className="card bg-base-100 shadow">
-            <div className="card-body">
-              <h2 className="card-title flex items-center gap-2">
-                <Timer size={18} /> Sin primer contacto
-              </h2>
-              <p className="text-3xl font-semibold">{analytics.qualification.no_first_touch.total}</p>
-              <p className="text-sm text-base-content/60">{analytics.qualification.no_first_touch.pct}% del rango.</p>
-            </div>
-          </section>
-
-          <section className="card bg-base-100 shadow">
-            <div className="card-body">
-              <h2 className="card-title flex items-center gap-2">
-                <PauseCircle size={18} /> Incoming estancados
-              </h2>
-              <p className="text-3xl font-semibold">{analytics.qualification.stalled_in_incoming.total}</p>
-              <p className="text-sm text-base-content/60">+{analytics.qualification.stalled_in_incoming.days} dias sin tareas.</p>
-            </div>
-          </section>
-        </div>
+            <section className="card bg-base-100 shadow">
+              <div className="card-body">
+                <h2 className="card-title flex items-center gap-2">
+                  <PauseCircle size={18} /> Incoming estancados
+                </h2>
+                <p className="text-3xl font-semibold">{analytics.qualification.stalled_in_incoming.total}</p>
+                <p className="text-sm text-base-content/60">+{analytics.qualification.stalled_in_incoming.days} dias sin tareas.</p>
+              </div>
+            </section>
+          </div>
+        )}
 
         {/* Listas: clientes recientes / vacunas (vet: vacunas primero) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -769,7 +773,7 @@ export default function DashboardCRM() {
                         <li key={v.id} className="py-3 flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="font-medium truncate">{v.nombre || "Mascota"}</div>
-                            <div className="text-xs text-base-content/60 truncate">{v.cliente_nombre || "Dueno no informado"}</div>
+                            <div className="text-xs text-base-content/60 truncate">{v.cliente_nombre || "Dueño no informado"}</div>
                             {v.peso ? <div className="text-xs text-base-content/70">Peso: {v.peso} kg</div> : null}
                             {v.vacunas ? <div className="text-xs text-base-content/70 truncate">Vacunas: {v.vacunas}</div> : null}
                           </div>
@@ -816,3 +820,6 @@ export default function DashboardCRM() {
     </div>
   );
 }
+
+
+

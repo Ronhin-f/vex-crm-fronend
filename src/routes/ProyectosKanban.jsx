@@ -887,6 +887,8 @@ export default function ProyectosKanban() {
 
   const colCount = cols?.length || visiblePipeline.length || pipeline.length;
   const gridStyle = { gridTemplateColumns: `repeat(${colCount}, minmax(240px,1fr))` };
+  const entityLabel = isVet ? "Pipeline - Casos" : t("pipeline.titleProjects", "Pipeline - Proyectos");
+  const createLabel = isVet ? "Nuevo caso" : t("actions.newProject", "Nuevo proyecto");
 
   if (loading) {
     return (
@@ -911,11 +913,11 @@ export default function ProyectosKanban() {
   return (
     <div className="p-3">
       <div className="mb-3 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{t("pipeline.titleProjects", "Pipeline — Proyectos")}</h1>
+        <h1 className="text-2xl font-semibold">{entityLabel}</h1>
         <div className="flex items-center gap-3">
           <button className="btn btn-primary btn-sm" onClick={() => setCreateOpen(true)}>
             <Plus size={16} className="mr-1" />
-            {t("actions.newProject", "Nuevo proyecto")}
+            {createLabel}
           </button>
           <label className="label cursor-pointer gap-2">
             <span className="text-sm opacity-80">{t("ui.compact", "Compacto")}</span>
