@@ -1,4 +1,4 @@
-// vex-crm-fronend/src/routes/DashboardCRM.jsx
+ï»¿// vex-crm-fronend/src/routes/DashboardCRM.jsx
 import { useEffect, useMemo, useState } from "react";
 import {
   Users,
@@ -568,7 +568,7 @@ export default function DashboardCRM() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
           <div className="stat shadow bg-base-100">
             <div className="stat-figure text-primary"><Users size={20} /></div>
-            <div className="stat-title">{isVet ? "Dueños" : t("metrics.clients", "Clientes")}</div>
+            <div className="stat-title">{isVet ? "DueÃ±os" : t("metrics.clients", "Clientes")}</div>
             <div className="stat-value">{metrics.total_clientes}</div>
           </div>
           <div className="stat shadow bg-base-100">
@@ -773,7 +773,7 @@ export default function DashboardCRM() {
                         <li key={v.id} className="py-3 flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="font-medium truncate">{v.nombre || "Mascota"}</div>
-                            <div className="text-xs text-base-content/60 truncate">{v.cliente_nombre || "Dueño no informado"}</div>
+                            <div className="text-xs text-base-content/60 truncate">{v.cliente_nombre || "DueÃ±o no informado"}</div>
                             {v.peso ? <div className="text-xs text-base-content/70">Peso: {v.peso} kg</div> : null}
                             {v.vacunas ? <div className="text-xs text-base-content/70 truncate">Vacunas: {v.vacunas}</div> : null}
                           </div>
@@ -820,6 +820,9 @@ export default function DashboardCRM() {
     </div>
   );
 }
+
+
+
 
 
 
