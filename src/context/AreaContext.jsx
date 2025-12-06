@@ -64,7 +64,8 @@ export function AreaProvider({ children }) {
       return BASE_PROFILE;
     }
     setLoading(true);
-    const fallbackArea = areaHint || BASE_PROFILE.area;
+    // No heredamos el area previa de otra organizacion; si Core no define, caemos a "general".
+    const fallbackArea = BASE_PROFILE.area;
     try {
       const { data } = await coreApi.get("/perfil/organizacion", {
         params: { organizacion_id: orgId },
@@ -124,12 +125,14 @@ export function AreaProvider({ children }) {
 
       return nextProfile;
     } catch {
+      // Si Core falla, solo usamos areaHint como fallback suave; caso contrario, general.
+      const safeArea = areaHint || fallbackArea;
       setProfile((prev) => ({
         ...prev,
-        area: fallbackArea,
+        area: safeArea,
         availableAreas: BASE_PROFILE.availableAreas,
       }));
-      return { ...BASE_PROFILE, area: fallbackArea };
+      return { ...BASE_PROFILE, area: safeArea };
     } finally {
       setLoading(false);
     }
