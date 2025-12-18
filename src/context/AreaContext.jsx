@@ -64,14 +64,14 @@ export function AreaProvider({ children }) {
       return BASE_PROFILE;
     }
     setLoading(true);
-    // No heredamos el area previa de otra organizacion; si Core no define, caemos a "general".
     const fallbackArea = BASE_PROFILE.area;
     try {
+      // Preferimos Core, pero con hint local como respaldo
       const { data } = await coreApi.get("/perfil/organizacion", {
         params: { organizacion_id: orgId },
       });
       const p = data?.perfil || {};
-      const areaFromCore = normalizeArea(p.area_vertical) || fallbackArea;
+      const areaFromCore = normalizeArea(p.area_vertical) || areaHint || fallbackArea;
       const areaVocab =
         areaFromCore === "veterinaria"
           ? { clients: "Dueños", client: "Dueño", contacts: "Mascotas", contact: "Mascota" }
@@ -97,35 +97,54 @@ export function AreaProvider({ children }) {
         } catch {}
       }
 
+      // Leemos perfil desde CRM antes de sincronizar para no pisar configuraciones previas
       let nextProfile = merged;
-
       try {
-        const { data: sync } = await crmApi.post("/area/sync", {
-          area: merged.area,
-          features: {
-            clinicalHistory: !!p.habilita_historias_clinicas,
-            labResults: merged.features.labResults,
-          },
+        const { data: crmProfile } = await crmApi.get("/area/perfil", {
+          params: { organizacion_id: orgId },
         });
-        const perfil = sync?.perfil;
-        if (perfil) {
+        if (crmProfile?.area) {
           nextProfile = {
-            area: perfil.area || merged.area,
-            vocab: { ...merged.vocab, ...(perfil.vocab || {}) },
-            features: { ...merged.features, ...(perfil.features || {}) },
-            forms: perfil.forms || merged.forms,
-            availableAreas: perfil.availableAreas || merged.availableAreas,
+            area: crmProfile.area,
+            vocab: { ...merged.vocab, ...(crmProfile.vocab || {}) },
+            features: { ...merged.features, ...(crmProfile.features || {}) },
+            forms: crmProfile.forms || merged.forms,
+            availableAreas: crmProfile.availableAreas || merged.availableAreas,
           };
         }
       } catch {
         // best-effort; seguimos con merged
       }
 
+      try {
+        const { data: sync } = await crmApi.post("/area/sync", {
+          area: nextProfile.area,
+          features: {
+            clinicalHistory: !!nextProfile.features?.clinicalHistory,
+            labResults: !!nextProfile.features?.labResults,
+          },
+          vocab: nextProfile.vocab,
+          forms: nextProfile.forms,
+        });
+        const perfil = sync?.perfil;
+        if (perfil) {
+          nextProfile = {
+            area: perfil.area || nextProfile.area,
+            vocab: { ...nextProfile.vocab, ...(perfil.vocab || {}) },
+            features: { ...nextProfile.features, ...(perfil.features || {}) },
+            forms: perfil.forms || nextProfile.forms,
+            availableAreas: perfil.availableAreas || nextProfile.availableAreas,
+          };
+        }
+      } catch {
+        // best-effort; seguimos con nextProfile
+      }
+
       setProfile(nextProfile);
 
       return nextProfile;
     } catch {
-      // Si Core falla, solo usamos areaHint como fallback suave; caso contrario, general.
+      // Si Core falla, usamos areaHint como fallback suave; caso contrario, general.
       const safeArea = areaHint || fallbackArea;
       setProfile((prev) => ({
         ...prev,
