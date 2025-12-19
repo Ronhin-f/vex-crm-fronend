@@ -3,71 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../utils/api";
 import { toast } from "react-hot-toast";
-import {
-  Plus,
-  Edit2,
-  Trash2,
-  Check,
-  X,
-  Calendar,
-  User2,
-  Bell,
-  Filter,
-  Search,
-  RefreshCcw,
-} from "lucide-react";
+import { Plus, Edit2, Trash2, Check, X, Calendar, User2, Filter, Search } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-
-/* ===========================
- * Helpers Vex Flows (frontend-only)
- * =========================== */
-const FLOWS_URL = (import.meta.env.VITE_FLOWS_BASE_URL || "").replace(/\/$/, "");
-
-async function flowsHealth() {
-  if (!FLOWS_URL) return false;
-  try {
-    const r = await fetch(`${FLOWS_URL}/health`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
-    });
-    return r.ok;
-  } catch {
-    return false;
-  }
-}
-
-async function flowsEmit(trigger, payload) {
-  if (!FLOWS_URL) throw new Error("Flows no configurado");
-  const res = await fetch(`${FLOWS_URL}/api/triggers/emit`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-    },
-    body: JSON.stringify({ trigger, payload }),
-  });
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(txt || "Error enviando a Flows");
-  }
-  return res.json().catch(() => ({}));
-}
-
-function scheduleTaskReminder({ channel, title, dueISO, offsetSec = 60, assignee, taskId }) {
-  if (!dueISO) return Promise.reject(new Error("No hay fecha de vencimiento"));
-  const whenMs = new Date(dueISO).getTime() - offsetSec * 1000;
-  const when = new Date(Math.max(whenMs, Date.now() + 1000)).toISOString();
-  const text = `Recordatorio: "${title}" asignada a ${assignee || "(sin asignar)"} vence ${new Date(
-    dueISO
-  ).toLocaleString()}`;
-  const payload = {
-    channel: channel || "#general",
-    text,
-    schedule_at: when,
-    meta: { taskId, dueISO, offsetSec, assignee, title },
-  };
-  return flowsEmit("task.reminder.slack", payload);
-}
-/* =========================== */
 
 function EstadoBadge({ estado }) {
   const map = {
@@ -133,7 +70,6 @@ const initialForm = {
   vence_en: "",
   usuario_email: "",
   prioridad: "media",
-  recordatorio: false,
 };
 
 export default function Tareas() {
@@ -151,14 +87,6 @@ export default function Tareas() {
   // alta
   const [form, setForm] = useState(initialForm);
 
-  // recordatorio Slack
-  const [slack, setSlack] = useState({
-    enable: false,
-    channel: "#general",
-    offsetValue: 15,
-    offsetUnit: "min",
-  });
-  const [flowsOk, setFlowsOk] = useState(false);
   const [filters, setFilters] = useState(initialFilters);
 
   const { orgId: authOrgId } = useAuth();
@@ -301,8 +229,6 @@ export default function Tareas() {
     load(initialFilters);
     loadUsers();
     loadClientes();
-    (async () => setFlowsOk(await flowsHealth()))();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
 
   // ---- Filtros ----
@@ -335,37 +261,14 @@ export default function Tareas() {
       usuario_email: assignedEmail,
       assignee_email: assignedEmail || undefined,
       prioridad: form.prioridad || "media",
-      recordatorio: !!form.recordatorio,
       organizacion_id: orgId,
     };
 
     try {
       const { data } = await api.post("/tareas", payload);
 
-      // Recordatorio Slack (solo canal)
-      const shouldRemind = (form.recordatorio || slack.enable) && !!payload.vence_en && FLOWS_URL && flowsOk;
-      if (shouldRemind) {
-        try {
-          const created = data || payload;
-          const offsetSec = Number(slack.offsetValue || 0) * (slack.offsetUnit === "sec" ? 1 : 60);
-          await scheduleTaskReminder({
-            channel: (slack.channel || "").trim() || "#general",
-            title: payload.titulo,
-            dueISO: payload.vence_en,
-            offsetSec,
-            assignee: created.usuario_email || assignedEmail,
-            taskId: created.id || created.task_id,
-          });
-          toast.success("Recordatorio de Slack agendado");
-        } catch (err) {
-          console.warn("No se pudo agendar Slack:", err);
-          toast.error("No pude agendar el recordatorio de Slack");
-        }
-      }
-
       setItems((prev) => [{ ...(data ?? payload) }, ...prev]);
       setForm(initialForm);
-      setSlack((s) => ({ ...s, enable: false }));
       toast.success("Tarea creada");
     } catch (e) {
       console.error(e);
@@ -381,7 +284,6 @@ export default function Tareas() {
       vence_en: it.vence_en ? new Date(it.vence_en).toISOString().slice(0, 16) : "",
       usuario_email: it.usuario_email || "",
       prioridad: (it.prioridad || "media").toLowerCase(),
-      recordatorio: !!it.recordatorio,
     });
   }
 
@@ -408,7 +310,6 @@ export default function Tareas() {
       vence_en: draft.vence_en ? new Date(draft.vence_en).toISOString() : null,
       usuario_email: draft.usuario_email || null,
       prioridad: draft.prioridad || "media",
-      recordatorio: !!draft.recordatorio,
       organizacion_id: orgId,
     });
     try {
@@ -473,23 +374,6 @@ export default function Tareas() {
     }
   }
 
-  // ---- Test Slack inmediato (solo canal)
-  async function testSlack() {
-    if (!FLOWS_URL || !flowsOk) return toast.error("Flows no disponible");
-    const channel = (slack.channel || "").trim();
-    if (!channel) return toast.error("Define un canal (#general, por ejemplo)");
-    try {
-      await flowsEmit("slack.message", {
-        channel,
-        text: `Test Slack desde VEX CRM (${new Date().toLocaleTimeString()})`,
-      });
-      toast.success("Enviado a Slack");
-    } catch (e) {
-      console.error(e);
-      toast.error("No pude enviar a Slack");
-    }
-  }
-
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -498,9 +382,6 @@ export default function Tareas() {
           <h1 className="text-3xl font-bold">Tareas</h1>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => load(filters)}>
-            <RefreshCcw size={16} /> Recargar
-          </button>
           <button type="button" className="btn btn-secondary btn-sm" onClick={resetFilters} disabled={!hasActiveFilters}>
             Limpiar filtros
           </button>
@@ -687,9 +568,6 @@ export default function Tareas() {
           <div>
             <label className="label flex items-center gap-1">
               <User2 size={16} /> Asignado a
-              <button type="button" className="btn btn-ghost btn-xs ml-auto" onClick={loadUsers} title="Recargar usuarios">
-                Recargar
-              </button>
             </label>
 
             <select
@@ -721,86 +599,6 @@ export default function Tareas() {
               <option value="media">Prioridad media</option>
               <option value="baja">Prioridad baja</option>
             </select>
-          </div>
-
-          {/* Recordatorio simple toggle */}
-          <div>
-            <label className="label flex items-center gap-1">
-              <Bell size={16} /> Recordatorio
-            </label>
-            <input
-              type="checkbox"
-              className="toggle"
-              checked={!!form.recordatorio}
-              onChange={(e) => {
-                const enabled = e.target.checked;
-                setForm((f) => ({ ...f, recordatorio: enabled }));
-                setSlack((s) => ({ ...s, enable: enabled || s.enable }));
-              }}
-            />
-            <p className="text-xs opacity-70 mt-1">Si esta activado y hay "Vence en", se agenda aviso por Slack.</p>
-          </div>
-
-          {/* Recordatorio por Slack (opcional) */}
-          <div className="md:col-span-6">
-            <fieldset className="border rounded p-3">
-              <legend className="px-1 text-sm font-medium">Recordatorio por Slack (opcional)</legend>
-              {!FLOWS_URL ? (
-                <p className="text-xs text-amber-700">No configurado (agrega VITE_FLOWS_BASE_URL)</p>
-              ) : flowsOk ? (
-                <p className="text-xs text-green-700">Flows online</p>
-              ) : (
-                <p className="text-xs text-amber-700">Flows no disponible. La tarea se creara sin recordatorio.</p>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
-                <div>
-                  <label className="label">Canal (opcional)</label>
-                  <input
-                    className="input input-bordered w-full"
-                    placeholder="#canal"
-                    value={slack.channel}
-                    onChange={(e) => setSlack((s) => ({ ...s, channel: e.target.value }))}
-                    disabled={!slack.enable}
-                  />
-                </div>
-
-                <div>
-                  <label className="label">Tiempo antes</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      min={1}
-                      className="input input-bordered w-full"
-                      placeholder="Valor"
-                      value={slack.offsetValue}
-                      onChange={(e) =>
-                        setSlack((s) => ({
-                          ...s,
-                          offsetValue: Number(e.target.value || 0),
-                        }))
-                      }
-                      disabled={!slack.enable}
-                    />
-                    <select
-                      className="select select-bordered"
-                      value={slack.offsetUnit}
-                      onChange={(e) => setSlack((s) => ({ ...s, offsetUnit: e.target.value }))}
-                      disabled={!slack.enable}
-                    >
-                      <option value="sec">segundos</option>
-                      <option value="min">minutos</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex items-end">
-                  <button type="button" className="btn btn-ghost w-full" onClick={testSlack} disabled={!FLOWS_URL || !flowsOk}>
-                    PROBAR SLACK
-                  </button>
-                </div>
-              </div>
-            </fieldset>
           </div>
 
           <div className="md:col-span-6 flex justify-end">
