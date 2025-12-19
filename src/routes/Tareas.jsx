@@ -88,8 +88,12 @@ export default function Tareas() {
   const [form, setForm] = useState(initialForm);
 
   const [filters, setFilters] = useState(initialFilters);
+  const [diag, setDiag] = useState(null);
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [diagError, setDiagError] = useState("");
+  const [diagMenuOpen, setDiagMenuOpen] = useState(false);
 
-  const { orgId: authOrgId } = useAuth();
+  const { orgId: authOrgId, rol } = useAuth();
   const orgId = useMemo(() => {
     if (authOrgId) return authOrgId;
     try {
@@ -98,6 +102,7 @@ export default function Tareas() {
       return null;
     }
   }, [authOrgId]);
+  const isAdmin = useMemo(() => ["owner", "admin"].includes(String(rol || "").toLowerCase()), [rol]);
 
   // edicion
   const [editingId, setEditingId] = useState(null);
@@ -242,6 +247,22 @@ export default function Tareas() {
     load(initialFilters);
   }
 
+  async function loadDiag() {
+    if (!orgId) return;
+    setDiagLoading(true);
+    setDiagError("");
+    try {
+      const { data } = await api.get("/usuarios/diag", { params: { organizacion_id: orgId } });
+      setDiag(data || null);
+    } catch (e) {
+      console.error(e);
+      setDiag(null);
+      setDiagError("No pude cargar el diagnostico de usuarios");
+    } finally {
+      setDiagLoading(false);
+    }
+  }
+
   // ---- Alta ----
   async function onAdd(e) {
     e?.preventDefault?.();
@@ -382,6 +403,15 @@ export default function Tareas() {
           <h1 className="text-3xl font-bold">Tareas</h1>
         </div>
         <div className="flex items-center gap-2">
+          {isAdmin && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setDiagMenuOpen((v) => !v)}
+            >
+              Opciones
+            </button>
+          )}
           <button type="button" className="btn btn-secondary btn-sm" onClick={resetFilters} disabled={!hasActiveFilters}>
             Limpiar filtros
           </button>
@@ -508,6 +538,83 @@ export default function Tareas() {
           </div>
         </div>
       </form>
+
+      {isAdmin && diagMenuOpen && (
+        <div className="card bg-base-100 shadow">
+          <div className="card-body text-sm">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Opciones admin</h3>
+              <button type="button" className="btn btn-ghost btn-xs" onClick={() => setDiagMenuOpen(false)}>
+                Cerrar
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn btn-ghost btn-sm" onClick={loadDiag} disabled={diagLoading || !orgId}>
+                {diagLoading ? "Cargando diagnostico..." : "Diagnostico usuarios"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && (diag || diagError) && (
+        <div className="card bg-base-100 shadow">
+          <div className="card-body text-sm">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Diagnostico de usuarios</h3>
+              <button type="button" className="btn btn-ghost btn-xs" onClick={() => setDiag(null)}>
+                Cerrar
+              </button>
+            </div>
+            {diagError ? (
+              <p className="text-error">{diagError}</p>
+            ) : (
+              <>
+                <p>
+                  Org: <span className="font-medium">{diag?.org_id || "-"}</span>
+                </p>
+                <p>
+                  Core base: <span className="font-medium">{diag?.core?.base_url || "(no definido)"}</span>
+                </p>
+                <p>
+                  Core token: <span className="font-medium">{diag?.core?.has_service_token ? "si" : "no"}</span>
+                </p>
+                <p>
+                  Core usuarios: <span className="font-medium">{diag?.core?.count ?? 0}</span>
+                </p>
+                <p>
+                  Local usuarios: <span className="font-medium">{diag?.local_users?.count ?? 0}</span>
+                </p>
+                <p>
+                  Slack canal:{" "}
+                  <span className="font-medium">{diag?.integraciones?.slack?.default_channel || "(no definido)"}</span>
+                </p>
+                <p>
+                  Slack activo:{" "}
+                  <span className="font-medium">{diag?.integraciones?.slack?.configured ? "si" : "no"}</span>
+                </p>
+                <p>
+                  WhatsApp phone:{" "}
+                  <span className="font-medium">{diag?.integraciones?.whatsapp?.phone_id || "(no definido)"}</span>
+                </p>
+                <p>
+                  WhatsApp activo:{" "}
+                  <span className="font-medium">{diag?.integraciones?.whatsapp?.configured ? "si" : "no"}</span>
+                </p>
+                <p>
+                  Flows base: <span className="font-medium">{diag?.flows?.base_url || "(no definido)"}</span>
+                </p>
+                <p>
+                  Flows activo: <span className="font-medium">{diag?.flows?.ok ? "si" : "no"}</span>
+                </p>
+                {diag?.flows?.reason && <p className="text-warning">Flows error: {diag.flows.reason}</p>}
+                {diag?.core?.error && <p className="text-warning">Core error: {diag.core.error}</p>}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Alta rapida */}
       <form onSubmit={onAdd} className="card bg-base-100 shadow">
         <div className="card-body grid grid-cols-1 md:grid-cols-6 gap-3">
