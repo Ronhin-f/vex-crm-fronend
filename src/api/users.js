@@ -1,3 +1,8 @@
-import { api, unwrap } from "../lib/api";
-export const getUsuarios = (org) =>
-  unwrap(api.get("/usuarios", { params: org ? { organizacion_id: org } : {} }));
+﻿// src/api/users.js
+import api from "../utils/api";
+
+export async function getUsuarios(org) {
+  const params = org ? { organizacion_id: org } : {};
+  const { data } = await api.get("/usuarios", { params });
+  return data;
+}
