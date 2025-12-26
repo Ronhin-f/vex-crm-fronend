@@ -31,12 +31,53 @@ function buildEntityContext(pathname = "") {
   return { entityId: id };
 }
 
+function resolveCoreBase() {
+  const env = (typeof import.meta !== "undefined" && import.meta.env) ? import.meta.env : {};
+  const fromEnv = env.VITE_API_CORE_URL || env.VITE_CORE_API_URL || "";
+  const fromCfg = coreApi?.defaults?.baseURL || "";
+  const raw = (fromCfg || fromEnv || "https://vex-core-backend-production.up.railway.app").trim();
+  return raw.replace(/\/+$/, "");
+}
+
+function readTokenFromHash() {
+  if (typeof window === "undefined") return "";
+  const hash = window.location.hash || "";
+  const qIndex = hash.indexOf("?");
+  if (qIndex === -1) return "";
+  const qs = hash.slice(qIndex + 1);
+  const params = new URLSearchParams(qs);
+  return params.get("vex_token") || params.get("token") || "";
+}
+
+function ensureToken() {
+  try {
+    const token =
+      localStorage.getItem("vex_token") ||
+      localStorage.getItem("token") ||
+      "";
+    if (token) return token;
+    const hashToken = readTokenFromHash();
+    if (hashToken) {
+      localStorage.setItem("vex_token", hashToken);
+      return hashToken;
+    }
+  } catch {}
+  return "";
+}
+
+const labelFromKey = (key) => {
+  const cleaned = String(key || "").replace(/_/g, " ").trim();
+  if (!cleaned) return "Dato";
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+};
+
 export default function AssistantDrawer() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState(null);
+  const [lastDebug, setLastDebug] = useState(null);
   const listRef = useRef(null);
 
   const currentRoute = useMemo(
@@ -46,6 +87,11 @@ export default function AssistantDrawer() {
   const entityContext = useMemo(() => buildEntityContext(currentRoute), [currentRoute]);
   const userLocale =
     (typeof navigator !== "undefined" && navigator.language) || "es-AR";
+
+  const debugEnabled = useMemo(() => {
+    const env = (typeof import.meta !== "undefined" && import.meta.env) ? import.meta.env : {};
+    return String(env.VITE_ASSISTANT_DEBUG || env.VITE_DEBUG_ASSISTANT || "") === "1";
+  }, []);
 
   const pushMessage = (msg) => {
     setMessages((prev) => [...prev, { id: makeId(), ...msg }]);
@@ -67,6 +113,16 @@ export default function AssistantDrawer() {
     setLoading(true);
 
     try {
+      const token = ensureToken();
+      if (!token) {
+        pushMessage({
+          from: "assistant",
+          type: "error",
+          text: "Necesito que inicies sesion desde Vex Core para poder ayudarte.",
+        });
+        return;
+      }
+
       const payload = {
         message: messageText || undefined,
         confirm_token: confirmToken || undefined,
@@ -76,13 +132,34 @@ export default function AssistantDrawer() {
         userLocale,
       };
 
-      const res = await coreApi.post("/assistant/chat", payload);
-      const data = res?.data || {};
+      if (debugEnabled) {
+        setLastDebug({ request: payload, response: null });
+      }
+
+      const res = await fetch(`${resolveCoreBase()}/assistant/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          ...(debugEnabled ? { "x-assistant-debug": "1" } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("assistant_error");
+      const data = await res.json();
 
       if (data?.type === "action_preview") {
         setPendingConfirm(data.confirm_token);
       } else {
         setPendingConfirm(null);
+      }
+
+      if (debugEnabled) {
+        setLastDebug((prev) => ({
+          request: prev?.request || payload,
+          response: data,
+        }));
       }
 
       pushMessage({
@@ -133,6 +210,36 @@ export default function AssistantDrawer() {
     );
   };
 
+  const renderPreview = (preview = {}) => {
+    if (!preview || typeof preview !== "object") return null;
+    const entries = Object.entries(preview).filter(([, value]) => {
+      if (value === null || value === undefined) return false;
+      const text = String(value).trim();
+      return text.length > 0;
+    });
+    if (!entries.length) return null;
+    return (
+      <div className="mt-2 text-xs bg-base-300/40 p-2 rounded space-y-1">
+        {entries.slice(0, 6).map(([key, value]) => (
+          <div key={key} className="flex gap-2">
+            <span className="opacity-70">{labelFromKey(key)}:</span>
+            <span className="font-medium">{String(value)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderDebug = () => {
+    if (!debugEnabled || !lastDebug) return null;
+    return (
+      <div className="mt-3 text-xs bg-base-200 p-2 rounded">
+        <div className="font-semibold mb-1">Debug</div>
+        <pre className="whitespace-pre-wrap">{JSON.stringify(lastDebug, null, 2)}</pre>
+      </div>
+    );
+  };
+
   return (
     <>
       <button
@@ -171,19 +278,16 @@ export default function AssistantDrawer() {
               >
                 <p>{msg.text}</p>
                 {payload?.type === "summary" && renderItems(payload.items)}
+                {payload?.type === "action_preview" && renderPreview(payload.payload_preview)}
                 {payload?.type === "action_preview" && renderSteps(payload.steps)}
-                {payload?.type === "action_preview" && payload?.payload_preview && (
-                  <pre className="mt-2 text-xs bg-base-300/40 p-2 rounded whitespace-pre-wrap">
-                    {JSON.stringify(payload.payload_preview, null, 2)}
-                  </pre>
-                )}
+                {payload?.type === "action_result" && renderPreview(payload.result)}
                 {payload?.deep_link && (
                   <button
                     type="button"
                     className="btn btn-xs btn-outline mt-2"
                     onClick={() => (window.location.href = payload.deep_link)}
                   >
-                    Ir a...
+                    Ir a ...
                   </button>
                 )}
                 {payload?.type === "action_preview" && pendingConfirm === payload?.confirm_token && (
@@ -228,6 +332,7 @@ export default function AssistantDrawer() {
               Tenes una accion pendiente de confirmar.
             </div>
           )}
+          {renderDebug()}
         </div>
       </div>
     </>
