@@ -1,6 +1,7 @@
 // src/App.jsx
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./components/Sidebar.jsx";
+import AssistantDrawer from "./components/AssistantDrawer.jsx";
 import { Toaster } from "react-hot-toast";
 import { useCrossTabLogout } from "./hooks/useCrossTabLogout.js";
 import { Menu } from "lucide-react";
@@ -68,6 +69,7 @@ export default function App() {
         />
         <Sidebar onNavigate={closeDrawer} />
       </div>
+      <AssistantDrawer />
     </div>
   );
 }
