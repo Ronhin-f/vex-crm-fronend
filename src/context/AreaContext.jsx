@@ -1,4 +1,4 @@
-// src/context/AreaContext.jsx — vocabulario/config por area
+﻿// src/context/AreaContext.jsx â€” vocabulario/config por area
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { coreApi, crmApi } from "../utils/api";
 import { useAuth } from "./AuthContext";
@@ -30,11 +30,12 @@ const BASE_PROFILE = {
       vitalSigns: [],
     },
   },
-  availableAreas: ["general", "salud", "construccion", "veterinaria"],
+  availableAreas: ["general", "salud", "veterinaria"],
 };
 
 const ALLOWED_AREAS = BASE_PROFILE.availableAreas;
 const AreaContext = createContext(BASE_PROFILE);
+const CLINICAL_AREAS = new Set(["salud", "veterinaria"]);
 
 const normalizeArea = (a) => {
   if (!a) return null;
@@ -74,14 +75,16 @@ export function AreaProvider({ children }) {
       const areaFromCore = normalizeArea(p.area_vertical) || areaHint || fallbackArea;
       const areaVocab =
         areaFromCore === "veterinaria"
-          ? { clients: "Dueños", client: "Dueño", contacts: "Mascotas", contact: "Mascota" }
+          ? { clients: "DueÃ±os", client: "DueÃ±o", contacts: "Mascotas", contact: "Mascota" }
           : {};
+      const clinicalEnabled =
+        CLINICAL_AREAS.has(areaFromCore) && !!p.habilita_historias_clinicas;
       const merged = {
         area: areaFromCore,
         vocab: { ...BASE_PROFILE.vocab, ...(data?.vocab || {}), ...areaVocab },
         features: {
           ...BASE_PROFILE.features,
-          clinicalHistory: !!p.habilita_historias_clinicas,
+          clinicalHistory: clinicalEnabled,
           labResults:
             typeof p.habilita_resultados_lab === "boolean"
               ? p.habilita_resultados_lab
@@ -104,10 +107,18 @@ export function AreaProvider({ children }) {
           params: { organizacion_id: orgId },
         });
         if (crmProfile?.area) {
+          const areaSafe = normalizeArea(crmProfile.area) || areaFromCore;
+          const crmFeatures = {
+            ...merged.features,
+            ...(crmProfile.features || {}),
+          };
+          crmFeatures.clinicalHistory = CLINICAL_AREAS.has(areaSafe)
+            ? !!crmFeatures.clinicalHistory
+            : false;
           nextProfile = {
-            area: crmProfile.area,
+            area: areaSafe,
             vocab: { ...merged.vocab, ...(crmProfile.vocab || {}) },
-            features: { ...merged.features, ...(crmProfile.features || {}) },
+            features: crmFeatures,
             forms: crmProfile.forms || merged.forms,
             availableAreas: crmProfile.availableAreas || merged.availableAreas,
           };
@@ -128,10 +139,18 @@ export function AreaProvider({ children }) {
         });
         const perfil = sync?.perfil;
         if (perfil) {
+          const areaSafe = normalizeArea(perfil.area) || nextProfile.area;
+          const syncFeatures = {
+            ...nextProfile.features,
+            ...(perfil.features || {}),
+          };
+          syncFeatures.clinicalHistory = CLINICAL_AREAS.has(areaSafe)
+            ? !!syncFeatures.clinicalHistory
+            : false;
           nextProfile = {
-            area: perfil.area || nextProfile.area,
+            area: areaSafe,
             vocab: { ...nextProfile.vocab, ...(perfil.vocab || {}) },
-            features: { ...nextProfile.features, ...(perfil.features || {}) },
+            features: syncFeatures,
             forms: perfil.forms || nextProfile.forms,
             availableAreas: perfil.availableAreas || nextProfile.availableAreas,
           };
@@ -178,3 +197,6 @@ export function useArea() {
 }
 
 export default AreaContext;
+
+
+

@@ -40,7 +40,7 @@ export default function AreaConfig() {
                 value={selected.area}
                 disabled
               >
-                {(availableAreas || ["general", "salud", "construccion", "veterinaria"]).map((a) => (
+                {(availableAreas || ["general", "salud", "veterinaria"]).map((a) => (
                   <option key={a} value={a}>
                     {a}
                   </option>

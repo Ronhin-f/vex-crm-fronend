@@ -8,7 +8,7 @@ import { coreApi } from "../utils/api";
 
 const TOKEN_KEY = "vex_token";
 const USER_KEY = "user";
-const ALLOWED_AREAS = ["general", "salud", "construccion", "veterinaria"];
+const ALLOWED_AREAS = ["general", "salud", "veterinaria"];
 
 const normalizeArea = (a) => {
   if (!a) return null;

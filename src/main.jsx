@@ -18,7 +18,7 @@ const TareasKanban = lazy(() => import("./routes/TareasKanban"));
 const Facturacion = lazy(() => import("./routes/Facturacion.jsx"));
 const AreaConfig = lazy(() => import("./routes/AreaConfig.jsx"));
 
-const ALLOWED_AREAS = ["general", "salud", "construccion", "veterinaria"];
+const ALLOWED_AREAS = ["general", "salud", "veterinaria"];
 
 const PageLoader = () => (
   <div className="p-6">

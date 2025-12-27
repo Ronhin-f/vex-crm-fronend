@@ -103,7 +103,7 @@ function ContactRow({ c, onEdit, onDelete, onMakePrimary, contactLabel }) {
   );
 }
 
-function ContactFormInline({ initial, onCancel, onSave, saving, isVet = false }) {
+function ContactFormInline({ initial, onCancel, onSave, saving, isVet = false, allowClinical = false }) {
   const buildState = (init) => ({
     nombre: init?.nombre || "",
     email: init?.email || "",
@@ -135,6 +135,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving, isVet = false })
   const [f, setF] = useState(() => buildState(initial));
   const [openClinico, setOpenClinico] = useState(false);
   const [contactTab, setContactTab] = useState(isVet ? "datos" : "datos");
+  const showClinical = allowClinical && !isVet;
 
   useEffect(() => {
     setF(buildState(initial));
@@ -294,7 +295,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving, isVet = false })
         <span className="label-text">Marcar como principal</span>
       </label>
 
-      {!isVet ? (
+      {showClinical ? (
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <button type="button" className="btn btn-outline btn-xs" onClick={() => setOpenClinico(true)}>
@@ -314,7 +315,7 @@ function ContactFormInline({ initial, onCancel, onSave, saving, isVet = false })
         </button>
       </div>
 
-      {!isVet ? (
+      {showClinical ? (
         <SimpleModal open={openClinico} onClose={() => setOpenClinico(false)} title="Datos clinicos del contacto">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
             <label className="form-control">
@@ -482,6 +483,7 @@ function buildLabForm() {
 export default function Clientes() {
   const { t } = useTranslation();
   const { vocab, features, forms, area } = useArea();
+  const clinicalEnabled = !!features?.clinicalHistory;
 
   const clientsLabel = vocab?.clients || t("clients.title", "Clientes");
   const clientLabel = vocab?.client || t("clients.form.name", "Cliente");
@@ -1409,13 +1411,15 @@ export default function Clientes() {
               >
                 {contactsLabel.toUpperCase()}
               </button>
-              <button
-                type="button"
-                className={`join-item btn btn-xs sm:btn-sm ${activeTab === "historia" ? "btn-primary" : "btn-ghost"}`}
-                onClick={() => setActiveTab("historia")}
-              >
-                HISTORIA
-              </button>
+              {clinicalEnabled ? (
+                <button
+                  type="button"
+                  className={`join-item btn btn-xs sm:btn-sm ${activeTab === "historia" ? "btn-primary" : "btn-ghost"}`}
+                  onClick={() => setActiveTab("historia")}
+                >
+                  HISTORIA
+                </button>
+              ) : null}
               {enableLabUpload ? (
                 <button
                   type="button"
@@ -1567,7 +1571,7 @@ export default function Clientes() {
             )}
           </section>
         ) : null}
-        {activeTab === "historia" ? (
+        {activeTab === "historia" && clinicalEnabled ? (
           <section className="space-y-3">
             <div className="flex items-center gap-2">
               <HeartPulse className="w-5 h-5 text-primary" />
@@ -1668,6 +1672,7 @@ export default function Clientes() {
           initial={contactDraft}
           saving={savingContact}
           isVet={isVet}
+          allowClinical={clinicalEnabled}
           onCancel={() => {
             setOpenContactModal(false);
             setContactDraft(null);
@@ -1761,6 +1766,7 @@ export default function Clientes() {
     </div>
   );
 }
+
 
 
 
