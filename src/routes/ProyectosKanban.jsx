@@ -285,22 +285,60 @@ const CreateProjectModal = ({ open, onClose, onCreated, clients, pipeline, hidde
     () => (pipeline || PIPELINE_DEFAULT).filter((s) => !hiddenStages?.has?.(s)),
     [pipeline, hiddenStages]
   );
-  const [form, setForm] = useState({
-    nombre: "",
-    cliente_id: "",
-    stage: stageOptions[0] || PIPELINE_DEFAULT[0],
-    estimate_amount: "",
-    estimate_currency: "USD",
-    source: "",
-    assignee: "",
-    descripcion: "",
-    due_date: "",
-  });
-  const [saving, setSaving] = useState(false);
+    const [form, setForm] = useState({
+      nombre: "",
+      cliente_id: "",
+      stage: stageOptions[0] || PIPELINE_DEFAULT[0],
+      contacto_nombre: "",
+      estimate_amount: "",
+      estimate_currency: "USD",
+      source: "",
+      assignee: "",
+      descripcion: "",
+      due_date: "",
+    });
+    const [saving, setSaving] = useState(false);
+    const [contacts, setContacts] = useState([]);
+    const [loadingContacts, setLoadingContacts] = useState(false);
+    const [contactQuery, setContactQuery] = useState("");
 
-  useEffect(() => {
-    if (open) setForm((f) => ({ ...f, stage: stageOptions[0] || PIPELINE_DEFAULT[0], due_date: "" }));
-  }, [open, stageOptions]);
+    useEffect(() => {
+      if (open) {
+        setForm((f) => ({ ...f, stage: stageOptions[0] || PIPELINE_DEFAULT[0], due_date: "", contacto_nombre: "" }));
+        setContactQuery("");
+        setContacts([]);
+      }
+    }, [open, stageOptions]);
+
+    useEffect(() => {
+      if (!open) return;
+      if (!form.cliente_id) {
+        setContacts([]);
+        return;
+      }
+      (async () => {
+        try {
+          setLoadingContacts(true);
+          const { data } = await api.get(`/clientes/${form.cliente_id}/contactos`);
+          setContacts(Array.isArray(data) ? data : []);
+        } catch {
+          setContacts([]);
+        } finally {
+          setLoadingContacts(false);
+        }
+      })();
+    }, [open, form.cliente_id]);
+
+    const contactItems = useMemo(() => {
+      const term = contactQuery.trim().toLowerCase();
+      const list = Array.isArray(contacts) ? contacts : [];
+      if (!term) return list;
+      return list.filter((c) =>
+        [c.nombre, c.email, c.telefono, c.cargo, c.rol]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(term))
+      );
+    }, [contacts, contactQuery]);
 
   if (!open) return null;
 
@@ -318,6 +356,7 @@ const CreateProjectModal = ({ open, onClose, onCreated, clients, pipeline, hidde
         stage: form.stage,
         source: form.source || null,
         assignee: form.assignee || null,
+        contacto_nombre: form.contacto_nombre?.trim() || null,
         estimate_amount: form.estimate_amount ? Number(form.estimate_amount) : null,
         estimate_currency: form.estimate_currency || null,
         descripcion: form.descripcion?.trim() || null,
@@ -365,13 +404,85 @@ const CreateProjectModal = ({ open, onClose, onCreated, clients, pipeline, hidde
           />
         </label>
 
+        <div className="space-y-2">
+          {form.cliente_id ? (
+            loadingContacts ? (
+              <div className="text-xs opacity-70">Cargando contactos...</div>
+            ) : contacts.length === 0 ? (
+              <div className="text-xs opacity-70">Este cliente no tiene contactos.</div>
+            ) : (
+              <div className="rounded-lg border border-base-200 bg-base-100 max-h-40 overflow-auto">
+                {contactItems.map((c) => {
+                  const label = [c.nombre, c.email, c.telefono].filter(Boolean).join(" - ");
+                  return (
+                    <div
+                      key={c.id}
+                      className="px-3 py-2 hover:bg-base-200 cursor-pointer text-sm"
+                      onClick={() => {
+                        const picked = c.nombre || c.email || c.telefono || "";
+                        setContactQuery(picked);
+                        setForm({ ...form, contacto_nombre: picked });
+                      }}
+                    >
+                      <div className="font-medium truncate">{label || "Contacto"}</div>
+                      {(c.cargo || c.rol) && (
+                        <div className="text-xs opacity-70">{[c.cargo, c.rol].filter(Boolean).join(" / ")}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          ) : (
+            <div className="text-xs opacity-70">Selecciona un cliente para ver contactos.</div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {form.cliente_id ? (
+            loadingContacts ? (
+              <div className="text-xs opacity-70">Cargando contactos...</div>
+            ) : contacts.length === 0 ? (
+              <div className="text-xs opacity-70">Este cliente no tiene contactos.</div>
+            ) : (
+              <div className="rounded-lg border border-base-200 bg-base-100 max-h-40 overflow-auto">
+                {contactItems.map((c) => {
+                  const label = [c.nombre, c.email, c.telefono].filter(Boolean).join(" - ");
+                  return (
+                    <div
+                      key={c.id}
+                      className="px-3 py-2 hover:bg-base-200 cursor-pointer text-sm"
+                      onClick={() => {
+                        const picked = c.nombre || c.email || c.telefono || "";
+                        setContactQuery(picked);
+                        setForm({ ...form, contacto_nombre: picked });
+                      }}
+                    >
+                      <div className="font-medium truncate">{label || "Contacto"}</div>
+                      {(c.cargo || c.rol) && (
+                        <div className="text-xs opacity-70">{[c.cargo, c.rol].filter(Boolean).join(" / ")}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          ) : (
+            <div className="text-xs opacity-70">Selecciona un cliente para ver contactos.</div>
+          )}
+        </div>
+
         <div className="grid md:grid-cols-2 gap-3">
           <label className="form-control">
             <span className="label-text">{t("common.client", "Cliente")}</span>
             <select
               className="select select-bordered"
               value={form.cliente_id}
-              onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+              onChange={(e) => {
+                const next = e.target.value;
+                setForm({ ...form, cliente_id: next, contacto_nombre: "" });
+                setContactQuery("");
+              }}
             >
               <option value="">{t("common.none", "— Ninguno —")}</option>
               {(clients || []).map((c) => (
@@ -379,14 +490,29 @@ const CreateProjectModal = ({ open, onClose, onCreated, clients, pipeline, hidde
                   {c.nombre || `Cliente #${c.id}`}
                 </option>
               ))}
-            </select>
-          </label>
+              </select>
+            </label>
 
-          <label className="form-control">
-            <span className="label-text">{t("common.stage", "Etapa")}</span>
-            <select
-              className="select select-bordered"
-              value={form.stage}
+            <label className="form-control">
+              <span className="label-text">{t("common.contact", "Contacto")}</span>
+              <input
+                className="input input-bordered"
+                value={contactQuery}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setContactQuery(next);
+                  setForm({ ...form, contacto_nombre: next });
+                }}
+                placeholder="Buscar contacto..."
+                disabled={!form.cliente_id}
+              />
+            </label>
+
+            <label className="form-control">
+              <span className="label-text">{t("common.stage", "Etapa")}</span>
+              <select
+                className="select select-bordered"
+                value={form.stage}
               onChange={(e) => setForm({ ...form, stage: e.target.value })}
             >
               {stageOptions.map((s) => (
@@ -502,6 +628,7 @@ const EditProjectModal = ({ open, onClose, onSaved, item, clients, pipeline, hid
     nombre: "",
     cliente_id: "",
     stage: stageOptions[0] || PIPELINE_DEFAULT[0],
+    contacto_nombre: "",
     estimate_amount: "",
     estimate_currency: "USD",
     source: "",
@@ -510,6 +637,9 @@ const EditProjectModal = ({ open, onClose, onSaved, item, clients, pipeline, hid
     due_date: "",
   });
   const [saving, setSaving] = useState(false);
+  const [contacts, setContacts] = useState([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [contactQuery, setContactQuery] = useState("");
 
   useEffect(() => {
     if (!open || !item) return;
@@ -517,6 +647,7 @@ const EditProjectModal = ({ open, onClose, onSaved, item, clients, pipeline, hid
       nombre: item.nombre || "",
       cliente_id: item.cliente_id ?? "",
       stage: item.stage && stageOptions.includes(item.stage) ? item.stage : stageOptions[0] || PIPELINE_DEFAULT[0],
+      contacto_nombre: item.contacto_nombre || "",
       estimate_amount: item.estimate_amount ?? "",
       estimate_currency: item.estimate_currency || "USD",
       source: item.source || "",
@@ -524,7 +655,38 @@ const EditProjectModal = ({ open, onClose, onSaved, item, clients, pipeline, hid
       descripcion: item.descripcion || item.notas || "",
       due_date: item.due_date ? new Date(item.due_date).toISOString().slice(0, 16) : "",
     });
+    setContactQuery(item.contacto_nombre || "");
   }, [open, item, stageOptions]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!form.cliente_id) {
+      setContacts([]);
+      return;
+    }
+    (async () => {
+      try {
+        setLoadingContacts(true);
+        const { data } = await api.get(`/clientes/${form.cliente_id}/contactos`);
+        setContacts(Array.isArray(data) ? data : []);
+      } catch {
+        setContacts([]);
+      } finally {
+        setLoadingContacts(false);
+      }
+    })();
+  }, [open, form.cliente_id]);
+
+  const contactItems = useMemo(() => {
+    const term = contactQuery.trim().toLowerCase();
+    const list = Array.isArray(contacts) ? contacts : [];
+    if (!term) return list;
+    return list.filter((c) =>
+      [c.nombre, c.email, c.telefono, c.cargo, c.rol]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(term))
+    );
+  }, [contacts, contactQuery]);
 
   if (!open) return null;
 
@@ -543,6 +705,7 @@ const EditProjectModal = ({ open, onClose, onSaved, item, clients, pipeline, hid
         due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
         estimate_amount: form.estimate_amount ? Number(form.estimate_amount) : null,
         estimate_currency: form.estimate_currency || null,
+        contacto_nombre: form.contacto_nombre?.trim() || null,
       };
       const res = await api.patch(`/proyectos/${item.id}`, payload);
       if (res?.data?.ok) {
@@ -591,7 +754,11 @@ const EditProjectModal = ({ open, onClose, onSaved, item, clients, pipeline, hid
             <select
               className="select select-bordered"
               value={form.cliente_id}
-              onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+              onChange={(e) => {
+                const next = e.target.value;
+                setForm({ ...form, cliente_id: next, contacto_nombre: "" });
+                setContactQuery("");
+              }}
             >
               <option value="">{t("common.noData")}</option>
               {(clients || []).map((c) => (
@@ -600,6 +767,21 @@ const EditProjectModal = ({ open, onClose, onSaved, item, clients, pipeline, hid
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className="form-control">
+            <span className="label-text">{t("common.contact", "Contacto")}</span>
+            <input
+              className="input input-bordered"
+              value={contactQuery}
+              onChange={(e) => {
+                const next = e.target.value;
+                setContactQuery(next);
+                setForm({ ...form, contacto_nombre: next });
+              }}
+              placeholder="Buscar contacto..."
+              disabled={!form.cliente_id}
+            />
           </label>
 
           <label className="form-control">
