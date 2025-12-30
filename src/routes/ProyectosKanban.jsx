@@ -198,7 +198,7 @@ const EstimateChip = ({ url, compact }) => {
   );
 };
 
-const DetailModal = ({ open, onClose, item, onEdit }) => {
+const DetailModal = ({ open, onClose, item, onEdit, onDelete }) => {
   const { t } = useTranslation();
   if (!open || !item) return null;
   const assignee = item.assignee_email || item.assignee || t("common.unassigned");
@@ -223,6 +223,9 @@ const DetailModal = ({ open, onClose, item, onEdit }) => {
           <div className="flex items-center gap-2">
             <button className="btn btn-sm" onClick={() => onEdit?.(item)}>
               <Pencil size={16} /> {t("actions.update")}
+            </button>
+            <button className="btn btn-sm btn-error" onClick={() => onDelete?.(item)}>
+              <X size={16} /> {t("actions.delete", "Eliminar")}
             </button>
             <button className="btn btn-sm" onClick={onClose}>
               <X size={16} /> {t("actions.close")}
@@ -1023,6 +1026,22 @@ export default function ProyectosKanban() {
     }
   }
 
+  async function removeProyecto(item) {
+    if (!item?.id) return;
+    if (!confirm("Eliminar proyecto?")) return;
+    try {
+      await api.delete(`/proyectos/${item.id}`);
+      toast.success("Proyecto eliminado");
+      setDetailOpen(false);
+      setEditOpen(false);
+      setDetailItem(null);
+      setEditItem(null);
+      reload();
+    } catch {
+      toast.error("No pude eliminar el proyecto");
+    }
+  }
+
   const onDragStart = (e, item, fromKey) => {
     e.dataTransfer.setData("text/plain", JSON.stringify({ id: item.id, fromKey }));
     e.dataTransfer.effectAllowed = "move";
@@ -1156,6 +1175,7 @@ export default function ProyectosKanban() {
           setEditItem(it);
           setEditOpen(true);
         }}
+        onDelete={removeProyecto}
       />
       <CreateProjectModal
         open={createOpen}
