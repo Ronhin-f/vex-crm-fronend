@@ -18,6 +18,7 @@ import {
   Plus,
   Save,
   Pencil,
+  Trash2,
 } from "lucide-react";
 import api from "../utils/api";
 import { fetchProyectosKanban, moveProyecto } from "../utils/vexKanbanApi";
@@ -220,14 +221,14 @@ const DetailModal = ({ open, onClose, item, onEdit, onDelete }) => {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <button className="btn btn-sm" onClick={() => onEdit?.(item)}>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <button className="btn btn-sm btn-outline" onClick={() => onEdit?.(item)}>
               <Pencil size={16} /> {t("actions.update")}
             </button>
             <button className="btn btn-sm btn-error" onClick={() => onDelete?.(item)}>
-              <X size={16} /> {t("actions.delete", "Eliminar")}
+              <Trash2 size={16} /> {t("actions.delete", "Eliminar")}
             </button>
-            <button className="btn btn-sm" onClick={onClose}>
+            <button className="btn btn-sm btn-ghost" onClick={onClose}>
               <X size={16} /> {t("actions.close")}
             </button>
           </div>
