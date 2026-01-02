@@ -212,7 +212,7 @@ const DetailModal = ({ open, onClose, item, onEdit, onDelete }) => {
         className="w-full max-w-2xl rounded-2xl bg-base-100 shadow-xl border border-base-300 p-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-lg font-semibold truncate">{item.nombre || item.email || t("common.noData")}</h3>
             {item.empresa && (
@@ -221,7 +221,7 @@ const DetailModal = ({ open, onClose, item, onEdit, onDelete }) => {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
+          <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
             <button className="btn btn-sm btn-outline" onClick={() => onEdit?.(item)}>
               <Pencil size={16} /> {t("actions.update")}
             </button>
