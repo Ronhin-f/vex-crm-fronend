@@ -157,6 +157,7 @@ export default function DashboardCRM() {
   const { t, i18n } = useTranslation();
   const { area } = useArea();
   const isVet = (area || "").toLowerCase() === "veterinaria";
+  const showVaccines = isVet;
 
   const [range, setRange] = useState("30");
   const [isLoading, setIsLoading] = useState(true);
@@ -221,7 +222,14 @@ export default function DashboardCRM() {
   async function loadAll(signal) {
     setIsLoading(true);
     try {
-      const nc = { params: { _t: Date.now(), ...buildRangeParams(range) }, signal };
+      const nc = {
+        params: {
+          _t: Date.now(),
+          include_vacunas: showVaccines ? "1" : "0",
+          ...buildRangeParams(range),
+        },
+        signal,
+      };
 
       const [dashRes, aiRes, intRes, anRes] = await Promise.allSettled([
         api.get("/dashboard", nc),
@@ -243,7 +251,7 @@ export default function DashboardCRM() {
         }));
         setTop(Array.isArray(d.topClientes) ? d.topClientes : []);
         setSeg(Array.isArray(d.proximosSeguimientos) ? d.proximosSeguimientos : []);
-        setVacunas(Array.isArray(d.vacunas) ? d.vacunas : []);
+        setVacunas(showVaccines && Array.isArray(d.vacunas) ? d.vacunas : []);
       }
 
       if (isOk(aiRes)) {
@@ -727,11 +735,12 @@ export default function DashboardCRM() {
           </div>
         )}
 
-        {/* Listas: clientes recientes / vacunas (vet: vacunas primero) */}
+        {/* Listas: clientes recientes / vacunas (solo veterinaria) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {(isVet
-            ? ["vacunas", "clientes"]
-            : ["clientes", "vacunas"]
+          {(
+            showVaccines
+              ? ["vacunas", "clientes"]
+              : ["clientes"]
           ).map((slot) => {
             if (slot === "clientes") {
               return (
@@ -761,6 +770,7 @@ export default function DashboardCRM() {
                 </section>
               );
             }
+            if (!showVaccines) return null;
             return (
               <section key="vacunas" className="card bg-base-100 shadow">
                 <div className="card-body">
