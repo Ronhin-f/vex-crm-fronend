@@ -397,6 +397,7 @@ export default function DashboardCRM() {
   );
 
   const vaccineList = useMemo(() => {
+    if (!showVaccines) return [];
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     return (vacunas || []).map((v) => {
@@ -409,7 +410,7 @@ export default function DashboardCRM() {
       else tone = "badge-success";
       return { ...v, days, tone, fecha };
     });
-  }, [vacunas]);
+  }, [vacunas, showVaccines]);
 
   const remindersCount = useMemo(() => {
     const proximos = Number(metrics?.proximos_7d ?? NaN);
