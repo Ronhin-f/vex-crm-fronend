@@ -4,8 +4,8 @@ import path from "node:path";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  // Backend para desarrollo: usa VITE_API_URL si existe, si no cae a localhost:8082
-  const target = env.VITE_API_URL || "http://localhost:8082";
+  // Backend para desarrollo: usa VITE_API_CRM_URL si existe, si no cae a localhost:3000
+  const target = env.VITE_API_CRM_URL || env.VITE_API_URL || "http://localhost:3000";
 
   return {
     plugins: [react()],

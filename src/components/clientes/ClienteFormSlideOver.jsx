@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
-import api from "../../api";
+import api from "../../utils/api";
 
 /**
  * Form de Cliente dentro del SlideOver.

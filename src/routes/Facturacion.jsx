@@ -1,20 +1,15 @@
 // src/routes/Facturacion.jsx
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
+import { toast } from "react-hot-toast";
+import api from "../utils/api";
 
 const formatFecha = (iso) => {
   if (!iso) return "";
-  const [y, m, d] = iso.split("-");
+  const [y, m, d] = String(iso).slice(0, 10).split("-");
+  if (!y || !m || !d) return "";
   return `${d}/${m}/${y}`;
 };
-
-// Opciones de ejemplo para el dropdown de Cliente/Proveedor.
-const CLIENTES_SUGERIDOS = [
-  "Natalie Perez",
-  "Juan Pérez",
-  "Veterinaria Demo",
-  "Proveedor Genérico",
-];
 
 export default function Facturacion() {
   const [tab, setTab] = useState("enviadas");
@@ -29,10 +24,11 @@ export default function Facturacion() {
     tipo: "",
   });
 
-  // Lista local de facturas (solo frontend por ahora)
   const [facturas, setFacturas] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingClientes, setLoadingClientes] = useState(false);
 
-  // Modo del modal: crear / editar
   const [modalMode, setModalMode] = useState("create"); // "create" | "edit"
   const [selectedFactura, setSelectedFactura] = useState(null);
 
@@ -41,9 +37,23 @@ export default function Facturacion() {
     numero: "",
     fecha: "",
     vencimiento: "",
-    cliente: "",
+    cliente_id: "",
     monto: "",
   });
+
+  const filterKey = useMemo(
+    () =>
+      [
+        tab,
+        filters.numeroTipo,
+        filters.busqueda,
+        filters.vencimiento,
+        filters.fechaDesde,
+        filters.fechaHasta,
+        filters.tipo,
+      ].join("|"),
+    [tab, filters]
+  );
 
   const handleFilterChange = (field) => (e) => {
     const value = e.target.value;
@@ -61,7 +71,7 @@ export default function Facturacion() {
       numero: "",
       fecha: "",
       vencimiento: "",
-      cliente: "",
+      cliente_id: "",
       monto: "",
     });
   };
@@ -77,11 +87,11 @@ export default function Facturacion() {
     setModalMode("edit");
     setSelectedFactura(factura);
     setForm({
-      tipo: factura.tipo,
-      numero: factura.numero,
-      fecha: factura.fecha,
-      vencimiento: factura.vencimiento,
-      cliente: factura.cliente,
+      tipo: factura.tipo || "B",
+      numero: factura.numero || "",
+      fecha: factura.fecha || "",
+      vencimiento: factura.vencimiento || "",
+      cliente_id: factura.client_id ? String(factura.client_id) : "",
       monto:
         factura.total != null && !Number.isNaN(factura.total)
           ? String(factura.total)
@@ -98,17 +108,25 @@ export default function Facturacion() {
   };
 
   const eliminarFactura = (id) => {
-    const ok = window.confirm("¿Seguro que querés eliminar esta factura?");
+    const ok = window.confirm("Seguro que queres eliminar esta factura?");
     if (!ok) return;
-    setFacturas((prev) => prev.filter((f) => f.id !== id));
+    api
+      .delete(`/api/billing/invoices/${id}`)
+      .then(() => {
+        toast.success("Factura eliminada");
+        loadFacturas();
+      })
+      .catch((e) => {
+        console.error(e);
+        toast.error("No se pudo eliminar la factura");
+      });
   };
 
-  const handleSubmitFactura = (e) => {
+  const handleSubmitFactura = async (e) => {
     e.preventDefault();
 
-    // Validación mínima
-    if (!form.numero || !form.fecha || !form.cliente) {
-      alert("Completá Número, Fecha y Cliente/Proveedor antes de guardar.");
+    if (!form.numero || !form.fecha || !form.cliente_id) {
+      toast.error("Completa Numero, Fecha y Cliente/Proveedor antes de guardar.");
       return;
     }
 
@@ -117,57 +135,111 @@ export default function Facturacion() {
         ? parseFloat(form.monto)
         : 0;
 
-    if (modalMode === "create") {
-      const nueva = {
-        id: Date.now(), // ID temporal local
-        tipo: form.tipo,
-        numero: form.numero,
-        fecha: form.fecha,
-        vencimiento: form.vencimiento,
-        cliente: form.cliente,
-        estado: "Pendiente",
-        total,
-      };
+    const payload = {
+      client_id: Number(form.cliente_id),
+      number: form.numero,
+      date: form.fecha,
+      dueDate: form.vencimiento,
+      amount_subtotal: total,
+      amount_total: total,
+      amount_tax: 0,
+      amount_paid: 0,
+      status: "sent",
+    };
 
-      setFacturas((prev) => [nueva, ...prev]);
-    } else if (modalMode === "edit" && selectedFactura) {
-      setFacturas((prev) =>
-        prev.map((f) =>
-          f.id === selectedFactura.id
-            ? {
-                ...f,
-                tipo: form.tipo,
-                numero: form.numero,
-                fecha: form.fecha,
-                vencimiento: form.vencimiento,
-                cliente: form.cliente,
-                total,
-              }
-            : f
-        )
-      );
+    try {
+      if (modalMode === "create") {
+        await api.post("/api/billing/invoices", payload);
+        toast.success("Factura creada");
+      } else if (modalMode === "edit" && selectedFactura) {
+        await api.patch(`/api/billing/invoices/${selectedFactura.id}`, payload);
+        toast.success("Factura actualizada");
+      }
+      cerrarModal();
+      loadFacturas();
+    } catch (e) {
+      console.error(e);
+      toast.error("No se pudo guardar la factura");
     }
-
-    cerrarModal();
   };
 
-  const isReadOnly = false; // por ahora no hay modo "Ver"
+  const isReadOnly = false;
 
-  // (Opcional) todavía no filtramos la lista, pero dejamos el hook para después.
+  function mapFacturaRow(row) {
+    return {
+      id: row.id,
+      numero: row.number || "",
+      fecha: row.date || "",
+      vencimiento: row.dueDate || "",
+      cliente: row.party || "",
+      tipo: row.type || "",
+      estado: row.status || "",
+      total: row.total ?? 0,
+      client_id: row.client_id,
+    };
+  }
+
+  function loadClientes() {
+    setLoadingClientes(true);
+    api
+      .get("/clientes")
+      .then((res) => {
+        setClientes(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch((e) => {
+        console.warn("No pude cargar clientes", e);
+        setClientes([]);
+      })
+      .finally(() => setLoadingClientes(false));
+  }
+
+  function loadFacturas() {
+    setLoading(true);
+    api
+      .get("/api/billing/invoices", {
+        params: {
+          kind: tab,
+          q: filters.busqueda,
+          qField: "number",
+          due: filters.vencimiento,
+          dueFrom: filters.fechaDesde,
+          dueTo: filters.fechaHasta,
+          type: filters.tipo || filters.numeroTipo,
+          page: 1,
+          pageSize: 50,
+        },
+      })
+      .then((res) => {
+        const rows = Array.isArray(res.data?.rows) ? res.data.rows : [];
+        setFacturas(rows.map(mapFacturaRow));
+      })
+      .catch((e) => {
+        console.warn("No pude cargar facturas", e);
+        setFacturas([]);
+      })
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadClientes();
+  }, []);
+
+  useEffect(() => {
+    loadFacturas();
+  }, [filterKey]);
+
   const facturasFiltradas = facturas;
 
   const handleVerFacturaDigital = (factura) => {
-    // Placeholder: después se cambia por abrir PDF / link real
     alert(
-      `Ver factura digital\n\nNúmero: ${factura.numero}\nCliente: ${factura.cliente}`
+      `Ver factura digital\n\nNumero: ${factura.numero}\nCliente: ${factura.cliente}`
     );
   };
 
   return (
     <div className="h-full w-full p-6 flex flex-col gap-4">
-      {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Facturación</h1>
+        <h1 className="text-2xl font-semibold">Facturacion</h1>
 
         <button
           type="button"
@@ -179,7 +251,6 @@ export default function Facturacion() {
         </button>
       </div>
 
-      {/* Tabs Enviadas / Recibidas */}
       <div className="flex gap-2">
         <button
           type="button"
@@ -201,21 +272,18 @@ export default function Facturacion() {
         </button>
       </div>
 
-      {/* Filtros */}
       <div className="invoice-filter-row mt-2">
-        {/* Número */}
         <select
           value={filters.numeroTipo}
           onChange={handleFilterChange("numeroTipo")}
           className="invoice-field"
         >
-          <option value="">Número</option>
+          <option value="">Numero</option>
           <option value="A">Factura A</option>
           <option value="B">Factura B</option>
           <option value="C">Factura C</option>
         </select>
 
-        {/* Buscar */}
         <input
           type="text"
           value={filters.busqueda}
@@ -224,7 +292,6 @@ export default function Facturacion() {
           className="invoice-field"
         />
 
-        {/* Vencimiento */}
         <select
           value={filters.vencimiento}
           onChange={handleFilterChange("vencimiento")}
@@ -232,10 +299,9 @@ export default function Facturacion() {
         >
           <option value="">Vencimiento: Todos</option>
           <option value="vencidas">Solo vencidas</option>
-          <option value="aldia">Al día</option>
+          <option value="aldia">Al dia</option>
         </select>
 
-        {/* Fecha desde */}
         <input
           type="date"
           value={filters.fechaDesde}
@@ -243,7 +309,6 @@ export default function Facturacion() {
           className="invoice-field"
         />
 
-        {/* Fecha hasta */}
         <input
           type="date"
           value={filters.fechaHasta}
@@ -252,14 +317,13 @@ export default function Facturacion() {
         />
       </div>
 
-      {/* Tabla de resultados */}
       <div className="mt-4 flex-1 overflow-hidden rounded-xl border border-base-300 bg-base-100">
         <div className="overflow-x-auto h-full">
           <table className="table table-zebra table-sm w-full">
             <thead>
               <tr>
                 <th>Fecha</th>
-                <th>Número</th>
+                <th>Numero</th>
                 <th>Cliente/Proveedor</th>
                 <th>Tipo</th>
                 <th>Vence</th>
@@ -270,7 +334,13 @@ export default function Facturacion() {
               </tr>
             </thead>
             <tbody>
-              {facturasFiltradas.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={9} className="text-center py-8 text-base-content/60">
+                    Cargando facturas...
+                  </td>
+                </tr>
+              ) : facturasFiltradas.length === 0 ? (
                 <tr>
                   <td
                     colSpan={9}
@@ -284,10 +354,10 @@ export default function Facturacion() {
                   <tr key={f.id}>
                     <td>{formatFecha(f.fecha)}</td>
                     <td>{f.numero}</td>
-                    <td>{f.cliente}</td>
-                    <td>{f.tipo}</td>
+                    <td>{f.cliente || "-"}</td>
+                    <td>{f.tipo || "-"}</td>
                     <td>{formatFecha(f.vencimiento)}</td>
-                    <td>{f.estado}</td>
+                    <td>{f.estado || "-"}</td>
                     <td className="text-right">
                       {f.total != null ? f.total.toFixed(2) : "-"}
                     </td>
@@ -326,7 +396,6 @@ export default function Facturacion() {
         </div>
       </div>
 
-      {/* Modal Nueva / Editar factura */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-base-100 rounded-xl p-6 shadow-xl invoice-modal w-full max-w-lg">
@@ -336,7 +405,6 @@ export default function Facturacion() {
 
             <form onSubmit={handleSubmitFactura} className="space-y-4">
               <div className="invoice-modal-grid">
-                {/* Tipo */}
                 <div>
                   <label className="block mb-1 text-sm font-medium">Tipo</label>
                   <select
@@ -351,11 +419,8 @@ export default function Facturacion() {
                   </select>
                 </div>
 
-                {/* Número */}
                 <div>
-                  <label className="block mb-1 text-sm font-medium">
-                    Número
-                  </label>
+                  <label className="block mb-1 text-sm font-medium">Numero</label>
                   <input
                     type="text"
                     value={form.numero}
@@ -365,11 +430,8 @@ export default function Facturacion() {
                   />
                 </div>
 
-                {/* Fecha */}
                 <div>
-                  <label className="block mb-1 text-sm font-medium">
-                    Fecha
-                  </label>
+                  <label className="block mb-1 text-sm font-medium">Fecha</label>
                   <input
                     type="date"
                     value={form.fecha}
@@ -379,11 +441,8 @@ export default function Facturacion() {
                   />
                 </div>
 
-                {/* Vencimiento */}
                 <div>
-                  <label className="block mb-1 text-sm font-medium">
-                    Vencimiento
-                  </label>
+                  <label className="block mb-1 text-sm font-medium">Vencimiento</label>
                   <input
                     type="date"
                     value={form.vencimiento}
@@ -393,32 +452,29 @@ export default function Facturacion() {
                   />
                 </div>
 
-                {/* Cliente / Proveedor */}
                 <div>
                   <label className="block mb-1 text-sm font-medium">
                     Cliente/Proveedor
                   </label>
-                  <input
-                    type="text"
-                    value={form.cliente}
-                    onChange={handleFormChange("cliente")}
+                  <select
+                    value={form.cliente_id}
+                    onChange={handleFormChange("cliente_id")}
                     className="invoice-field"
-                    disabled={isReadOnly}
-                    list="clientes-sugeridos"
-                    placeholder="Seleccionar o escribir nombre..."
-                  />
-                  <datalist id="clientes-sugeridos">
-                    {CLIENTES_SUGERIDOS.map((nombre) => (
-                      <option key={nombre} value={nombre} />
+                    disabled={isReadOnly || loadingClientes}
+                  >
+                    <option value="">
+                      {loadingClientes ? "Cargando clientes..." : "Seleccionar cliente"}
+                    </option>
+                    {clientes.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre}
+                      </option>
                     ))}
-                  </datalist>
+                  </select>
                 </div>
 
-                {/* Monto */}
                 <div>
-                  <label className="block mb-1 text-sm font-medium">
-                    Monto
-                  </label>
+                  <label className="block mb-1 text-sm font-medium">Monto</label>
                   <input
                     type="number"
                     step="0.01"

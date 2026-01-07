@@ -1,4 +1,14 @@
-import { api, unwrap } from "../lib/api";
+import api from "../utils/api";
+
+function unwrap(promise) {
+  return promise
+    .then((res) => res.data)
+    .catch((err) => {
+      const status = err?.response?.status;
+      const message = err?.response?.data?.error || err.message;
+      return Promise.reject({ status, message });
+    });
+}
 
 export function listTareas({ org, cliente_id = "" } = {}) {
   const params = {};
