@@ -26,7 +26,8 @@ export default function App() {
   // Título contextual simple (solo se muestra en el topbar mobile)
   const pageHint = useMemo(() => {
     const p = location.pathname.toLowerCase();
-    if (p.startsWith("/facturacion")) return " · Facturación";
+    if (p.startsWith("/caja")) return " - Caja";
+    if (p.startsWith("/facturacion")) return " - Facturacion";
     return "";
   }, [location.pathname]);
 
@@ -73,3 +74,5 @@ export default function App() {
     </div>
   );
 }
+
+

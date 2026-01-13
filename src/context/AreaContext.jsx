@@ -1,4 +1,4 @@
-﻿// src/context/AreaContext.jsx â€” vocabulario/config por area
+// src/context/AreaContext.jsx — vocabulario/config por area
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { coreApi, crmApi } from "../utils/api";
 import { useAuth } from "./AuthContext";
@@ -14,6 +14,7 @@ const BASE_PROFILE = {
     providers: "Subcontratistas",
     tasks: "Tareas",
     billing: "Facturacion",
+    cashbox: "Caja",
     clinicalHistory: "Historia clinica",
     clinicalHistoryList: "Historias clinicas",
   },
@@ -75,7 +76,7 @@ export function AreaProvider({ children }) {
       const areaFromCore = normalizeArea(p.area_vertical) || areaHint || fallbackArea;
       const areaVocab =
         areaFromCore === "veterinaria"
-          ? { clients: "DueÃ±os", client: "DueÃ±o", contacts: "Mascotas", contact: "Mascota" }
+          ? { clients: "Dueños", client: "Dueño", contacts: "Mascotas", contact: "Mascota" }
           : {};
       const clinicalEnabled =
         CLINICAL_AREAS.has(areaFromCore) && !!p.habilita_historias_clinicas;
@@ -197,6 +198,7 @@ export function useArea() {
 }
 
 export default AreaContext;
+
 
 
 

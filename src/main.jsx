@@ -16,6 +16,7 @@ const Proveedores = lazy(() => import("./routes/Proveedores"));
 const ProyectosKanban = lazy(() => import("./routes/ProyectosKanban"));
 const TareasKanban = lazy(() => import("./routes/TareasKanban"));
 const Facturacion = lazy(() => import("./routes/Facturacion.jsx"));
+const Caja = lazy(() => import("./routes/Caja.jsx"));
 const AreaConfig = lazy(() => import("./routes/AreaConfig.jsx"));
 
 const ALLOWED_AREAS = ["general", "salud", "veterinaria"];
@@ -149,6 +150,7 @@ const router = createHashRouter([
       { path: "compras", element: <Navigate to="/proveedores" replace /> },
       { path: "pipeline", element: withSuspense(<ProyectosKanban />) },
       { path: "kanban-tareas", element: withSuspense(<TareasKanban />) },
+      { path: "caja", element: withSuspense(<Caja />) },
       { path: "facturacion", element: withSuspense(<Facturacion />) },
       { path: "billing", element: <Navigate to="/facturacion" replace /> },
       { path: "area", element: withSuspense(<AreaConfig />) },
@@ -174,3 +176,4 @@ if (rootEl) {
 } else {
   console.error("No se encontro el elemento #root");
 }
+

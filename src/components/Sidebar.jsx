@@ -12,6 +12,7 @@ import {
   Building2,
   Receipt,
   Sliders,
+  Wallet,
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle.jsx";
 import LanguageToggle from "./LanguageToggle.jsx";
@@ -43,6 +44,7 @@ export default function Sidebar({ onNavigate = () => {} }) {
     providers: vocab?.providers || t("nav.providers", "Subcontratistas"),
     tasks: vocab?.tasks || t("nav.tasks", "Tareas"),
     billing: vocab?.billing || t("nav.billing", "Facturacion"),
+    cashbox: vocab?.cashbox || t("nav.cashbox", "Caja"),
     kanbanTasks: t("nav.kanbanTasks", "Kanban de tareas"),
   };
 
@@ -112,6 +114,12 @@ export default function Sidebar({ onNavigate = () => {} }) {
           </li>
 
           <li className="mx-1">
+            <NavLink to="/caja" onClick={onNavigate} className={linkClass}>
+              <Wallet size={18} /> {labels.cashbox}
+            </NavLink>
+          </li>
+
+          <li className="mx-1">
             <NavLink to="/facturacion" onClick={onNavigate} className={linkClass}>
               <Receipt size={18} /> {labels.billing}
             </NavLink>
@@ -169,3 +177,4 @@ export default function Sidebar({ onNavigate = () => {} }) {
     </aside>
   );
 }
+
