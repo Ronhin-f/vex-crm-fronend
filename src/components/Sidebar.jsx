@@ -1,4 +1,4 @@
-// src/components/Sidebar.jsx
+﻿// src/components/Sidebar.jsx
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -13,6 +13,7 @@ import {
   Receipt,
   Sliders,
   Wallet,
+  ShoppingCart,
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle.jsx";
 import LanguageToggle from "./LanguageToggle.jsx";
@@ -45,6 +46,7 @@ export default function Sidebar({ onNavigate = () => {} }) {
     tasks: vocab?.tasks || t("nav.tasks", "Tareas"),
     billing: vocab?.billing || t("nav.billing", "Facturacion"),
     cashbox: vocab?.cashbox || t("nav.cashbox", "Caja"),
+    pos: t("nav.pos", "POS"),
     kanbanTasks: t("nav.kanbanTasks", "Kanban de tareas"),
   };
 
@@ -52,7 +54,7 @@ export default function Sidebar({ onNavigate = () => {} }) {
     perfil?.nombre_completo ||
     perfil?.nombre ||
     usuario?.nombre ||
-    usuario?.email?.split("@")?.[0] ||
+    usuario?.email?.split("@")[0] ||
     usuario?.email ||
     "Usuario";
 
@@ -111,6 +113,12 @@ export default function Sidebar({ onNavigate = () => {} }) {
 
           <li className="menu-title px-1 mt-2 uppercase tracking-wide text-xs text-base-content/60">
             {t("nav.section.ops", "Operaciones")}
+          </li>
+
+          <li className="mx-1">
+            <NavLink to="/pos" onClick={onNavigate} className={linkClass}>
+              <ShoppingCart size={18} /> {labels.pos}
+            </NavLink>
           </li>
 
           <li className="mx-1">
@@ -177,4 +185,3 @@ export default function Sidebar({ onNavigate = () => {} }) {
     </aside>
   );
 }
-

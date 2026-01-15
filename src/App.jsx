@@ -1,4 +1,4 @@
-// src/App.jsx
+﻿// src/App.jsx
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./components/Sidebar.jsx";
 import AssistantDrawer from "./components/AssistantDrawer.jsx";
@@ -11,21 +11,22 @@ export default function App() {
   useCrossTabLogout();
   const location = useLocation();
 
-  // Cierra el drawer en mobile después de navegar / salir
+  // Cierra el drawer en mobile despues de navegar / salir
   const closeDrawer = () => {
     const el = document.getElementById("vex-drawer");
     if (el && window.innerWidth < 1024) el.checked = false; // <lg
   };
 
-  // También cerramos si cambia la ruta (back/forward, enlaces fuera del Sidebar, etc.)
+  // Tambien cerramos si cambia la ruta (back/forward, enlaces fuera del Sidebar, etc.)
   useEffect(() => {
     closeDrawer();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search, location.hash]);
 
-  // Título contextual simple (solo se muestra en el topbar mobile)
+  // Titulo contextual simple (solo se muestra en el topbar mobile)
   const pageHint = useMemo(() => {
     const p = location.pathname.toLowerCase();
+    if (p.startsWith("/pos")) return " - POS";
     if (p.startsWith("/caja")) return " - Caja";
     if (p.startsWith("/facturacion")) return " - Facturacion";
     return "";
@@ -44,7 +45,7 @@ export default function App() {
             <label
               htmlFor="vex-drawer"
               className="btn btn-ghost btn-sm"
-              aria-label="Abrir menú"
+              aria-label="Abrir menu"
             >
               <Menu size={18} />
             </label>
@@ -65,7 +66,7 @@ export default function App() {
         <label
           htmlFor="vex-drawer"
           className="drawer-overlay"
-          aria-label="Cerrar menú"
+          aria-label="Cerrar menu"
           onClick={closeDrawer}
         />
         <Sidebar onNavigate={closeDrawer} />
@@ -74,5 +75,3 @@ export default function App() {
     </div>
   );
 }
-
-

@@ -1,4 +1,4 @@
-// src/main.jsx
+﻿// src/main.jsx
 import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { createHashRouter, RouterProvider, Navigate, Link } from "react-router-dom";
@@ -17,6 +17,7 @@ const ProyectosKanban = lazy(() => import("./routes/ProyectosKanban"));
 const TareasKanban = lazy(() => import("./routes/TareasKanban"));
 const Facturacion = lazy(() => import("./routes/Facturacion.jsx"));
 const Caja = lazy(() => import("./routes/Caja.jsx"));
+const Pos = lazy(() => import("./routes/Pos.jsx"));
 const AreaConfig = lazy(() => import("./routes/AreaConfig.jsx"));
 
 const ALLOWED_AREAS = ["general", "salud", "veterinaria"];
@@ -150,6 +151,7 @@ const router = createHashRouter([
       { path: "compras", element: <Navigate to="/proveedores" replace /> },
       { path: "pipeline", element: withSuspense(<ProyectosKanban />) },
       { path: "kanban-tareas", element: withSuspense(<TareasKanban />) },
+      { path: "pos", element: withSuspense(<Pos />) },
       { path: "caja", element: withSuspense(<Caja />) },
       { path: "facturacion", element: withSuspense(<Facturacion />) },
       { path: "billing", element: <Navigate to="/facturacion" replace /> },
@@ -176,4 +178,3 @@ if (rootEl) {
 } else {
   console.error("No se encontro el elemento #root");
 }
-
